@@ -4,7 +4,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 
 | Milestone | Day | Status | Exit checks |
 |---|---|---|---|
-| M1 Foundation | 1 | Built. Waiting for the deploy check. | 6 of 7 pass. GitHub Pages not checked yet. |
+| M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Not started | — |
 | M3 Trade and ships | 3 | Not started | — |
 | M4 Combat core | 4 | Not started | — |
@@ -49,7 +49,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | 2 | The player can travel in a sector and jump between sectors. | PASS | `tests/travel.test.ts`; manual check in Chromium (screenshots) |
 | 3 | Fuel goes down. | PASS | `tests/travel.test.ts` |
 | 4 | A tow happens at 0 fuel. | PASS | `tests/travel.test.ts`; manual check with the debug panel |
-| 5 | The build runs on GitHub Pages. | NOT CHECKED | Needs the merge to `main` and the Pages setting "GitHub Actions" |
+| 5 | The build runs on GitHub Pages. | PASS (deploy) | Pull request #1 merged to `main`; workflow run 40279979109: build and `deploy-pages` passed. This session cannot reach github.io, so open https://nelson-wee.github.io/spacesim/ once to confirm. |
 | 6 | Each actor has a fleet (list of ships). | PASS | `src/core/types.ts`, `tests/state.test.ts` |
 | 7 | `PROGRESS.md` is updated. | PASS | This file |
 
