@@ -1,0 +1,14 @@
+{
+  "source": "placeholder",
+  "map": {
+    "sector": "*",
+    "star": "*",
+    "planetSmall": "o",
+    "planetLarge": "O",
+    "station": "#",
+    "jumpPoint": "%",
+    "player": "@",
+    "orbit": "·",
+    "lane": "."
+  }
+}

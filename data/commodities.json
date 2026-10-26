@@ -1,0 +1,16 @@
+{
+  "commodities": [
+    { "id": "water", "name": "Water", "tier": "raw", "basePrice": 10, "massPerUnit": 1.0, "perishablePerDay": 0 },
+    { "id": "hydrogen", "name": "Hydrogen", "tier": "raw", "basePrice": 25, "massPerUnit": 1.0, "perishablePerDay": 0 },
+    { "id": "iron_ore", "name": "Iron Ore", "tier": "raw", "basePrice": 15, "massPerUnit": 1.0, "perishablePerDay": 0 },
+    { "id": "silicates", "name": "Silicates", "tier": "raw", "basePrice": 20, "massPerUnit": 1.0, "perishablePerDay": 0 },
+    { "id": "rare_elements", "name": "Rare Elements", "tier": "raw", "basePrice": 120, "massPerUnit": 1.0, "perishablePerDay": 0 },
+    { "id": "oxygen", "name": "Oxygen", "tier": "processed", "basePrice": 30, "massPerUnit": 0.5, "perishablePerDay": 0 },
+    { "id": "alloys", "name": "Alloys", "tier": "processed", "basePrice": 75, "massPerUnit": 0.5, "perishablePerDay": 0 },
+    { "id": "food", "name": "Food", "tier": "processed", "basePrice": 30, "massPerUnit": 0.5, "perishablePerDay": 0.01 },
+    { "id": "composites", "name": "Composites", "tier": "advanced", "basePrice": 180, "massPerUnit": 0.2, "perishablePerDay": 0 },
+    { "id": "electronics", "name": "Electronics", "tier": "advanced", "basePrice": 400, "massPerUnit": 0.2, "perishablePerDay": 0 },
+    { "id": "machinery", "name": "Machinery", "tier": "advanced", "basePrice": 750, "massPerUnit": 0.2, "perishablePerDay": 0 },
+    { "id": "medicine", "name": "Medicine", "tier": "consumer", "basePrice": 250, "massPerUnit": 0.2, "perishablePerDay": 0 }
+  ]
+}

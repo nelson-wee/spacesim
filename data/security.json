@@ -1,0 +1,16 @@
+{
+  "baseline": {
+    "core": 90,
+    "perJump": 20,
+    "jitter": 10,
+    "min": 5,
+    "max": 100
+  },
+  "levels": [
+    { "level": 0, "name": "Lawless", "min": 0, "pirateChanceArrival": 0.35, "pirateChanceTrip": 0.2, "patrolPerTurn": 0, "piratePerTurn": 0.08, "economyMult": 0.8 },
+    { "level": 1, "name": "Low", "min": 20, "pirateChanceArrival": 0.25, "pirateChanceTrip": 0.14, "patrolPerTurn": 0.03, "piratePerTurn": 0.04, "economyMult": 0.9 },
+    { "level": 2, "name": "Medium", "min": 40, "pirateChanceArrival": 0.15, "pirateChanceTrip": 0.09, "patrolPerTurn": 0.08, "piratePerTurn": 0, "economyMult": 1.0 },
+    { "level": 3, "name": "High", "min": 60, "pirateChanceArrival": 0.08, "pirateChanceTrip": 0.05, "patrolPerTurn": 0.15, "piratePerTurn": 0, "economyMult": 1.1 },
+    { "level": 4, "name": "Secure", "min": 80, "pirateChanceArrival": 0.03, "pirateChanceTrip": 0.02, "patrolPerTurn": 0.25, "piratePerTurn": 0, "economyMult": 1.2 }
+  ]
+}

@@ -1,0 +1,34 @@
+// A new career (Section 11.8): world from the seed, starting ship, credits.
+import { createActor } from '../actor/actor';
+import { type GameData, gameData } from '../data';
+import { createShipFromLoadout } from '../ship/loadout';
+import { generateWorld } from '../world/generator';
+import { type Game, wrapGame } from './game';
+import { createStreams, Rng } from './rng';
+import { type GameState, SAVE_VERSION } from './types';
+
+export function createGame(seed: number, data: GameData = gameData()): Game {
+  const cleanSeed = seed >>> 0;
+  const streams = createStreams(cleanSeed);
+  const world = generateWorld(cleanSeed, data, new Rng(streams.world));
+  const start = data.balance.start;
+  const ship = createShipFromLoadout(data, start.loadoutId, 'ship-1', start.shipName);
+  const player = createActor('player', 'Captain', [ship], start.credits, {
+    kind: 'docked',
+    locationId: world.startLocationId,
+  });
+  const state: GameState = {
+    saveVersion: SAVE_VERSION,
+    seed: cleanSeed,
+    day: 0,
+    rng: streams,
+    world,
+    player,
+    log: [],
+    nextId: 1,
+  };
+  const game = wrapGame(state, data);
+  const loc = world.locations[world.startLocationId];
+  game.bus.message(`Day 1. Your ship, the ${ship.name}, is docked at ${loc?.name ?? '?'}. Seed: ${cleanSeed}.`, 'good');
+  return game;
+}

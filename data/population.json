@@ -1,0 +1,16 @@
+{
+  "use": [
+    { "commodity": "food", "perUnitPerDay": 1.0, "who": "all" },
+    { "commodity": "water", "perUnitPerDay": 1.0, "who": "all" },
+    { "commodity": "oxygen", "perUnitPerDay": 0.5, "who": "noAtmosphere" },
+    { "commodity": "medicine", "perUnitPerDay": 0.1, "who": "all" },
+    { "commodity": "electronics", "perUnitPerDay": 0.1, "who": "core" },
+    { "commodity": "composites", "perUnitPerDay": 0.05, "who": "core" }
+  ],
+  "unitsPerSize": {
+    "terran": 20,
+    "ocean": 15,
+    "habitat": 10,
+    "crew": 2
+  }
+}

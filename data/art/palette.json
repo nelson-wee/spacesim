@@ -1,0 +1,40 @@
+{
+  "source": "placeholder",
+  "ui": {
+    "background": "#000000",
+    "text": "#c0c0c0",
+    "dim": "#707070",
+    "bright": "#ffffff",
+    "title": "#55ffff",
+    "highlight": "#ffff55",
+    "key": "#ffff55",
+    "good": "#55ff55",
+    "warning": "#ffaa00",
+    "danger": "#ff5555",
+    "border": "#5555aa",
+    "selectBg": "#202050"
+  },
+  "roles": {
+    "player": "#55ffff",
+    "pirate": "#ff5555",
+    "trader": "#ffff55",
+    "patrol": "#5555ff",
+    "neutral": "#aaaaaa",
+    "cargoPod": "#55ff55"
+  },
+  "techLevel": { "1": "#aaaaaa", "2": "#ffffff", "3": "#55ffff" },
+  "stars": {
+    "yellow": "#ffff55",
+    "orange": "#ffaa00",
+    "red": "#ff5555",
+    "white": "#ffffff",
+    "blue": "#5555ff"
+  },
+  "development": { "core": "#55ffff", "middle": "#ffffff", "frontier": "#aa7744" },
+  "security": ["#ff5555", "#ffaa00", "#ffff55", "#55ff55", "#55ffff"],
+  "map": {
+    "lane": "#555555",
+    "orbit": "#333355",
+    "jumpPoint": "#aa55ff"
+  }
+}

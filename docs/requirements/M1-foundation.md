@@ -46,7 +46,7 @@ All data schemas are a Day 1 item (§19). Each file has a TypeScript type and a 
 | M1-DATA-04 | `names.json` contains syllable tables for sector and location names. | §6.3 | T |
 | M1-DATA-05 | `commodities.json` contains the 12 commodities with tier, base price, and mass per unit (§9.1). | §9.1 | T |
 | M1-DATA-06 | `recipes.json` and `population.json` contain the tables in §9.3, §9.4, and §9.5 (`machineryPerBatch`). | §9.3–9.5 | T |
-| M1-DATA-07 | `hulls.json` contains all 8 hulls (§11.1), each with its size class (Small, Medium, Large, Capital, §18). | §11.1, §18 | T |
+| M1-DATA-07 | `hulls.json` contains all 9 hulls (§11.1), each with its size class (Small, Medium, Large, Capital, §18). | §11.1, §18 | T |
 | M1-DATA-10 | `/data/art/ships.json` contains the art of each hull as a text block, with the placeholder art of §18.1. `/data/art/palette.json` contains all colors (§17.2, §18.2). `effects.json` and `icons.json` have a schema; M4 and M8 fill them. | §18 | T |
 | M1-DATA-11 | A test checks that all art and UI text uses only Code Page 437 characters. | §4 | T |
 | M1-DATA-08 | `modules.json` contains at least the modules of the starting ship (Engine S, Reactor S, Shield Generator S, Cargo Rack M, Fuel Tank M, Pulse Laser S). The full list is an M3 item. | §11.7, §11.8 | T |

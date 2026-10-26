@@ -1,0 +1,14 @@
+{
+  "sector": {
+    "start": ["Va", "Ka", "Or", "Ze", "Ti", "Mar", "Sel", "Dra", "Ny", "Qua", "Ve", "Lo", "Ar", "Bel", "Cy", "Hel", "Ish", "Jor", "Ky", "Mor", "Pra", "Sar", "Tor", "Ul", "Xe", "Yr", "Ost", "Ren"],
+    "middle": ["sh", "ve", "ri", "la", "na", "ro", "ta", "mi", "de", "lo", "ka", "ne", "si", "dra", "th"],
+    "end": ["ti", "ri", "on", "ar", "is", "a", "os", "eth", "un", "ix", "ea", "or", "ane", "ul", "ys", "um", "ai"]
+  },
+  "location": {
+    "start": ["Ka", "Ve", "Tes", "Mor", "Lin", "Pel", "Sur", "Hal", "Ner", "Cas", "Dun", "Fen", "Gal", "Ith", "Jas", "Kor", "Mal", "Nim", "Oth", "Rus", "Sev", "Tam", "Vor", "Wen", "Zar", "Bri", "Eld"],
+    "middle": ["a", "e", "i", "o", "ar", "en", "il", "or", "u", "ae"],
+    "end": ["ri", "na", "ton", "dor", "mus", "lia", "vos", "ren", "tis", "gar", "bel", "nor", "sa", "kis", "dun", "via"]
+  },
+  "nameAttempts": 60,
+  "middleChance": 0.4
+}
