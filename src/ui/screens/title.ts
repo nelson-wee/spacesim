@@ -6,6 +6,7 @@ import type { App, Screen } from '../app';
 import { DigitInput, type KeyInput } from '../input';
 import { HelpScreen } from './help';
 import { SectorMapScreen } from './sectorMap';
+import { palette } from '../../render/palette';
 
 const TITLE = 'S P A C E   T R U C K I N G   S I M';
 
@@ -23,15 +24,12 @@ export class TitleScreen implements Screen {
   constructor(private readonly app: App) {}
 
   render(t: Term): void {
-    const ui = this.app.data.art.palette.ui;
+    const ui = palette(this.app.data).ui;
     const cx = (text: string) => Math.floor((WIDTH - text.length) / 2);
     const w = TITLE.length + 8;
     const x0 = Math.floor((WIDTH - w) / 2);
-    t.text(x0, 7, `╔${'═'.repeat(w - 2)}╗`, ui.border);
-    t.text(x0, 8, '║', ui.border);
+    t.box(x0, 7, w, 3, ui.border, undefined, undefined, 'modal');
     t.text(x0 + 4, 8, TITLE, ui.title);
-    t.text(x0 + w - 1, 8, '║', ui.border);
-    t.text(x0, 9, `╚${'═'.repeat(w - 2)}╝`, ui.border);
     t.text(cx('(working title)'), 11, '(working title)', ui.dim);
 
     const menu: [string, string, boolean][] = [
@@ -40,12 +38,13 @@ export class TitleScreen implements Screen {
       ['H', 'Help', true],
     ];
     menu.forEach(([key, text, active], i) => {
-      t.text(30, 18 + i * 2, key, active ? ui.key : ui.dim);
+      if (active) t.key(30, 18 + i * 2, ` ${key} `, ui.key, ui.keyBg);
+      else t.text(30, 18 + i * 2, ` ${key} `, ui.dim);
       t.text(34, 18 + i * 2, text, active ? ui.bright : ui.dim);
     });
 
     if (this.seedInput) {
-      t.box(25, 26, 50, 6, ui.border, 'New game', ui.title);
+      t.box(25, 26, 50, 6, ui.border, 'New game', ui.title, 'modal');
       t.text(28, 28, 'Seed:', ui.text);
       const value = this.seedInput.value;
       t.text(34, 28, value.length > 0 ? `${value}_` : '_', ui.highlight);

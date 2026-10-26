@@ -4,7 +4,7 @@ import { actorPlace, jump, planJump, planSectorTrip, travelInSector } from '../.
 import type { Game } from '../../core/game';
 import type { JumpPoint, Sector } from '../../core/types';
 import type { Term } from '../../render/display';
-import { securityColor, starColor } from '../../render/palette';
+import { palette, securityColor } from '../../render/palette';
 import { lineCells } from '../../world/geometry';
 import { securityLevelInfo } from '../../world/security';
 import type { App, Screen } from '../app';
@@ -37,7 +37,7 @@ export class RegionMapScreen implements Screen {
   render(t: Term): void {
     const game = this.game;
     const { data, state } = game;
-    const pal = data.art.palette;
+    const pal = palette(data);
     const icons = data.art.icons.map;
     drawStatusBar(t, game);
     t.vline(MAP_X + MAP_W, MAP_Y, MAP_Y + MAP_H - 1, '│', pal.ui.border);
@@ -61,11 +61,11 @@ export class RegionMapScreen implements Screen {
     for (const s of sectors) {
       const level = securityLevelInfo(s.securityValue, data).level;
       const sel = s.id === this.selectedSectorId;
-      at(s.pos.x, s.pos.y, icons.sector, starColor(data, s.star), sel ? pal.ui.selectBg : undefined);
+      at(s.pos.x, s.pos.y, icons.sector, pal.map.sun, sel ? pal.ui.selectBg : undefined);
       at(s.pos.x + 1, s.pos.y, String(level), securityColor(data, level));
       // Left of the sector: @ for the player's sector, or the key for a jump to it.
       const exitIndex = exits.findIndex((j) => j.toSectorId === s.id);
-      if (exitIndex >= 0) at(s.pos.x - 1, s.pos.y, String(exitIndex + 1), pal.ui.key);
+      if (exitIndex >= 0) at(s.pos.x - 1, s.pos.y, String(exitIndex + 1), pal.ui.key, pal.ui.keyBg);
       if (s.id === current) at(s.pos.x - 1, s.pos.y, icons.player, pal.roles.player);
     }
 
@@ -76,7 +76,7 @@ export class RegionMapScreen implements Screen {
   private renderPanel(t: Term): void {
     const game = this.game;
     const { data, state } = game;
-    const pal = data.art.palette;
+    const pal = palette(data);
     const x = PANEL_X;
     let y = 2;
     const line = (text: string, fg: string = pal.ui.text) => {
@@ -84,7 +84,7 @@ export class RegionMapScreen implements Screen {
       y++;
     };
     const keyLine = (key: string, text: string) => {
-      t.text(x, y, fit(key, 6), pal.ui.key);
+      t.key(x, y, key, pal.ui.key, pal.ui.keyBg);
       t.text(x + 6, y, text, pal.ui.text, undefined, PANEL_W - 6);
       y++;
     };
@@ -97,7 +97,7 @@ export class RegionMapScreen implements Screen {
     this.exits().forEach((jp, i) => {
       const to = state.world.sectors[jp.toSectorId] as Sector;
       const sel = to.id === this.selectedSectorId;
-      t.text(x, y, String(i + 1), pal.ui.key);
+      t.text(x, y, String(i + 1), pal.ui.key, pal.ui.keyBg);
       t.text(x + 2, y, fit(to.name, 12), sel ? pal.ui.highlight : pal.ui.text);
       t.text(x + 15, y, `lane ${state.world.lanes[jp.laneId]?.length.toFixed(1) ?? '?'}`, pal.ui.dim);
       y++;

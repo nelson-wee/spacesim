@@ -11,14 +11,18 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "world-report": "tsx tools/world-report.ts"
+    "world-report": "tsx tools/world-report.ts",
+    "import-art": "tsx tools/import-art.ts"
   },
   "dependencies": {
+    "jetbrains-mono": "1.0.6",
     "rot-js": "2.2.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
+    "@types/js-yaml": "4.0.9",
     "@types/node": "22.20.5",
+    "js-yaml": "4.3.2",
     "tsx": "4.23.15",
     "typescript": "5.9.3",
     "vite": "7.3.7",

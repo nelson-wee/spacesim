@@ -32,7 +32,7 @@
 | M5-THREAT-05 | `templates.json` has the 9 pirate templates (§10.6), trader templates (§10.8), escort rules, and patrol templates. TU of a template is calculated from its ships, not typed. | §10.6, §10.8 | T |
 | M5-THREAT-06 | **Selection.** List allowed templates with `TU ≤ budget`. Keep those with `TU ≥ 0.5 × budget`; if none, keep the most expensive allowed one. Select at random with weight = TU. | §10.6 | T |
 | M5-THREAT-07 | **Patrol budget.** `patrolBase[level] × random(0.8, 1.2)`. Patrol groups use the same selection rule (Q-04, interim rule). The owner will rework security patrols later; keep all patrol values in data. | §10.8, Q-04 | T |
-| M5-THREAT-08 | **Threat band.** Each sector shows 1 to 5 `!` on the region map (Q-18) and a TU range (budget at 0.6 and 1.4) in the sector panel. | §10.6, §17.2, Q-18 | M |
+| M5-THREAT-08 | **Threat band.** Each sector shows 1 to 5 `!` on the region map (Q-18), with the glyphs, width, and colors of `style.json` `threatBand` (`·` for empty places), and a TU range (budget at 0.6 and 1.4) in the sector panel. | §10.6, §17.2, §18, Q-18 | M |
 
 ## 3. Encounters and hail (ENC)
 
@@ -70,6 +70,7 @@
 | M5-LOOT-02 | A ship that surrenders gives all its cargo. The player takes as much as fits in the fleet. | §13.7 | T |
 | M5-LOOT-03 | No module salvage. (Prize ships are an M6 item.) | §13.7 | I |
 | M5-LOOT-04 | A Pirate Haven buys all cargo at 70% of its local sell price (Q-24). | §7.4, Q-24 | T |
+| M5-LOOT-05 | A ship that surrenders shows the surrender marker of `ships.yaml` (`¶`, color `hi`, above the first bridge cell, blink 750/250 ms). | §18 | M |
 
 ## 6. Sector security (SEC)
 

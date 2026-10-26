@@ -12,6 +12,7 @@ A browser game about an independent privateer. Trade cargo between locations, bu
 | [docs/requirements/](docs/requirements/README.md) | MVP requirements for each milestone (M1–M8), open questions, risks, and acceptance check traceability. |
 | [PROGRESS.md](PROGRESS.md) | Status of each milestone. |
 | [DECISIONS.md](DECISIONS.md) | Decisions that the brief does not give, with one line of reason. |
+| [data/art/README.md](data/art/README.md) | Art and style files from Claude Design, and how to change them. |
 
 ## Technology
 
@@ -28,6 +29,7 @@ npm test               # unit tests
 npm run typecheck      # TypeScript check
 npm run build          # production build in dist/
 npm run world-report   # headless report on generated worlds
+npm run import-art     # convert data/art/ships.yaml to ships.json
 ```
 
 Pushes to `main` deploy to GitHub Pages. In the repository settings, set Pages "Source" to "GitHub Actions".

@@ -1,20 +1,36 @@
 // Browser entry point.
+import fontUrl from 'jetbrains-mono/fonts/webfonts/JetBrainsMono-Regular.woff2?url';
 import { gameData } from './data';
 import { createDisplay, Term } from './render/display';
+import { palette } from './render/palette';
 import { App } from './ui/app';
 import { toKeyInput } from './ui/input';
 import { HelpScreen } from './ui/screens/help';
 import { TitleScreen } from './ui/screens/title';
 
+/** Loads the style font before the display measures it. */
+async function loadFont(family: string): Promise<void> {
+  try {
+    const face = new FontFace(family, `url(${fontUrl})`);
+    document.fonts.add(await face.load());
+  } catch (err) {
+    // The game still runs with a fallback monospace font.
+    console.warn(`Font ${family} did not load`, err);
+  }
+}
+
 async function main(): Promise<void> {
   const data = gameData();
-  const ui = data.art.palette.ui;
-  const display = createDisplay(ui.background, ui.text);
+  const style = data.art.style;
+  const ui = palette(data).ui;
+  await loadFont(style.cell.font);
+  document.body.style.background = ui.background;
+  const display = createDisplay(style, ui.background, ui.text);
   const container = display.getContainer();
   if (!container) throw new Error('rot.js display has no container');
   document.getElementById('app')?.appendChild(container);
 
-  const app = new App(new Term(display, ui.background), data);
+  const app = new App(new Term(display, ui.background, style.frame), data);
   app.helpScreen = (a, lines) => new HelpScreen(a, lines);
   if (import.meta.env.DEV) {
     const { DebugScreen } = await import('./ui/screens/debug');

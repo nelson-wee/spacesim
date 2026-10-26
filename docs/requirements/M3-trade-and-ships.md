@@ -62,12 +62,12 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M3-UI-01 | **Market tab.** Show only the commodities this location trades. Mark each one Sells or Buys. Group by tier, one color per tier. Show price per unit and per tonne. Show the best known sell price and where it is. | §17.4 | M |
-| M3-UI-02 | **Outfitter.** Slot list on the left, module shop on the right, stat panel at the bottom. | §17.1, §17.3 | M |
+| M3-UI-01 | **Market tab.** Show only the commodities this location trades. Mark each one Sells or Buys. Group by tier, with the tier letter and color from `style.json` (`tiers`). Show price per unit and per tonne. Show the best known sell price and where it is. | §17.4, §18 | M |
+| M3-UI-02 | **Outfitter.** Slot list on the left, module shop on the right, stat panel at the bottom. The selected ship's portrait (`ships.yaml`) shows above the slot list. Slot marks follow Q-29. | §17.1, §17.3, §18, Q-29 | M |
 | M3-UI-03 | **Stat panel.** When the player selects a module, show old → new for: mass, TWR, move, maneuver, power (draw/supply), heat per turn and cooling, fuel per jump, cargo. Green for better, red for worse. | §17.3 | M |
 | M3-UI-04 | **Outfitter warnings.** Red warning when the loadout fails a required-module rule. Yellow warning "Combat power if all ON: X/Y — switch modules OFF in combat" when total draw > supply. | §11.2, §17.3 | M |
 | M3-UI-05 | **Shipyard.** Hulls for sale with base values and price after trade-in. | §17.1 | M |
-| M3-UI-06 | **Fleet and cargo screen.** For each ship (1 in M3): loadout, derived stats, fuel, cargo with purchase price per unit. | §17.1 | M |
+| M3-UI-06 | **Fleet and cargo screen.** For each ship (1 in M3): portrait, loadout, derived stats, fuel, cargo with purchase price per unit. | §17.1, §18 | M |
 | M3-UI-07 | **Trade Ledger, price table.** Rows: commodities by tier. Columns: known locations, sorted by jumps from the player. Each cell: buy or sell price, a color for the difference from the region average, a trend arrow if known. | §17.6 | M |
 | M3-UI-08 | **Trade Ledger, filters.** Tier. Distance (1, 2, 3 jumps). "Goods sold here". | §17.6 | M |
 | M3-UI-09 | **Trade Ledger, route planner.** Start and destination, or "best from here". Show margin per tonne, profit for a full hold, fuel cost, trip days, profit per day, and "cargo-limited" or "capital-limited". | §17.6 | M, T |

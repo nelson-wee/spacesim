@@ -9,6 +9,7 @@ const prob = z.number().min(0).max(1);
 export const developmentSchema = z.enum(['core', 'middle', 'frontier']);
 export const slotSizeSchema = z.enum(['S', 'M', 'L']);
 export const tierSchema = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+export const sizeClassSchema = z.enum(['small', 'medium', 'large', 'capital']);
 const slotCountsSchema = z.object({ S: z.number().int().min(0), M: z.number().int().min(0), L: z.number().int().min(0) });
 
 export const balanceSchema = z.object({
@@ -172,7 +173,7 @@ export const hullsSchema = z.object({
       baseCooling: nonNeg,
       hardpoints: slotCountsSchema,
       internal: slotCountsSchema,
-      sizeClass: z.enum(['small', 'medium', 'large', 'capital']),
+      sizeClass: sizeClassSchema,
       tech: z.number().int().min(1).max(3).nullable(),
       price: pos.nullable(),
       enemyOnly: z.boolean(),
@@ -261,10 +262,38 @@ export const loadoutsSchema = z.object({
 export const plannedSchema = z.object({}).strict();
 
 const glyph = z.string().length(1);
+const grid = z.array(z.string()).min(1);
+const artViewSchema = z.object({
+  width: z.number().int().positive(),
+  height: z.number().int().positive(),
+  glyphs: grid,
+  roles: grid,
+  glyphsDamaged: grid,
+  glyphsCritical: grid,
+  flicker: z.array(z.tuple([z.number().int().min(0), z.number().int().min(0)])),
+});
+/** data/art/ships.json: generated from data/art/ships.yaml by tools/import-art.ts. */
 export const artShipsSchema = z.object({
   source: z.string(),
   mirrorSwaps: z.record(glyph, glyph),
-  ships: z.record(z.string(), z.array(z.string()).min(1)),
+  roleColors: z.record(z.string(), z.string()),
+  damageRule: z.object({
+    order: z.array(z.unknown()),
+    damaged: prob,
+    critical: prob,
+    dim: z.object({ damaged: prob, critical: prob, changed: prob }),
+  }),
+  damageStep: z.record(glyph, glyph),
+  damageStepBox: glyph,
+  surrenderMarker: z.object({ glyph, fg: z.string(), at: z.string(), blinkMs: z.tuple([pos, pos]) }),
+  ships: z.record(
+    z.string(),
+    z.object({
+      sizeClass: sizeClassSchema,
+      battle: artViewSchema,
+      portrait: artViewSchema.extend({ slotCount: z.number().int().min(0), slots: z.array(z.string()) }),
+    }),
+  ),
 });
 export const artIconsSchema = z.object({
   source: z.string(),
@@ -281,27 +310,33 @@ export const artIconsSchema = z.object({
   }),
 });
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/);
-export const artPaletteSchema = z.object({
-  source: z.string(),
-  ui: z.object({
-    background: color,
-    text: color,
-    dim: color,
-    bright: color,
-    title: color,
-    highlight: color,
-    key: color,
-    good: color,
-    warning: color,
-    danger: color,
-    border: color,
-    selectBg: color,
+/** data/art/style.json: Claude Design output. Colors are named; other parts refer to the names. */
+export const artStyleSchema = z.object({
+  cell: z.object({
+    w: z.number().int().positive(),
+    h: z.number().int().positive(),
+    font: z.string(),
+    fontSize: pos,
+    ligatures: z.boolean(),
   }),
-  roles: z.object({ player: color, pirate: color, trader: color, patrol: color, neutral: color, cargoPod: color }),
-  techLevel: z.object({ '1': color, '2': color, '3': color }),
-  stars: z.record(z.string(), color),
-  development: z.object({ core: color, middle: color, frontier: color }),
-  security: z.array(color).length(5),
-  map: z.object({ lane: color, orbit: color, jumpPoint: color }),
+  colors: z.record(z.string(), color),
+  sides: z.record(z.string(), z.string()),
+  roles: z.record(z.string(), z.union([z.string(), z.record(z.string(), z.string())])),
+  security: z.array(z.string()).length(5),
+  threatBand: z.object({ width: z.number().int().positive(), glyph, empty: glyph, color: z.string() }),
+  tiers: z.record(z.string(), z.tuple([z.string(), z.string()])),
+  tech: z.array(z.string()).length(3),
+  heat: z.object({
+    cells: z.number().int().positive(),
+    step: pos,
+    zones: z.record(z.string(), z.tuple([z.number(), z.number()])),
+    flashHz: pos,
+  }),
+  frame: z.object({
+    single: z.string().length(6),
+    modal: z.string().length(6),
+    padding: z.number().int().min(0),
+    titlePrefix: z.string(),
+  }),
 });
 export const artEffectsSchema = z.object({ source: z.string(), effects: z.object({}).strict() });

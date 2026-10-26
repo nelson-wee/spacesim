@@ -8,3 +8,4 @@
 - Put all tuning numbers in `/data/*.json`. Keep the simulation headless (no DOM in `src/core`, `world`, `econ`, `actor`, `ship`, `services`, `encounter`, `combat`, `career`).
 - Use the seeded RNG in `src/core/rng.ts` for all random results. Do not use `Math.random`.
 - Write documents in ASD-STE100 (short sentences, active voice, one meaning per word).
+- Art and style come from `data/art/` (see `data/art/README.md`). Do not edit `ships.yaml` or `style.json` by hand; after a new `ships.yaml`, run `npm run import-art`.

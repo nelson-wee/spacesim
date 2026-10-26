@@ -7,19 +7,20 @@ import { WIDTH } from '../../render/display';
 import { travelStats } from '../../ship/stats';
 import { LOG_LINES, LOG_Y, STATUS_Y } from '../layout';
 import { placeName } from './text';
+import { palette } from '../../render/palette';
 
 export function formatCredits(value: number): string {
   return `${Math.round(value).toLocaleString('en-US')} cr`;
 }
 
 export function logColor(game: Game, kind: LogKind): string {
-  const ui = game.data.art.palette.ui;
+  const ui = palette(game.data).ui;
   return kind === 'good' ? ui.good : kind === 'warning' ? ui.warning : kind === 'danger' ? ui.danger : ui.text;
 }
 
 export function drawStatusBar(t: Term, game: Game): void {
   const { state, data } = game;
-  const ui = data.art.palette.ui;
+  const ui = palette(data).ui;
   const actor = state.player;
   let x = 0;
   const part = (label: string, value: string, color: string = ui.bright) => {
@@ -38,7 +39,7 @@ export function drawStatusBar(t: Term, game: Game): void {
 }
 
 export function drawRecentLog(t: Term, game: Game): void {
-  const ui = game.data.art.palette.ui;
+  const ui = palette(game.data).ui;
   t.hline(LOG_Y - 1, 0, WIDTH - 1, '─', ui.border);
   const entries = game.state.log.slice(-LOG_LINES);
   entries.forEach((e, i) => {

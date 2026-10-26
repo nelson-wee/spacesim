@@ -40,14 +40,14 @@ All data schemas are a Day 1 item (§19). Each file has a TypeScript type and a 
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M1-DATA-01 | Make all data files in §4.1 and the art files in §18 (`/data/art/ships.json`, `effects.json`, `icons.json`, `palette.json`). Each file has a schema. Files that later milestones fill can be empty lists or objects now. | §4.1, §18, §19 | T |
+| M1-DATA-01 | Make all data files in §4.1 and the art files in §18 (`/data/art/ships.yaml` and generated `ships.json`, `style.json`, `icons.json`, `effects.json`). Each file has a schema. Files that later milestones fill can be empty lists or objects now. | §4.1, §18, §19 | T |
 | M1-DATA-02 | `balance.json` contains: sector count range (8–12, default 10), map size (66 × 34), Poisson-disc minimum distance (8), lanes per sector (1–4), body counts (3–6, planets 1–4, stations 1–3), orbit ring data, `cruiseFactor`, `jumpFactor`, `k_sector`, `k_jump`, `k_dock`, `M_REF` (10), `engineStackFalloff` (1.0), `recoveryBase`, `recoveryPerDistance`, recovery fuel share (0.25), full-tank fee share (0.20), `maxFleetSize` (4), `fuelPerHydrogen`, and `fuelMassExponent` (0.64, Q-01). | §6, §8, §11, Q-01 | T |
 | M1-DATA-03 | `bodyTypes.json` contains the planet types with weights by development level, gravity, and atmosphere (§6.5), and the station types (§7.2). | §6.5, §7.2 | T |
 | M1-DATA-04 | `names.json` contains syllable tables for sector and location names. | §6.3 | T |
 | M1-DATA-05 | `commodities.json` contains the 12 commodities with tier, base price, and mass per unit (§9.1). | §9.1 | T |
 | M1-DATA-06 | `recipes.json` and `population.json` contain the tables in §9.3, §9.4, and §9.5 (`machineryPerBatch`). | §9.3–9.5 | T |
 | M1-DATA-07 | `hulls.json` contains all 9 hulls (§11.1), each with its size class (Small, Medium, Large, Capital, §18). | §11.1, §18 | T |
-| M1-DATA-10 | `/data/art/ships.json` contains the art of each hull as a text block, with the placeholder art of §18.1. `/data/art/palette.json` contains all colors (§17.2, §18.2). `effects.json` and `icons.json` have a schema; M4 and M8 fill them. | §18 | T |
+| M1-DATA-10 | `/data/art/ships.yaml` and `/data/art/style.json` hold the Claude Design output. `npm run import-art` converts `ships.yaml` to `ships.json`; a test fails if they do not match. Checks: grid sizes, roles match glyphs, damaged art keeps the footprint, size class matches `hulls.json`, all style color names exist. `icons.json` and `effects.json` are placeholders. | §18, G-20 | T |
 | M1-DATA-11 | A test checks that all art and UI text uses only Code Page 437 characters. | §4 | T |
 | M1-DATA-08 | `modules.json` contains at least the modules of the starting ship (Engine S, Reactor S, Shield Generator S, Cargo Rack M, Fuel Tank M, Pulse Laser S). The full list is an M3 item. | §11.7, §11.8 | T |
 | M1-DATA-09 | `security.json` contains the security levels (§10.1) and the baseline values (§6.4). The effects table (§10.2) can come in M2 and M5. | §6.4, §10.1 | T |
@@ -105,8 +105,8 @@ This is the part of `ship/stats.ts` that travel needs. M3 completes it.
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M1-UI-01 | `render/display.ts` makes a rot.js `Display` of 100 × 40 cells with a monospace font that has all Code Page 437 glyphs. All glyphs are single width. | §4 | M |
-| M1-UI-02 | `render/palette.ts` loads all colors from `/data/art/palette.json`. Location colors by tech level: 1 grey, 2 white, 3 cyan. | §17.2, §18, §18.2 | I |
+| M1-UI-01 | `render/display.ts` makes a rot.js `Display` of 100 x 40 cells. The cell size (10 x 20), font (JetBrains Mono, bundled), and font size (16.667) come from `style.json`. All glyphs are single width. | §4, §18 | M |
+| M1-UI-02 | `render/palette.ts` takes all colors from `style.json`. Location colors by tech level: `tech1`, `tech2`, `tech3`. Keys show as key caps (`keybg`). Overlays use the modal frame; panels use the single frame. | §17.2, §18 | I |
 | M1-UI-03 | Title screen: New game (with seed input; a blank input gives a random seed), Continue (inactive until M7), Help. The screen shows the seed. | §17.1, §4.3 | M |
 | M1-UI-04 | Region map: each sector is a `*` in its star color. Lanes are lines of `.`. A number shows the security level. The player position shows. (Threat band and trend arrow are M5 items.) | §17.1, §17.2 | M |
 | M1-UI-05 | Sector map: star `*` at the center, orbit rings with `·` (Code Page 437) or `.`, planets `o` (size 1) or `O` (size 2–3), stations `#` or the first letter of the type, jump points `%`, player `@` in a bright color. | §17.2 | M |

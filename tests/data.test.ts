@@ -48,11 +48,22 @@ describe('data files (G-18)', () => {
 });
 
 describe('Code Page 437 (Section 4, M1-DATA-11)', () => {
-  it('ship art, icons, and names use only CP437 characters', () => {
+  it('art, style glyphs, icons, and names use only CP437 characters', () => {
     const data = gameData();
     const texts = [
-      ...Object.values(data.art.ships.ships).flat(),
-      ...Object.keys(data.art.ships.mirrorSwaps),
+      ...Object.values(data.art.ships.ships).flatMap((a) =>
+        [a.battle, a.portrait].flatMap((v) => [...v.glyphs, ...v.glyphsDamaged, ...v.glyphsCritical]),
+      ),
+      ...Object.entries(data.art.ships.mirrorSwaps).flat(),
+      ...Object.entries(data.art.ships.damageStep).flat(),
+      data.art.ships.damageStepBox,
+      data.art.ships.surrenderMarker.glyph,
+      data.art.style.frame.single,
+      data.art.style.frame.modal,
+      data.art.style.frame.titlePrefix,
+      data.art.style.threatBand.glyph,
+      data.art.style.threatBand.empty,
+      ...Object.values(data.art.style.tiers).map((t) => t[0]),
       ...Object.values(data.art.icons.map),
       ...Object.values(data.names.sector).flat(),
       ...Object.values(data.names.location).flat(),

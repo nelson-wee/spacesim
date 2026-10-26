@@ -12,7 +12,7 @@ import {
 import type { Game } from '../../core/game';
 import type { JumpPoint, Location, Vec } from '../../core/types';
 import type { Term } from '../../render/display';
-import { techColor, securityColor } from '../../render/palette';
+import { palette, securityColor, techColor } from '../../render/palette';
 import { quoteRefuel, refuelFleet } from '../../services/refuel';
 import { ringPoint } from '../../world/geometry';
 import { locationTypeName } from '../../world/location';
@@ -64,7 +64,7 @@ export class SectorMapScreen implements Screen {
   render(t: Term): void {
     const game = this.game;
     const { data } = game;
-    const pal = data.art.palette;
+    const pal = palette(data);
     const icons = data.art.icons.map;
     drawStatusBar(t, game);
     t.vline(MAP_X + MAP_W, MAP_Y, MAP_Y + MAP_H - 1, '│', pal.ui.border);
@@ -80,19 +80,19 @@ export class SectorMapScreen implements Screen {
     }
     const sector = game.state.world.sectors[this.sectorId()];
     if (!sector) return;
-    at(center, icons.star, pal.stars[sector.star] ?? pal.ui.bright);
+    at(center, icons.star, pal.map.sun);
 
     // Jump points and locations, with their keys.
     this.jumpPoints().forEach((jp, i) => {
       const sel = this.isSelected({ kind: 'jumpPoint', jumpPointId: jp.id });
       at(jp.pos, icons.jumpPoint, pal.map.jumpPoint, sel ? pal.ui.selectBg : undefined);
-      at({ x: jp.pos.x + 1, y: jp.pos.y }, JUMP_KEYS[i] ?? '?', pal.ui.key);
+      at({ x: jp.pos.x + 1, y: jp.pos.y }, JUMP_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
     });
     this.locations().forEach((loc, i) => {
       const glyph = loc.kind === 'station' ? icons.station : loc.size >= 2 ? icons.planetLarge : icons.planetSmall;
       const sel = this.isSelected({ kind: 'location', locationId: loc.id });
       at(loc.pos, glyph, techColor(data, loc.techLevel), sel ? pal.ui.selectBg : undefined);
-      at({ x: loc.pos.x + 1, y: loc.pos.y }, LOCATION_KEYS[i] ?? '?', pal.ui.key);
+      at({ x: loc.pos.x + 1, y: loc.pos.y }, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
     });
 
     // The player.
@@ -107,7 +107,7 @@ export class SectorMapScreen implements Screen {
   private renderPanel(t: Term): void {
     const game = this.game;
     const { data, state } = game;
-    const pal = data.art.palette;
+    const pal = palette(data);
     const sector = state.world.sectors[this.sectorId()];
     if (!sector) return;
     let y = 2;
@@ -117,7 +117,7 @@ export class SectorMapScreen implements Screen {
       y++;
     };
     const keyLine = (key: string, text: string, fg: string = pal.ui.text) => {
-      t.text(x, y, fit(key, 6), pal.ui.key);
+      t.key(x, y, key, pal.ui.key, pal.ui.keyBg);
       t.text(x + 6, y, text, fg, undefined, PANEL_W - 6);
       y++;
     };
@@ -131,7 +131,7 @@ export class SectorMapScreen implements Screen {
     line('Locations', pal.ui.dim);
     this.locations().forEach((loc, i) => {
       const sel = this.isSelected({ kind: 'location', locationId: loc.id });
-      t.text(x, y, LOCATION_KEYS[i] ?? '?', pal.ui.key);
+      t.text(x, y, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
       t.text(x + 2, y, fit(loc.name, 11), sel ? pal.ui.highlight : techColor(data, loc.techLevel));
       t.text(x + 14, y, locationTypeName(loc, data), pal.ui.dim, undefined, PANEL_W - 14);
       y++;
@@ -142,7 +142,7 @@ export class SectorMapScreen implements Screen {
       const sel = this.isSelected({ kind: 'jumpPoint', jumpPointId: jp.id });
       const to = state.world.sectors[jp.toSectorId];
       const lane = state.world.lanes[jp.laneId];
-      t.text(x, y, JUMP_KEYS[i] ?? '?', pal.ui.key);
+      t.text(x, y, JUMP_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
       t.text(x + 2, y, fit(`to ${to?.name ?? '?'}`, 16), sel ? pal.ui.highlight : pal.ui.text);
       t.text(x + 19, y, `lane ${lane?.length.toFixed(1) ?? '?'}`, pal.ui.dim);
       y++;
@@ -180,7 +180,7 @@ export class SectorMapScreen implements Screen {
   }
 
   private planLines(plan: TripPlan, line: (text: string, fg?: string) => void): void {
-    const pal = this.game.data.art.palette;
+    const pal = palette(this.game.data);
     const i = plan.lowestRangeShip;
     const ship = this.game.state.player.fleet[i];
     const need = plan.fuelNeed[i] ?? 0;
