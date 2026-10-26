@@ -31,7 +31,7 @@
 | M2-GEN-15 | **Repair.** If a rule fails, try a repair for that rule: change a size, change the producer at one location, or add a service. Maximum 5 repairs. Validate again after each repair. | §6.11 | T |
 | M2-GEN-16 | **Reject.** If the world still fails, start again from step 1 with `seed + 1`. Maximum 20 tries, then report an error. | §6.11 | T |
 | M2-GEN-17 | **Log.** Write the number of repairs and retries, and the rule results, to the generator log. | §6.11 | T |
-| M2-GEN-18 | **Frontier count.** Make sure that the region has at least 2 Frontier sectors (Rare Elements need 2 sectors). | Q-07 | T |
+| M2-GEN-18 | **Frontier count.** Make sure that the region has at least 2 Frontier sectors (Rare Elements need 2 sectors). Change sectors in step 2 (Q-07); do not retry the seed. | Q-07 | T |
 | M2-GEN-19 | The same seed gives the same world after repairs and retries. | §6.2 | T |
 
 ## 2. Locations and markets (LOC)

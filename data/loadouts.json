@@ -1,0 +1,21 @@
+{
+  "loadouts": [
+    {
+      "id": "start_shuttle",
+      "name": "Starting Shuttle",
+      "hullId": "shuttle",
+      "hardpoints": [
+        { "moduleId": "pulse_laser", "size": "S", "tier": 1 }
+      ],
+      "internal": [
+        { "moduleId": "engine", "size": "S", "tier": 1 },
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
+        { "moduleId": "shield_generator", "size": "S", "tier": 1 },
+        null,
+        { "moduleId": "cargo_rack", "size": "M", "tier": 1 },
+        { "moduleId": "fuel_tank", "size": "M", "tier": 1 }
+      ],
+      "powerPriority": ["engine", "shield_generator", "pulse_laser"]
+    }
+  ]
+}

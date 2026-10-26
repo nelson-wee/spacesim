@@ -1,0 +1,21 @@
+{
+  "capital": {
+    "machineryWear": 0.0025,
+    "installRatePerDay": 0.1,
+    "maxInstallRatio": 1.5
+  },
+  "recipes": [
+    { "producer": "ice_mine", "name": "Ice Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "water", "qty": 4 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "ore_mine", "name": "Ore Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "iron_ore", "qty": 4 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "silicate_mine", "name": "Silicate Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "silicates", "qty": 4 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "rare_element_mine", "name": "Rare Element Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "rare_elements", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "gas_skimmer", "name": "Gas Skimmer", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "hydrogen", "qty": 3 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "agri_world", "name": "Agri World", "class": "extractor", "inputs": [{ "commodity": "water", "qty": 2 }], "outputs": [{ "commodity": "food", "qty": 2 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
+    { "producer": "electrolysis_plant", "name": "Electrolysis Plant", "class": "processor", "inputs": [{ "commodity": "water", "qty": 2 }], "outputs": [{ "commodity": "hydrogen", "qty": 1 }, { "commodity": "oxygen", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 1.0 },
+    { "producer": "smelter", "name": "Smelter", "class": "processor", "inputs": [{ "commodity": "iron_ore", "qty": 2 }, { "commodity": "hydrogen", "qty": 1 }], "outputs": [{ "commodity": "alloys", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 4, "machineryPerBatch": 1.0 },
+    { "producer": "composite_works", "name": "Composite Works", "class": "advanced", "inputs": [{ "commodity": "alloys", "qty": 1 }, { "commodity": "silicates", "qty": 1 }], "outputs": [{ "commodity": "composites", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 3, "machineryPerBatch": 1.6 },
+    { "producer": "electronics_fab", "name": "Electronics Fab", "class": "advanced", "inputs": [{ "commodity": "silicates", "qty": 2 }, { "commodity": "rare_elements", "qty": 1 }], "outputs": [{ "commodity": "electronics", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 2, "machineryPerBatch": 1.6 },
+    { "producer": "machine_works", "name": "Machine Works", "class": "advanced", "inputs": [{ "commodity": "alloys", "qty": 2 }, { "commodity": "electronics", "qty": 1 }], "outputs": [{ "commodity": "machinery", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 2, "machineryPerBatch": 1.6 },
+    { "producer": "biolab", "name": "Biolab", "class": "advanced", "inputs": [{ "commodity": "food", "qty": 2 }, { "commodity": "water", "qty": 1 }], "outputs": [{ "commodity": "medicine", "qty": 1 }], "softInput": "machinery", "batchesPerSize": 3, "machineryPerBatch": 1.6 }
+  ]
+}

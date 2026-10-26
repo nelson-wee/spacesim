@@ -1,0 +1,28 @@
+{
+  "planets": [
+    { "id": "terran", "name": "Terran", "weights": { "frontier": 0.5, "middle": 1, "core": 3 }, "gravity": 1.0, "atmosphere": true },
+    { "id": "ocean", "name": "Ocean", "weights": { "frontier": 0.5, "middle": 1, "core": 2 }, "gravity": 1.0, "atmosphere": true },
+    { "id": "desert", "name": "Desert", "weights": { "frontier": 2, "middle": 1.5, "core": 0.5 }, "gravity": 0.6, "atmosphere": false },
+    { "id": "ice", "name": "Ice", "weights": { "frontier": 2, "middle": 1.5, "core": 0.5 }, "gravity": 0.4, "atmosphere": false },
+    { "id": "volcanic", "name": "Volcanic", "weights": { "frontier": 2, "middle": 1, "core": 0.5 }, "gravity": 1.2, "atmosphere": false },
+    { "id": "gas_giant", "name": "Gas Giant", "weights": { "frontier": 1.5, "middle": 1.5, "core": 1 }, "gravity": 0, "atmosphere": false }
+  ],
+  "stations": [
+    { "id": "station_slot", "name": "Station", "development": ["frontier", "middle", "core"] },
+    { "id": "mining_station", "name": "Mining Station", "development": ["frontier", "middle"] },
+    { "id": "processing_station", "name": "Processing Station", "development": ["middle", "core"] },
+    { "id": "industrial_station", "name": "Industrial Station", "development": ["middle", "core"] },
+    { "id": "habitat", "name": "Habitat", "development": ["frontier", "middle", "core"] },
+    { "id": "trade_hub", "name": "Trade Hub", "development": ["middle", "core"] },
+    { "id": "shipyard_station", "name": "Shipyard Station", "development": ["frontier", "middle", "core"] },
+    { "id": "military_outpost", "name": "Military Outpost", "development": ["frontier", "middle", "core"], "minBaselineSecurity": 50 },
+    { "id": "pirate_haven", "name": "Pirate Haven", "development": ["frontier", "middle", "core"], "maxBaselineSecurity": 30 }
+  ],
+  "stars": [
+    { "id": "yellow", "weight": 3 },
+    { "id": "orange", "weight": 3 },
+    { "id": "red", "weight": 3 },
+    { "id": "white", "weight": 1 },
+    { "id": "blue", "weight": 1 }
+  ]
+}

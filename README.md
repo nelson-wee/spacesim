@@ -2,7 +2,7 @@
 
 A browser game about an independent privateer. Trade cargo between locations, build a ship from a hull and modules, hunt pirates or become a pirate. A career has 730 game days and ends with a score and a title. The visuals are animated text mode (Code Page 437 characters).
 
-**Status:** Scoped. No code yet.
+**Status:** M1 (foundation) is built. See [PROGRESS.md](PROGRESS.md).
 
 ## Documents
 
@@ -16,3 +16,18 @@ A browser game about an independent privateer. Trade cargo between locations, bu
 ## Technology
 
 TypeScript (`strict`), Vite, rot.js, Vitest. Hosting on GitHub Pages with GitHub Actions. See §4 of the brief.
+
+## Development
+
+Node 22 or later.
+
+```sh
+npm ci                 # install
+npm run dev            # game in the browser (debug panel: F12 or `)
+npm test               # unit tests
+npm run typecheck      # TypeScript check
+npm run build          # production build in dist/
+npm run world-report   # headless report on generated worlds
+```
+
+Pushes to `main` deploy to GitHub Pages. In the repository settings, set Pages "Source" to "GitHub Actions".

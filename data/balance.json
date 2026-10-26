@@ -1,0 +1,66 @@
+{
+  "world": {
+    "sectorCount": 10,
+    "sectorCountMin": 8,
+    "sectorCountMax": 12,
+    "regionWidth": 66,
+    "regionHeight": 34,
+    "regionMarginX": 2,
+    "regionMarginY": 2,
+    "minSectorDistance": 8,
+    "minLanesPerSector": 1,
+    "maxLanesPerSector": 4,
+    "sectorPlacementAttempts": 3000,
+    "topologyResamples": 50,
+    "cellAspect": 2,
+    "coreMaxJumps": 1,
+    "middleMaxJumps": 2,
+    "techByDevelopment": { "core": 3, "middle": 2, "frontier": 1 },
+    "defaultLocationSize": 2
+  },
+  "sectorMap": {
+    "width": 66,
+    "height": 34,
+    "bodyRingRadii": [5, 8, 11, 14],
+    "jumpRingRadius": 16,
+    "minBodyDistance": 6,
+    "minJumpPointDistance": 4,
+    "bodyPlacementAttempts": 400,
+    "bodiesMin": 3,
+    "bodiesMax": 6,
+    "planetsMin": 1,
+    "planetsMax": 4,
+    "stationsMin": 1,
+    "stationsMax": 3
+  },
+  "travel": {
+    "cruiseFactor": 8,
+    "jumpFactor": 1.5,
+    "kSector": 0.0035,
+    "kJump": 0.038,
+    "kDock": 0.06,
+    "fuelMassExponent": 0.64
+  },
+  "ship": {
+    "mRef": 10,
+    "engineStackFalloff": 1.0,
+    "engineValueShare": 0.2
+  },
+  "fuel": {
+    "fuelPerHydrogen": 2
+  },
+  "recovery": {
+    "base": 300,
+    "perDistance": 10,
+    "fullTankShare": 0.2,
+    "fuelShareAfterTow": 0.25
+  },
+  "fleet": {
+    "maxFleetSize": 4
+  },
+  "start": {
+    "credits": 2000,
+    "loadoutId": "start_shuttle",
+    "shipName": "Second Chance"
+  }
+}

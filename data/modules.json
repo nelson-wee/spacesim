@@ -1,0 +1,85 @@
+{
+  "tiers": {
+    "1": { "main": 1.0, "power": 1.0, "heat": 1.0, "mass": 1.0, "price": 1 },
+    "2": { "main": 1.25, "power": 1.0, "heat": 0.9, "mass": 0.95, "price": 2.5 },
+    "3": { "main": 1.5, "power": 1.0, "heat": 0.8, "mass": 0.9, "price": 6 }
+  },
+  "engineFuelRateByTier": { "1": 1.0, "2": 0.9, "3": 0.8 },
+  "modules": [
+    {
+      "id": "engine", "name": "Engine", "slot": "internal", "category": "engine", "mainStats": ["thrust"],
+      "sizes": {
+        "S": { "thrust": 30, "fuelRate": 1.0, "power": 2, "heatPerTurn": 2, "mass": 2, "price": 1500 },
+        "M": { "thrust": 80, "fuelRate": 1.0, "power": 4, "heatPerTurn": 3, "mass": 6, "price": 5000 },
+        "L": { "thrust": 200, "fuelRate": 1.0, "power": 7, "heatPerTurn": 5, "mass": 16, "price": 16000 }
+      }
+    },
+    {
+      "id": "reactor", "name": "Reactor", "slot": "internal", "category": "reactor", "mainStats": ["powerOutput"],
+      "sizes": {
+        "S": { "powerOutput": 8, "power": 0, "heatPerTurn": 1, "mass": 3, "price": 1200 },
+        "M": { "powerOutput": 18, "power": 0, "heatPerTurn": 2, "mass": 8, "price": 4500 },
+        "L": { "powerOutput": 40, "power": 0, "heatPerTurn": 4, "mass": 20, "price": 14000 }
+      }
+    },
+    {
+      "id": "shield_generator", "name": "Shield Generator", "slot": "internal", "category": "shield", "mainStats": ["shieldCapacity", "shieldRegen"],
+      "sizes": {
+        "S": { "shieldCapacity": 20, "shieldRegen": 4, "power": 2, "heatPerTurn": 2, "mass": 2, "price": 2000 },
+        "M": { "shieldCapacity": 50, "shieldRegen": 8, "power": 4, "heatPerTurn": 3, "mass": 5, "price": 7000 },
+        "L": { "shieldCapacity": 120, "shieldRegen": 15, "power": 8, "heatPerTurn": 5, "mass": 12, "price": 22000 }
+      }
+    },
+    {
+      "id": "cargo_rack", "name": "Cargo Rack", "slot": "internal", "category": "cargo", "mainStats": ["cargoCapacity"],
+      "sizes": {
+        "S": { "cargoCapacity": 10, "mass": 1, "price": 500 },
+        "M": { "cargoCapacity": 30, "mass": 3, "price": 1800 },
+        "L": { "cargoCapacity": 80, "mass": 8, "price": 6000 }
+      }
+    },
+    {
+      "id": "fuel_tank", "name": "Fuel Tank", "slot": "internal", "category": "fuel", "mainStats": ["fuelCapacity"],
+      "sizes": {
+        "S": { "fuelCapacity": 10, "mass": 1, "price": 400 },
+        "M": { "fuelCapacity": 30, "mass": 3, "price": 1400 },
+        "L": { "fuelCapacity": 80, "mass": 8, "price": 4500 }
+      }
+    },
+    {
+      "id": "armor_plating", "name": "Armor Plating", "slot": "internal", "category": "armor", "mainStats": ["armor", "armorHp"],
+      "sizes": {
+        "S": { "armor": 1, "armorHp": 15, "mass": 4, "price": 1000 },
+        "M": { "armor": 2, "armorHp": 40, "mass": 10, "price": 4000 },
+        "L": { "armor": 3, "armorHp": 100, "mass": 25, "price": 12000 }
+      }
+    },
+    {
+      "id": "heat_sink", "name": "Heat Sink", "slot": "internal", "category": "heatSink", "mainStats": ["heatCapacity"],
+      "sizes": {
+        "S": { "heatCapacity": 20, "mass": 2, "price": 800 },
+        "M": { "heatCapacity": 50, "mass": 5, "price": 2800 }
+      }
+    },
+    {
+      "id": "radiator", "name": "Radiator", "slot": "internal", "category": "radiator", "mainStats": ["cooling"],
+      "sizes": {
+        "S": { "cooling": 2, "mass": 2, "price": 900 },
+        "M": { "cooling": 5, "mass": 5, "price": 3000 }
+      }
+    },
+    {
+      "id": "maneuvering_thrusters", "name": "Maneuvering Thrusters", "slot": "internal", "category": "thrusters", "mainStats": ["agilityBonus"],
+      "sizes": {
+        "S": { "agilityBonus": 0.15, "power": 1, "heatPerTurn": 1, "mass": 1, "price": 1500 },
+        "M": { "agilityBonus": 0.25, "power": 2, "heatPerTurn": 2, "mass": 3, "price": 5000 }
+      }
+    },
+    {
+      "id": "pulse_laser", "name": "Pulse Laser", "slot": "hardpoint", "category": "laser", "mainStats": ["damage"],
+      "sizes": {
+        "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 2, "heatPerShot": 4, "mass": 1, "price": 2000 }
+      }
+    }
+  ]
+}

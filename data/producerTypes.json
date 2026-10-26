@@ -1,0 +1,16 @@
+{
+  "producerTypes": [
+    { "id": "ice_mine", "hosts": ["ice", "mining_station"], "development": ["frontier", "middle"] },
+    { "id": "ore_mine", "hosts": ["volcanic", "desert", "mining_station"], "development": ["frontier", "middle"] },
+    { "id": "silicate_mine", "hosts": ["desert", "mining_station"], "development": ["frontier", "middle"] },
+    { "id": "rare_element_mine", "hosts": ["volcanic", "mining_station"], "development": ["frontier"] },
+    { "id": "gas_skimmer", "hosts": ["gas_giant"], "development": ["frontier", "middle", "core"] },
+    { "id": "agri_world", "hosts": ["terran", "ocean"], "development": ["frontier", "middle", "core"] },
+    { "id": "electrolysis_plant", "hosts": ["processing_station", "ice"], "development": ["middle", "core"] },
+    { "id": "smelter", "hosts": ["processing_station", "volcanic"], "development": ["middle", "core"] },
+    { "id": "composite_works", "hosts": ["industrial_station"], "development": ["core"] },
+    { "id": "electronics_fab", "hosts": ["industrial_station"], "development": ["core"] },
+    { "id": "machine_works", "hosts": ["industrial_station"], "development": ["middle", "core"] },
+    { "id": "biolab", "hosts": ["industrial_station", "terran"], "development": ["core"] }
+  ]
+}
