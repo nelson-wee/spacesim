@@ -22,11 +22,11 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M8-ART-05 | If the final art from the visual brief exists, load it into `/data/art/` (ships, effects, icons, palette). Check that all glyphs are Code Page 437. Run `sim-combat.ts` again, because footprints can change. | §4, §18 | S, T |
-| M8-ART-01 | **Damage display.** Hull 100%–67%: normal glyphs. 66%–34%: 30% of footprint cells change to `%`. 33%–1%: 60% of cells change to `%` or `.`, and colors become darker. Select damaged cells with the seeded RNG so they do not change each frame. | §18.3 | M, T |
-| M8-ART-02 | **Heat display.** A Hot ship has an orange tint. An Overheated ship flashes red. | §18.3 | M |
+| M8-ART-01 | **Damage display.** Hull 100%-67%: normal art. 66%-34%: damaged art (`glyphs_damaged`). 33%-1%: critical art (`glyphs_critical`). Colors dim with the `damage_rule` factors (changed cells dimmer). The design art replaces the `%` and `.` rule of §18.3. | §18, §18.3 | M, T |
+| M8-ART-02 | **Heat display.** A Hot ship uses the hot tint (`roles.hot_tint`). An Overheated ship flashes with `over` / `overBg` at `heat.flashHz`. | §18.3, §18 | M |
 | M8-ART-03 | **Effects.** All effects in §18.4 work: laser, ballistic, flak, missile and torpedo, point defense, shield hit, explosion (`*` → `+` → `.`), reinforcement arrival, map travel (ship glyph moves along the path). | §18.4 | M |
 | M8-ART-04 | Total effect time per turn is 1.2 s or less. `Space` skips the current animations. | §18.4 | M |
+| M8-ART-05 | Load the remaining Claude Design output (icons, effects) into `/data/art/` when it exists. Check that all glyphs are Code Page 437. Run `sim-combat.ts` again if footprints change. | §4, §18 | S, T |
 
 ## 3. Quality and release (REL)
 

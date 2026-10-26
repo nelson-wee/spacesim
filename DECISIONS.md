@@ -56,6 +56,21 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-26 [M1-SET] Libraries: TypeScript 5.9, Vite 7, Vitest 5, Zod 4 (data checks), tsx (tools). Fixed versions. Reason: Vitest 3 and Zod 3 had known security problems (`npm audit`); Zod gives both types and checks.
 - 2026-10-26 [M1-SET] Files that §4.1 does not list: `src/data/` (data loader and schemas), `src/core/game.ts` (runtime context), `src/core/newGame.ts`, `src/world/geometry.ts`, `src/world/names.ts`, `src/render/cp437.ts`, `src/ui/layout.ts`, and `tools/world-report.ts` (until `gen-report.ts` in M2). Reason: each has one job and keeps the other files small.
 
+## Visual design import (Claude Design, 2026-10-26)
+
+- 2026-10-26 [G-20] Keep the Claude Design files unchanged in `data/art/`: `ships.yaml` (source of truth for ship art) and `style.json`. `tools/import-art.ts` converts `ships.yaml` to `ships.json`; a test checks that they match. Reason: the game loads JSON in the browser and in Node with no YAML parser at runtime; the designer's file stays the source.
+- 2026-10-26 [G-20] `style.json` replaces the placeholder `palette.json`. `render/palette.ts` gives each named color a use on screen (text `base`, dim `dim`, bright and titles `hi`, warning `hot`, danger `bad`, frames `frame`, selection `select`, keys `hi` on `keybg`). Reason: the style has names, not screen uses.
+- 2026-10-26 [§18.2] All stars and suns use the `sun` color. The world keeps its star type (no visual use now). Reason: the style has one sun color and no colors for star types.
+- 2026-10-26 [§17.2] Development level colors use the tech colors (Frontier `tech1`, Middle `tech2`, Core `tech3`). Reason: the style has no development colors, and development sets the tech level (§6.4).
+- 2026-10-26 [§11.1, §18.1] Battle footprints come from `ships.yaml`, not from the §11.1 "Art" column or the §18.1 placeholder. Reason: brief v2.4 §18 ("read each ship's footprint from its art").
+- 2026-10-26 [§13.2] Mirror swaps come from `ships.yaml` (14 pairs). Reason: the final art uses glyphs that the 4 pairs of §13.2 do not cover.
+- 2026-10-26 [§18.3] Damage display uses the damaged and critical art of `ships.yaml` and the `damage_rule` dim factors, not the `%` and `.` rule. The hull limits (66%, 33%) stay. Reason: the design gives finished art for each state.
+- 2026-10-26 [M1-UI-01] Font: JetBrains Mono 2.242 Regular, bundled from the npm package `jetbrains-mono` (SIL Open Font License). Not the Google Fonts / Fontsource "latin" files. Reason: those subsets have no box-drawing, block, or shade glyphs; the full file has all art glyphs except `◘` (Q-30).
+- 2026-10-26 [M1-UI-01] A small rot.js backend (`FixedCellRect` in `render/display.ts`) gives 10 x 20 cells. Reason: rot.js makes cells `spacing x fontSize` high (17 px at 16.667 px) and has no option for different horizontal and vertical spacing.
+- 2026-10-26 [M1-UI] Overlays (help, debug, new-game box, title) use the modal frame; other boxes use the single frame. Reason: `style.json` gives both frames.
+- 2026-10-26 [M1-DBG] Debug panel item 7 shows all ship art: battle art in each state and side, and portraits with slot marks. Reason: a visual check of each art import.
+- 2026-10-26 [M1-SET] `js-yaml` 4.3.2 (development only, for `import-art` and tests). Reason: 4.1.0 has known security problems.
+
 ## Cuts
 
 None.

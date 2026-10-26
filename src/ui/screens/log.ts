@@ -5,6 +5,7 @@ import { HEIGHT, WIDTH } from '../../render/display';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { logColor } from '../widgets/statusBar';
+import { palette } from '../../render/palette';
 
 const TOP = 2;
 const ROWS = HEIGHT - TOP - 2;
@@ -18,7 +19,7 @@ export class LogScreen implements Screen {
   render(t: Term): void {
     const game = this.app.game;
     if (!game) return;
-    const ui = game.data.art.palette.ui;
+    const ui = palette(game.data).ui;
     const log = game.state.log;
     t.text(0, 0, 'Log', ui.title);
     t.text(10, 0, `${log.length} messages`, ui.dim);
@@ -31,7 +32,10 @@ export class LogScreen implements Screen {
       t.text(6, TOP + i, e.text, logColor(game, e.kind), undefined, WIDTH - 6);
     });
     t.hline(HEIGHT - 2, 0, WIDTH - 1, '─', ui.border);
-    t.text(0, HEIGHT - 1, 'Up/Down PgUp/PgDn Home/End  Scroll      Esc  Back', ui.key);
+    let x = t.key(0, HEIGHT - 1, 'Up/Down PgUp/PgDn Home/End', ui.key, ui.keyBg);
+    x = t.text(x, HEIGHT - 1, ' Scroll   ', ui.text);
+    x = t.key(x, HEIGHT - 1, 'Esc', ui.key, ui.keyBg);
+    t.text(x, HEIGHT - 1, ' Back', ui.text);
   }
 
   onKey(k: KeyInput): boolean {

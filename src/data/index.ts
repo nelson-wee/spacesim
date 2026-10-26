@@ -20,8 +20,8 @@ import servicesJson from '../../data/services.json';
 import templatesJson from '../../data/templates.json';
 import artEffectsJson from '../../data/art/effects.json';
 import artIconsJson from '../../data/art/icons.json';
-import artPaletteJson from '../../data/art/palette.json';
 import artShipsJson from '../../data/art/ships.json';
+import artStyleJson from '../../data/art/style.json';
 import * as S from './schemas';
 
 export type Balance = z.infer<typeof S.balanceSchema>;
@@ -39,7 +39,7 @@ export type LoadoutSlot = Loadout['internal'][number];
 export type Development = z.infer<typeof S.developmentSchema>;
 export type SlotSize = z.infer<typeof S.slotSizeSchema>;
 export type Tier = z.infer<typeof S.tierSchema>;
-export type Palette = z.infer<typeof S.artPaletteSchema>;
+export type Style = z.infer<typeof S.artStyleSchema>;
 export type Icons = z.infer<typeof S.artIconsSchema>;
 export type ShipArt = z.infer<typeof S.artShipsSchema>;
 
@@ -64,7 +64,7 @@ export interface RawData {
   artShips: unknown;
   artEffects: unknown;
   artIcons: unknown;
-  artPalette: unknown;
+  artStyle: unknown;
 }
 
 export interface GameData {
@@ -88,7 +88,7 @@ export interface GameData {
   art: {
     ships: ShipArt;
     icons: Icons;
-    palette: Palette;
+    style: Style;
     effects: z.infer<typeof S.artEffectsSchema>;
   };
 }
@@ -114,7 +114,7 @@ export const RAW_DATA: RawData = {
   artShips: artShipsJson,
   artEffects: artEffectsJson,
   artIcons: artIconsJson,
-  artPalette: artPaletteJson,
+  artStyle: artStyleJson,
 };
 
 function parse<T extends z.ZodType>(file: string, schema: T, value: unknown): z.infer<T> {
@@ -201,13 +201,49 @@ export function checkReferences(data: GameData): string[] {
     }
   }
   if (!data.loadoutById.has(b.start.loadoutId)) problems.push(`balance.start.loadoutId: unknown ${b.start.loadoutId}`);
-  for (const h of data.hulls) if (!data.art.ships.ships[h.id]) problems.push(`art/ships.json: no art for hull ${h.id}`);
-  for (const [id, rows] of Object.entries(data.art.ships.ships)) {
-    const width = rows[0]?.length ?? 0;
-    if (rows.some((r) => r.length !== width)) problems.push(`art/ships.json: rows of ${id} have different widths`);
+  problems.push(...checkArt(data));
+  return problems;
+}
+
+/** Color names that a style value refers to. "{side}" stands for each side. */
+function styleColorNames(style: Style, value: string): string[] {
+  if (!value.includes('{side}')) return [value];
+  return Object.values(style.sides).map((side) => value.replace('{side}', side));
+}
+
+/** Checks the art files against each other and against the game data. */
+export function checkArt(data: GameData): string[] {
+  const problems: string[] = [];
+  const { ships, style } = data.art;
+  const hasColor = (name: string) => name in style.colors;
+  for (const h of data.hulls) {
+    const art = ships.ships[h.id];
+    if (!art) problems.push(`art/ships.json: no art for hull ${h.id}`);
+    else if (art.sizeClass !== h.sizeClass) {
+      problems.push(`art/ships.json: ${h.id} size class ${art.sizeClass}, hulls.json says ${h.sizeClass}`);
+    }
   }
-  for (const s of data.bodyTypes.stars) {
-    if (!data.art.palette.stars[s.id]) problems.push(`art/palette.json: no color for star ${s.id}`);
+  for (const id of Object.keys(ships.ships)) if (!data.hullById.has(id)) problems.push(`art/ships.json: unknown hull ${id}`);
+  const refs: [string, string][] = [
+    ...style.security.map((c, i): [string, string] => [`security[${i}]`, c]),
+    ...style.tech.map((c, i): [string, string] => [`tech[${i}]`, c]),
+    ...Object.entries(style.tiers).map(([k, v]): [string, string] => [`tiers.${k}`, v[1]]),
+    ...Object.entries(style.sides).map(([k, v]): [string, string] => [`sides.${k}`, v]),
+  ];
+  for (const [key, value] of Object.entries(style.roles)) {
+    if (typeof value === 'string') for (const c of styleColorNames(style, value)) refs.push([`roles.${key}`, c]);
+    else for (const [k, v] of Object.entries(value)) refs.push([`roles.${key}.${k}`, v]);
+  }
+  for (const [where, name] of refs) if (!hasColor(name)) problems.push(`art/style.json: ${where} names unknown color "${name}"`);
+  for (const t of new Set(data.commodities.map((c) => c.tier))) {
+    if (!style.tiers[t]) problems.push(`art/style.json: no tier style for "${t}"`);
+  }
+  // The ship art repeats the role colors of the style; they must agree.
+  for (const [role, value] of Object.entries(ships.roleColors)) {
+    if (style.roles[role] !== value) problems.push(`art: role "${role}" is "${value}" in ships.yaml, "${String(style.roles[role])}" in style.json`);
+  }
+  if (ships.surrenderMarker.fg && !hasColor(ships.surrenderMarker.fg)) {
+    problems.push(`art/ships.json: surrender marker color "${ships.surrenderMarker.fg}" is unknown`);
   }
   return problems;
 }
@@ -247,7 +283,7 @@ export function buildGameData(raw: RawData): GameData {
     art: {
       ships: parse('art/ships.json', S.artShipsSchema, raw.artShips),
       icons: parse('art/icons.json', S.artIconsSchema, raw.artIcons),
-      palette: parse('art/palette.json', S.artPaletteSchema, raw.artPalette),
+      style: parse('art/style.json', S.artStyleSchema, raw.artStyle),
       effects: parse('art/effects.json', S.artEffectsSchema, raw.artEffects),
     },
   };

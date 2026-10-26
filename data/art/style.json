@@ -1,0 +1,154 @@
+{
+  "cell": {
+    "w": 10,
+    "h": 20,
+    "font": "JetBrains Mono",
+    "fontSize": 16.667,
+    "ligatures": false
+  },
+  "colors": {
+    "void": "#06080B",
+    "panel": "#0B0F14",
+    "raised": "#121A21",
+    "select": "#1B2A33",
+    "keybg": "#2A3C48",
+    "frame": "#3A4752",
+    "frameHi": "#7F98A6",
+    "hi": "#EEF3F5",
+    "base": "#B7C1C7",
+    "dim": "#7E8A93",
+    "player": "#3FE0E8",
+    "playerDeep": "#1F9AA1",
+    "playerBright": "#A8F6F9",
+    "pirate": "#FF4D3F",
+    "pirateDeep": "#B8352B",
+    "pirateBright": "#FFA197",
+    "trader": "#F2C84B",
+    "traderDeep": "#A8862A",
+    "traderBright": "#FFE79E",
+    "patrol": "#5B8CFF",
+    "patrolDeep": "#3D62C2",
+    "patrolBright": "#AFC6FF",
+    "neutral": "#9AA3AB",
+    "neutralDeep": "#646D75",
+    "neutralBright": "#D3D8DC",
+    "cargoPod": "#5BE37A",
+    "good": "#8FE3A0",
+    "bad": "#FF8075",
+    "hot": "#FF9A2E",
+    "hotDim": "#5A3612",
+    "over": "#FF3B30",
+    "overBg": "#3D0E0B",
+    "overDim": "#5A1915",
+    "shield": "#BFE8FF",
+    "engine": "#FFD27A",
+    "engineOff": "#4A3E2E",
+    "reactor": "#F2A8FF",
+    "tierRaw": "#D19A62",
+    "tierProc": "#A9BCCC",
+    "tierAdv": "#B98CFF",
+    "tierCons": "#FF8CC6",
+    "sec0": "#FF4D3F",
+    "sec1": "#F2548E",
+    "sec2": "#C46AE8",
+    "sec3": "#9182F7",
+    "sec4": "#5B8CFF",
+    "tech1": "#8B949B",
+    "tech2": "#EEF3F5",
+    "tech3": "#9EEFF4",
+    "star": "#3E4852",
+    "starBright": "#7E8A93",
+    "sun": "#FFE7A3",
+    "jump": "#B7A6FF",
+    "asteroid": "#9A8A76",
+    "asteroidBg": "#1C1712",
+    "debris": "#857F76",
+    "gas": "#B5835A",
+    "gasBg": "#1E140C",
+    "moveBg": "#0C2A2D",
+    "rangeBg": "#261C0C"
+  },
+  "sides": {
+    "player": "player",
+    "pirate": "pirate",
+    "trader": "trader",
+    "patrol": "patrol",
+    "neutral": "neutral"
+  },
+  "roles": {
+    "h": "{side}",
+    "a": "{side}Deep",
+    "b": "hi",
+    "e": "engine",
+    "e_off": "engineOff",
+    "w": "{side}Bright",
+    "s": "shield",
+    "c": "{side}Deep",
+    "r": "reactor",
+    "hot_tint": {
+      "h": "hot",
+      "a": "hot"
+    }
+  },
+  "security": [
+    "sec0",
+    "sec1",
+    "sec2",
+    "sec3",
+    "sec4"
+  ],
+  "threatBand": {
+    "width": 5,
+    "glyph": "!",
+    "empty": "·",
+    "color": "sec[5-n]"
+  },
+  "tiers": {
+    "raw": [
+      "R",
+      "tierRaw"
+    ],
+    "processed": [
+      "P",
+      "tierProc"
+    ],
+    "advanced": [
+      "A",
+      "tierAdv"
+    ],
+    "consumer": [
+      "C",
+      "tierCons"
+    ]
+  },
+  "tech": [
+    "tech1",
+    "tech2",
+    "tech3"
+  ],
+  "heat": {
+    "cells": 12,
+    "step": 10,
+    "zones": {
+      "normal": [
+        0,
+        69
+      ],
+      "hot": [
+        70,
+        99
+      ],
+      "over": [
+        100,
+        120
+      ]
+    },
+    "flashHz": 4
+  },
+  "frame": {
+    "single": "┌┐└┘─│",
+    "modal": "╔╗╚╝═║",
+    "padding": 1,
+    "titlePrefix": "┌─ "
+  }
+}

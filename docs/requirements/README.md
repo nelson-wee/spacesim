@@ -64,7 +64,7 @@ These rules come from brief Sections 0, 4, and 4.2. They apply from Day 1 to Day
 | G-13 | The combat resolver resolves one full turn and returns a list of effects. The renderer plays the effects as animation. | §4.2 | T |
 | G-14 | TypeScript must use `strict` mode. The project uses Vite, rot.js, and Vitest. | §4 | I |
 | G-15 | The display is a rot.js `Display` of 100 × 40 cells, with a monospace font. Use only Code Page 437 characters (ASCII, box drawing, shades, half blocks). All characters are single width. Do not use emoji or wide Unicode characters. | §4 | M, T |
-| G-20 | Art, effects, icons, and palette come from data files in `/data/art/` (`ships.json`, `effects.json`, `icons.json`, `palette.json`). Code must not contain art or colors. Until the final art from the visual brief exists, the files contain the placeholder art of §18.1. | §18 | I |
+| G-20 | Art and style come from data files in `/data/art/` (see `data/art/README.md`): `ships.yaml` (Claude Design, source of truth) converted to `ships.json` by `npm run import-art`, and `style.json` (Claude Design: cell, font, colors, frames). `icons.json` and `effects.json` are placeholders until Claude Design gives them. Code must not contain art or colors. | §18, Q-29 | I, T |
 | G-16 | The debug panel and its tools must be in development builds only. | §4.3 | I |
 | G-17 | Extend the debug panel and the `/tools` scripts in each milestone (Section 4.3). | §4.3 | I |
 | G-18 | Each data file must have a TypeScript type and a load-time check. A unit test must load and check all data files. | §0.4 | T |
@@ -169,6 +169,25 @@ The scoping found these conflicts and gaps. Each has a **proposed default**. If 
 | Q-27 | The minimum spanning tree can give a sector more than 4 lanes (§6.3 says 1 to 4). | If a sector has more than 4 lanes after step 1, sample the sector positions again in the same try. | M1 |
 | Q-28 | Order of moves and shots in the player phase (§13.3). | The player gives orders in any order: move steps and shots. The resolver checks the move budget and the one-shot-per-weapon rule. | M4 |
 
+### 8.3 Visual design (Claude Design, 2026-10-26)
+
+`data/art/ships.yaml` and `data/art/style.json` are the visual source (brief v2.4, §18). Where they do not agree with the brief, the design files are correct for these items:
+
+| Brief text | Replaced by |
+|---|---|
+| §11.1 "Art" column and §18.1 placeholder art (footprint sizes) | Battle art in `ships.yaml`. Footprints: Shuttle 2x1, Wasp 2x1, Courier 4x1, Gunship 4x2, Light Freighter 7x3, Heavy Freighter 8x3, Corvette 8x3, Frigate 9x4, Battleship 15x5. |
+| §13.2 mirror glyph swaps (4 pairs) | `mirror_swaps` in `ships.yaml` (14 pairs). |
+| §18.2 color table | Named colors in `style.json` (`player`, `pirate`, `trader`, `patrol`, `neutral`, `cargoPod`), with Deep and Bright forms by role. |
+| §18.3 damage display ("30% / 60% of cells change to `%` or `.`") | Damaged and critical art in `ships.yaml` (about 25% / 50% of cells), with the dim factors of `damage_rule`. The hull limits for each state stay as in §18.3 (66% and 33%). |
+| §17.2 location colors by tech level | `tech1`, `tech2`, `tech3` in `style.json` (same meaning: grey, white, cyan). |
+
+New items from the design (no brief text): portraits (Outfitter, Shipyard, Fleet screens), key caps, single and modal frames, the heat bar layout, the threat band glyphs and colors, commodity tier letters and colors, engine flicker cells, and the surrender marker (`¶`).
+
+| ID | Issue | Proposed default | Milestone |
+|---|---|---|---|
+| Q-29 | **Portrait slots.** Each portrait has 3 to 9 slot marks (`slot_count`). The hulls have more slots (hardpoints + internal): Shuttle 3 marks for 7 slots, Frigate 5 for 12, Battleship 9 for 16. The design does not say what a mark shows. | Ask the designer. Until then: the Outfitter lists all slots as text, and the portrait shows the marks only as decoration. | M3 |
+| Q-30 | **Missing glyph.** The art uses `◘` (reactor role) in 7 hulls. JetBrains Mono 2.242 does not contain `◘` (U+25D8), so the browser draws it from a fallback font. | Keep `◘` and the fallback for now. Ask the designer to change the glyph, or to accept the fallback. | M3, M4 |
+
 ## 9. Risks
 
 | Risk | Effect | Action |
@@ -179,7 +198,7 @@ The scoping found these conflicts and gaps. Each has a **proposed default**. If 
 | Economy route-margin targets (§9.13) depend on κ, spread, and the price exponent together. | Long tuning time on Day 2. | Use the CSV export (§4.3) from the first economy run. Tune only data. |
 | Security target: "about 15 pirate kills raise a sector one level for a long time" (§22). Baseline +0.5 per kill gives +7.5 for 15 kills. One level is 20 points. | The target fails with the first values. | Tune `security.json` in the M7 balance pass. Bounty baseline changes (+1, +2) help. |
 | TU calibration and combat pairings use the same data. A change for one check can break another check. | Combat tuning on Day 5 takes long. | Run all `sim-combat.ts` checks together after each change. Tune `groupBonus` and the firepower formula for TU (§10.9). Tune data for pairings (§13.9). |
-| The visual brief (`space-sim-visual-brief.md`) and the final art are not in the repository yet. Final art can change ship footprints. | Footprint size changes hit chance on the grid, movement, and flak areas. Combat results can change. | Build with the placeholder art of §18.1. When the final art arrives, run `sim-combat.ts` again. Upkeep uses the size class, so it does not change. |
+| Final ship art (Claude Design, 2026-10-26) has larger battle footprints than §11.1 and §18.1 (for example, Shuttle 2x1, Frigate 9x4). | Footprint size changes movement, flak areas, and line of fire. Combat results can change. | M4 and M5 tune combat with the final art. Upkeep uses the size class, so it does not change. |
 | The trader bot check on Day 3 runs with no encounters. | Day 3 results can be too optimistic. | Run `sim-trader.ts` again with encounters in M5 and M7. |
 
 ## 10. Owner actions
@@ -189,5 +208,5 @@ These items need the repository owner. Claude Code cannot do them.
 1. **GitHub Pages:** in the repository settings, set Pages "Source" to "GitHub Actions". The Day 1 exit check needs this.
 2. **Default branch:** the deploy workflow runs on pushes to `main`. Make `main` the default branch of the repository.
 3. **Open questions:** read Section 8. Change a proposed default if you do not agree with it. If you do not change a default, the build uses it.
-4. **Visual brief:** add `space-sim-visual-brief.md` and the Claude Design output (`/data/art/*.json`) to the repository when they are ready (§18).
+4. **Visual design:** ship art (`ships.yaml`) and style (`style.json`) are in `data/art/`. Still to come from Claude Design: icons (map glyphs), combat effects, and the visual brief (`space-sim-visual-brief.md`, `Ship Art.dc.html`). Answer Q-29 and Q-30 with the designer.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.

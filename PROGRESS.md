@@ -4,7 +4,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 
 | Milestone | Day | Status | Exit checks |
 |---|---|---|---|
-| M1 Foundation | 1 | Built. Waiting for the deploy check. | 6 of 7 pass. GitHub Pages not checked yet. |
+| M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Not started | — |
 | M3 Trade and ships | 3 | Not started | — |
 | M4 Combat core | 4 | Not started | — |
@@ -40,7 +40,6 @@ Update this file at the end of each milestone (brief §0, item 9).
 
 - **Frontier sectors (M2 risk):** 122 of 200 seeds have only 1 Frontier sector. Rare Elements need producers in 2 sectors (§6.10). A retry cannot fix this. The Q-07 default now changes sectors in generator step 2. See `docs/requirements/README.md`, Q-07.
 - The tow takes no time, and the fee uses base prices. M2 and M3 change the prices.
-- The display font is a system monospace font. The visual brief can change it.
 
 ### Exit checks
 
@@ -50,7 +49,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | 2 | The player can travel in a sector and jump between sectors. | PASS | `tests/travel.test.ts`; manual check in Chromium (screenshots) |
 | 3 | Fuel goes down. | PASS | `tests/travel.test.ts` |
 | 4 | A tow happens at 0 fuel. | PASS | `tests/travel.test.ts`; manual check with the debug panel |
-| 5 | The build runs on GitHub Pages. | NOT CHECKED | Needs the merge to `main` and the Pages setting "GitHub Actions" |
+| 5 | The build runs on GitHub Pages. | PASS (deploy) | Pull request #1 merged to `main`; workflow run 40279979109: build and `deploy-pages` passed. This session cannot reach github.io, so open https://nelson-wee.github.io/spacesim/ once to confirm. |
 | 6 | Each actor has a fleet (list of ships). | PASS | `src/core/types.ts`, `tests/state.test.ts` |
 | 7 | `PROGRESS.md` is updated. | PASS | This file |
 
@@ -73,6 +72,15 @@ Mean jump time 3.11 days, 30-unit trip 0.94 days
 ```
 
 The starting ship range is 5.0 jumps (§8.7 target: 4–6).
+
+## Visual design import (2026-10-26)
+
+Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art/style.json`).
+
+- **Works:** `npm run import-art` converts and checks the ship art. All screens use the style colors, key caps, frames, the JetBrains Mono font, and 10 x 20 cells (canvas 1000 x 800). `render/shipArt.ts` draws ship art with role colors, mirror swaps, damage states, and the hot tint. Debug panel item 7 shows all art. 798 tests pass.
+- **Not yet used:** battle art (M4), portraits (M3, Q-29), surrender marker (M5), threat band (M5), heat bar (M4), tier letters (M3).
+- **Open:** Q-29 (portrait slot marks do not match hull slot counts), Q-30 (`◘` is not in JetBrains Mono). Icons and combat effects are still placeholders.
+- **Check:** in Chromium, the canvas is 1000 x 800 and the font loads; screenshots of all screens and all art pages show no errors.
 
 <!--
 Template for each milestone:
