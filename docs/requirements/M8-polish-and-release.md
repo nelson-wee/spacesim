@@ -22,6 +22,7 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
+| M8-ART-05 | If the final art from the visual brief exists, load it into `/data/art/` (ships, effects, icons, palette). Check that all glyphs are Code Page 437. Run `sim-combat.ts` again, because footprints can change. | §4, §18 | S, T |
 | M8-ART-01 | **Damage display.** Hull 100%–67%: normal glyphs. 66%–34%: 30% of footprint cells change to `%`. 33%–1%: 60% of cells change to `%` or `.`, and colors become darker. Select damaged cells with the seeded RNG so they do not change each frame. | §18.3 | M, T |
 | M8-ART-02 | **Heat display.** A Hot ship has an orange tint. An Overheated ship flashes red. | §18.3 | M |
 | M8-ART-03 | **Effects.** All effects in §18.4 work: laser, ballistic, flak, missile and torpedo, point defense, shield hit, explosion (`*` → `+` → `.`), reinforcement arrival, map travel (ship glyph moves along the path). | §18.4 | M |

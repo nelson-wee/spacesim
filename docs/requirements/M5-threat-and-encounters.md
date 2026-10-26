@@ -31,7 +31,7 @@
 | M5-THREAT-04 | The player's strength does not change the budget. The only player factor is the fleet size factor on encounter chance (M6). | §10.5 | I |
 | M5-THREAT-05 | `templates.json` has the 9 pirate templates (§10.6), trader templates (§10.8), escort rules, and patrol templates. TU of a template is calculated from its ships, not typed. | §10.6, §10.8 | T |
 | M5-THREAT-06 | **Selection.** List allowed templates with `TU ≤ budget`. Keep those with `TU ≥ 0.5 × budget`; if none, keep the most expensive allowed one. Select at random with weight = TU. | §10.6 | T |
-| M5-THREAT-07 | **Patrol budget.** `patrolBase[level] × random(0.8, 1.2)`. Patrol groups use the same selection rule (Q-04). | §10.8, Q-04 | T |
+| M5-THREAT-07 | **Patrol budget.** `patrolBase[level] × random(0.8, 1.2)`. Patrol groups use the same selection rule (Q-04, interim rule). The owner will rework security patrols later; keep all patrol values in data. | §10.8, Q-04 | T |
 | M5-THREAT-08 | **Threat band.** Each sector shows 1 to 5 `!` on the region map (Q-18) and a TU range (budget at 0.6 and 1.4) in the sector panel. | §10.6, §17.2, Q-18 | M |
 
 ## 3. Encounters and hail (ENC)
@@ -126,7 +126,7 @@ If a combat check fails, tune data, not formulas (§13.9). For TU calibration, t
 
 ## 11. Open questions for this milestone
 
-Q-04 (Secure patrol), Q-12 (tow and docking), Q-15 (flee from hail), Q-16 (trader and patrol options), Q-17 (tribute), Q-18 (threat band), Q-21 (attack), Q-24 (Pirate Haven), Q-26 (encounter rate). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
+Q-04 (Secure patrol, deferred), Q-12 (tow and docking), Q-15 (flee from hail), Q-16 (trader and patrol options), Q-17 (tribute), Q-18 (threat band), Q-21 (attack), Q-24 (Pirate Haven), Q-26 (encounter rate). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
 
 ## 12. Not in this milestone
 

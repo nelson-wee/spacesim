@@ -2,7 +2,7 @@
 
 **Goal:** A turn-based tactical battle works on a grid with obstacles and multi-cell ships. The player switches modules ON and OFF, moves, and fires lasers, ballistics, and flak. Heat, shields, armor, and engine targeting work. The player can win, lose, and flee against 1 to 3 Raiders.
 
-**Brief sections:** §4.2 (resolver), §8.5, §11.5–11.6, §12.1–12.3, §12.5, §13.1 (grid and obstacles), §13.2, §13.3, §13.6, §13.7 (end conditions), §13.8 (Raider and Trader AI, power use, morale), §18.2, §18.4 (basic effects).
+**Brief sections:** §4.2 (resolver), §8.5, §11.5–11.6, §12.1–12.3, §12.5, §13.1 (grid and obstacles), §13.2, §13.3, §13.6, §13.7 (end conditions), §13.8 (Raider and Trader AI, power use, morale), §18 (art data), §18.2, §18.4 (basic effects).
 
 **Depends on:** M3 (hulls, modules, loadouts, derived stats).
 
@@ -21,10 +21,10 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M4-FOOT-01 | Each ship has an anchor cell (top-left) and a footprint mask from its art. A space character is not part of the footprint. | §13.2, §18.1 | T |
+| M4-FOOT-01 | Each ship has an anchor cell (top-left) and a footprint mask. Read the footprint from the ship art in `/data/art/ships.json`. A space character is not part of the footprint. Do not store footprint sizes in `hulls.json`. | §13.2, §18 | T |
 | M4-FOOT-02 | All footprint cells block movement. A hit on any footprint cell is a hit on the ship. | §13.2 | T |
 | M4-FOOT-03 | Distance = Chebyshev distance from the nearest attacker cell to the nearest target cell. | §13.2 | T |
-| M4-FOOT-04 | Ships do not rotate. Ships on the right side use a mirrored copy of the art with glyph swaps: `<`↔`>`, `/`↔`\`, `(`↔`)`, `[`↔`]`. | §13.2 | T |
+| M4-FOOT-04 | Ships do not rotate. Ships on the right side use a mirrored copy of the art with glyph swaps: `<`↔`>`, `/`↔`\`, `(`↔`)`, `[`↔`]`. Keep the swap table in the art data, so that the final art can add Code Page 437 glyph pairs. | §13.2, §18 | T |
 | M4-FOOT-05 | Movement uses rot.js A* with the full footprint for path checks. A ship moves up to `move` cells per turn. | §13.8, §13.3 | T |
 
 ## 3. Turn resolver (TURN)
@@ -94,8 +94,8 @@
 |---|---|---|---|
 | M4-UI-01 | Combat screen: grid, right panel (hull, shields, armor, engine value, heat bar, power list with ON/OFF and keys), and battle log. | §13.1, §17.1 | M |
 | M4-UI-02 | The player selects target cells with the mouse or the keyboard, and selects Hull or Engines. The UI shows hit chance before a shot. | §17.5, §13.6 | M |
-| M4-UI-03 | Colors by role: Player cyan, Pirate red, Trader yellow, Patrol blue, Neutral grey, cargo pod green. | §18.2 | M |
-| M4-UI-04 | Effects queue: laser line (120 ms), ballistic `*` (15 ms per cell), flak area (150 ms), shield hit flash (100 ms), explosion (300 ms). The renderer plays the effects after the turn resolves. Total ≤ 1.2 s per turn. `Space` skips. | §18.4 | M |
+| M4-UI-03 | Colors by role (from `palette.json`): Player cyan, Pirate red, Trader yellow, Patrol blue, Neutral grey, cargo pod green. | §18, §18.2 | M |
+| M4-UI-04 | Effect glyphs and times come from `/data/art/effects.json`. Effects queue: laser line (120 ms), ballistic `*` (15 ms per cell), flak area (150 ms), shield hit flash (100 ms), explosion (300 ms). The renderer plays the effects after the turn resolves. Total ≤ 1.2 s per turn. `Space` skips. | §18.4 | M |
 | M4-UI-05 | Debug panel: start a test battle with any hulls and loadouts on each side. | §4.3 | M |
 
 ## 10. Tools (TOOL)

@@ -43,7 +43,7 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M3-SHIP-01 | `hulls.json` has all values of §11.1: HP, armor, base power, mass, heat capacity, base cooling, hardpoints S/M/L, internal slots S/M/L, art, tech, price. Engine value = 20% of hull HP. | §11.1 | T |
+| M3-SHIP-01 | `hulls.json` has all values of §11.1: HP, armor, base power, mass, heat capacity, base cooling, hardpoints S/M/L, internal slots S/M/L, size class, tech, price. The art is in `/data/art/ships.json` (§18). Engine value = 20% of hull HP. | §11.1, §18 | T |
 | M3-SHIP-02 | `modules.json` has all internal modules (§11.7) and all weapons and point defense (§12.2), with base values per size for tier 1. Weapon mass, price, and heat per turn come from Q-09. | §11.7, §12.2, Q-09 | T |
 | M3-SHIP-03 | Tier multipliers (§11.7 table) apply to main value, power, heat, mass, and price. Engine tiers 2 and 3 have fuel rate 0.9 and 0.8. | §11.7 | T |
 | M3-SHIP-04 | **Slots.** Hardpoints hold weapons and point defense. Internal slots hold all other modules. A module fits a slot of the same size or a larger size. | §11.1 | T |
@@ -109,14 +109,14 @@
 | 2 | `ship-report.ts` gives the reference values in §11.4 (±1). | §19 | S |
 | 3 | All default loadouts are valid. | §19 | T |
 | 4 | Starting ship range is 4–6 jumps, empty, on a full tank. | §8.7 | S, T |
-| 5 | A laden Heavy Freighter uses about 3× the fuel per jump of an empty Shuttle (or the Q-01 decision). | §8.7 | S, T |
+| 5 | A laden Heavy Freighter uses about 3× the fuel per jump of an empty Shuttle, with `fuelMassExponent` (Q-01). | §8.7, Q-01 | S, T |
 | 6 | `PROGRESS.md` is updated. | §0.9 | I |
 
 **Monitor (not a gate):** Shuttle profit on a good raw-goods route is 100–250 cr per day (§22). The early-game limit is cargo mass (§22).
 
 ## 8. Open questions for this milestone
 
-Q-01 (fuel ratio), Q-02 (fuel per Hydrogen), Q-09 (weapon data), Q-13 (Outfitter sell price), Q-14 (trade-in with cargo). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
+Q-01 (fuel ratio, decided), Q-02 (fuel per Hydrogen), Q-09 (weapon data), Q-13 (Outfitter sell price), Q-14 (trade-in with cargo). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
 
 ## 9. Not in this milestone
 

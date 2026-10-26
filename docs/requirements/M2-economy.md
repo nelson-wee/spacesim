@@ -126,7 +126,7 @@ Build this only if all exit checks pass early on Day 2. If not, it is the first 
 
 ## 8. Open questions for this milestone
 
-Q-03 (commodities per location), Q-05 (minimum target), Q-06 (supply/demand ratio), Q-07 (Frontier count), Q-22 (Bounty Guild security). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
+Q-03 (commodities per location, decided: 4 to 8), Q-05 (minimum target), Q-06 (supply/demand ratio), Q-07 (Frontier count), Q-22 (Bounty Guild security). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
 
 ## 9. Not in this milestone
 

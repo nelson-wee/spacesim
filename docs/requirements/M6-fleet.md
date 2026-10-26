@@ -23,7 +23,7 @@
 | M6-FLEET-09 | **Cargo.** The Market and Trade Ledger use the total free capacity of the fleet. Bought cargo goes to ships with the allocation rule (flagship last; heavy goods first to the ship with the most thrust). | §11.9 | T |
 | M6-FLEET-10 | **Move cargo.** At a location, the player moves cargo between ships. | §11.9 | T |
 | M6-FLEET-11 | **Outfitting.** The Outfitter and Mechanic work on one selected ship at a time. | §11.9 | M |
-| M6-FLEET-12 | **Upkeep.** Each non-flagship ship costs `upkeepPerShip × size points` per day (1×1 = 1, 3×1 = 2, 6×3 and 7×3 = 3). The player pays at each dock for the days since the last dock. Wait (M3) also pays upkeep. Debt rules apply. | §11.9, §8.8 | T |
+| M6-FLEET-12 | **Upkeep.** Each non-flagship ship costs `upkeepPerShip × size points` per day. Size points come from the hull size class, not the footprint: Small = 1, Medium = 2, Large = 3, Capital = 6. The player pays at each dock for the days since the last dock. Wait (M3) also pays upkeep. Debt rules apply. | §11.9, §8.8 | T |
 | M6-FLEET-13 | **Encounters.** Pirate chance × `(1 + 0.1 × (fleetSize − 1))`. | §10.4, §11.9 | T |
 
 ## 2. Fleet in combat (FCMB)

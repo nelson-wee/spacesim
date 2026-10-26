@@ -1,6 +1,6 @@
 # MVP Requirements: Space Trucking Sim
 
-- **Source:** [Design Brief v2.3](../design-brief.md) (locked for MVP, 2026-10-23)
+- **Source:** [Design Brief v2.4](../design-brief.md) (locked for MVP, 2026-10-23)
 - **Status:** Scoped. No milestone has started.
 - **Writing style:** ASD-STE100
 
@@ -63,7 +63,8 @@ These rules come from brief Sections 0, 4, and 4.2. They apply from Day 1 to Day
 | G-12 | Do not store derived ship stats. `ship/stats.ts` calculates them from hull, modules, cargo, and module power state. | §4.2 | I |
 | G-13 | The combat resolver resolves one full turn and returns a list of effects. The renderer plays the effects as animation. | §4.2 | T |
 | G-14 | TypeScript must use `strict` mode. The project uses Vite, rot.js, and Vitest. | §4 | I |
-| G-15 | The display is a rot.js `Display` of 100 × 40 cells, with a monospace font. Use standard ASCII and a small set of box-drawing characters. Do not use wide Unicode characters. | §4 | M |
+| G-15 | The display is a rot.js `Display` of 100 × 40 cells, with a monospace font. Use only Code Page 437 characters (ASCII, box drawing, shades, half blocks). All characters are single width. Do not use emoji or wide Unicode characters. | §4 | M, T |
+| G-20 | Art, effects, icons, and palette come from data files in `/data/art/` (`ships.json`, `effects.json`, `icons.json`, `palette.json`). Code must not contain art or colors. Until the final art from the visual brief exists, the files contain the placeholder art of §18.1. | §18 | I |
 | G-16 | The debug panel and its tools must be in development builds only. | §4.3 | I |
 | G-17 | Extend the debug panel and the `/tools` scripts in each milestone (Section 4.3). | §4.3 | I |
 | G-18 | Each data file must have a TypeScript type and a load-time check. A unit test must load and check all data files. | §0.4 | T |
@@ -128,14 +129,16 @@ Section 23 of the brief says that all these checks must pass.
 
 The scoping found these conflicts and gaps. Each has a **proposed default**. If the owner does not change a default, the build uses it, and the milestone that uses it writes it in `DECISIONS.md`.
 
+**Decided by the owner (2026-10-26):** Q-01 and Q-03. These decisions are in `DECISIONS.md` and replace the brief text. **Deferred:** Q-04.
+
 ### 8.1 Conflicts
 
 | ID | Issue | Proposed default | Milestone |
 |---|---|---|---|
-| Q-01 | **Fuel check.** §8.2–8.3 make fuel linear in mass. A laden Heavy Freighter (156 t) then uses 5.6× the fuel of an empty Shuttle (28 t). §8.7 expects about 3×. | Add `fuelMassExponent` to `balance.json` and use `mass ^ fuelMassExponent` in all fuel formulas. A value near 0.64 gives 3×. The Outfitter example in §17.3 (5.8 → 6.0 for 48 t → 50 t) stays correct. Other option: keep linear fuel and change the check to "about 5×". | M1, M3 |
+| Q-01 | **Fuel check.** §8.2–8.3 make fuel linear in mass. A laden Heavy Freighter (156 t) then uses 5.6× the fuel of an empty Shuttle (28 t). §8.7 expects about 3×. | **Decided.** Add `fuelMassExponent` to `balance.json` (default 0.64) and use `mass ^ fuelMassExponent` in all fuel formulas (sector travel, jump, dock, combat, flee). This gives 3×. The Outfitter example in §17.3 (5.8 → 6.0 for 48 t → 50 t) stays correct. | M1, M3 |
 | Q-02 | **Fuel per Hydrogen.** §9.1 says "1 fuel unit uses `fuelPerHydrogen` units of Hydrogen" and "fuel price = Hydrogen price ÷ `fuelPerHydrogen`". These two rules do not agree. | 1 unit of Hydrogen gives `fuelPerHydrogen` units of fuel. Fuel price = Hydrogen buy price ÷ `fuelPerHydrogen`. Refuel removes `fuel ÷ fuelPerHydrogen` Hydrogen from the local stock. | M3 |
-| Q-03 | **Commodities per location.** §7.4 puts Refuel at all locations, and Refuel uses the local Hydrogen stock. So all locations trade Hydrogen. A Smelter station with crew then trades 8 commodities (Iron Ore, Hydrogen, Alloys, Machinery, Food, Water, Oxygen, Medicine). §9.2 says 4 to 6. | All locations trade Hydrogen. Change the limit to 4 to 8 commodities. Keep the population table. | M2 |
-| Q-04 | **Secure patrol group.** §10.8 gives "2 Cutters + 1 Corvette" for Secure. That group is 173 TU. The Secure patrol budget is 110 × (0.8 to 1.2) = 88 to 132 TU. | Keep the budget. Patrols use the same selection rule as pirates (§10.6). The typical Secure group is then 1 Corvette + 1 Cutter (109 TU). Other option: set `patrolBase` Secure to 145. | M5 |
+| Q-03 | **Commodities per location.** §7.4 puts Refuel at all locations, and Refuel uses the local Hydrogen stock. So all locations trade Hydrogen. A Smelter station with crew then trades 8 commodities (Iron Ore, Hydrogen, Alloys, Machinery, Food, Water, Oxygen, Medicine). §9.2 says 4 to 6. | **Decided.** All locations trade Hydrogen. The limit is 4 to 8 commodities per location (Trade Hubs excepted). Keep the population table. | M2 |
+| Q-04 | **Secure patrol group.** §10.8 gives "2 Cutters + 1 Corvette" for Secure. That group is 173 TU. The Secure patrol budget is 110 × (0.8 to 1.2) = 88 to 132 TU. | **Deferred.** The owner will rework security patrols later. Until then, M5 uses this interim rule: keep the budget, and patrols use the same selection rule as pirates (§10.6). The typical Secure group is then 1 Corvette + 1 Cutter (109 TU). Keep the patrol values in `security.json` and `templates.json`, so the rework needs only data. | M5 |
 
 ### 8.2 Gaps
 
@@ -176,6 +179,7 @@ The scoping found these conflicts and gaps. Each has a **proposed default**. If 
 | Economy route-margin targets (§9.13) depend on κ, spread, and the price exponent together. | Long tuning time on Day 2. | Use the CSV export (§4.3) from the first economy run. Tune only data. |
 | Security target: "about 15 pirate kills raise a sector one level for a long time" (§22). Baseline +0.5 per kill gives +7.5 for 15 kills. One level is 20 points. | The target fails with the first values. | Tune `security.json` in the M7 balance pass. Bounty baseline changes (+1, +2) help. |
 | TU calibration and combat pairings use the same data. A change for one check can break another check. | Combat tuning on Day 5 takes long. | Run all `sim-combat.ts` checks together after each change. Tune `groupBonus` and the firepower formula for TU (§10.9). Tune data for pairings (§13.9). |
+| The visual brief (`space-sim-visual-brief.md`) and the final art are not in the repository yet. Final art can change ship footprints. | Footprint size changes hit chance on the grid, movement, and flak areas. Combat results can change. | Build with the placeholder art of §18.1. When the final art arrives, run `sim-combat.ts` again. Upkeep uses the size class, so it does not change. |
 | The trader bot check on Day 3 runs with no encounters. | Day 3 results can be too optimistic. | Run `sim-trader.ts` again with encounters in M5 and M7. |
 
 ## 10. Owner actions
@@ -183,5 +187,7 @@ The scoping found these conflicts and gaps. Each has a **proposed default**. If 
 These items need the repository owner. Claude Code cannot do them.
 
 1. **GitHub Pages:** in the repository settings, set Pages "Source" to "GitHub Actions". The Day 1 exit check needs this.
-2. **Default branch:** the repository has no `main` branch yet. The deploy workflow runs on pushes to `main`. Merge the first milestone into `main` to start the deploy.
+2. **Default branch:** the deploy workflow runs on pushes to `main`. Make `main` the default branch of the repository.
 3. **Open questions:** read Section 8. Change a proposed default if you do not agree with it. If you do not change a default, the build uses it.
+4. **Visual brief:** add `space-sim-visual-brief.md` and the Claude Design output (`/data/art/*.json`) to the repository when they are ready (§18).
+5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.

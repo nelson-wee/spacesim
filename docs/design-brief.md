@@ -1,10 +1,16 @@
 # Design Brief: Space Trucking Sim (working title)
 
-- **Version:** 2.3 (replaces 2.2)
+- **Version:** 2.4 (replaces 2.3)
 - **Date:** 2026-10-23
 - **Status:** Locked for MVP
 - **Timeline:** 8 days (target; not a strict deadline)
 - **Writing style:** ASD-STE100 (short sentences, active voice, one meaning per word)
+
+### Changes from version 2.3
+
+- Character set is Code Page 437 (Section 4). This matches the visual brief.
+- Art, effects, icons, and palette come from `space-sim-visual-brief.md` (Claude Design output). Load them from data files (Section 18).
+- Ship footprints come from the art data. Fleet upkeep uses the hull **size class**, not the footprint size (Section 11.9).
 
 ### Changes from version 2.2
 
@@ -142,7 +148,7 @@ The feel is *Sid Meier's Pirates!*: short sessions, clear choices, a separate ba
 | Hosting | GitHub Pages, deploy with GitHub Actions |
 | Save | `localStorage`, JSON, with a `saveVersion` number |
 
-**Display:** rot.js `Display`, 100 × 40 cells, monospace font. Use standard ASCII and a small set of box-drawing characters. Do not use wide Unicode characters.
+**Display:** rot.js `Display`, 100 × 40 cells, monospace font. Use only Code Page 437 characters (ASCII, box drawing, shades, half blocks). All characters are single width. Do not use emoji or wide Unicode characters.
 
 ### 4.1 Project layout
 
@@ -1045,7 +1051,7 @@ The player can own a fleet of up to `maxFleetSize` ships (default 4). This works
 | Flagship flees | If the flagship flees from pirates, the pirates take 50% of the cargo of one random non-flagship ship. |
 | Flagship destroyed | The next ship in the list becomes the flagship. The career continues. The destroyed ship and its cargo are lost. The battle ends. |
 | Last ship destroyed | Game over (Section 16). |
-| Upkeep | Each ship that is not the flagship costs `upkeepPerShip × hull size points` per day (1×1 = 1, 3×1 = 2, 6×3 and 7×3 = 3). The cost is paid at each dock for the days since the last dock. If credits are below 0, the debt rules apply (Section 8.6). |
+| Upkeep | Each ship that is not the flagship costs `upkeepPerShip × size points` per day. Size points by hull size class: Small = 1, Medium = 2, Large = 3, Capital = 6. The cost is paid at each dock for the days since the last dock. If credits are below 0, the debt rules apply (Section 8.6). |
 | Encounters | Pirate chance × `(1 + 0.1 × (fleet size − 1))`. A larger fleet is a larger target. |
 | Sell a ship | At a Shipyard, at the trade-in value (Section 11.1). |
 
@@ -1505,7 +1511,16 @@ The Trade Ledger is the main trade planning screen. It uses only information tha
 
 ## 18. Art and animation
 
-### 18.1 Ship art (faces right)
+**Source:** Claude Design makes the final art, effects, icons, and palette from `space-sim-visual-brief.md`. Load them from data files (`/data/art/ships.json`, `/data/art/effects.json`, `/data/art/icons.json`, `/data/art/palette.json`). Read each ship's footprint from its art. Until the final art exists, use the placeholder art below.
+
+| Hull | Size class |
+|---|---|
+| Shuttle, Wasp | Small |
+| Courier, Gunship | Medium |
+| Light Freighter, Heavy Freighter, Corvette, Frigate | Large |
+| Battleship | Capital |
+
+### 18.1 Placeholder ship art (faces right)
 
 ```
 Shuttle / Wasp (1x1)        >
