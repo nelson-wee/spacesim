@@ -150,16 +150,6 @@ describe.each(worlds)('world rules, seed %i', (_seed, w) => {
     }
   });
 
-  it('relay commodities are in the market with a stock of relayTargetDays of their flow', () => {
-    for (const l of w.locations) {
-      for (const [c, daily] of Object.entries(l.relays)) {
-        const m = l.market[c];
-        expect(m, `${l.name} ${c}`).toBeDefined();
-        expect(m!.target).toBeGreaterThanOrEqual(daily * data.balance.economy.relayTargetDays - 1e-9);
-      }
-    }
-  });
-
   it('targets are at least the minimum target stock (Q-05)', () => {
     for (const l of w.locations) {
       for (const [c, m] of Object.entries(l.market)) expect(m.target).toBeGreaterThanOrEqual(data.balance.economy.minTargetStock[c]!);

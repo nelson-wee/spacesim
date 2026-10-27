@@ -35,15 +35,14 @@ export function nominalFlowParts(loc: Location, world: World, data: GameData): {
 
 /**
  * Commodities that a location trades: what its producer makes or uses (hard
- * and soft inputs), what its population uses, Hydrogen (Refuel, Q-03), and
- * its relay commodities. Trade Hubs trade all commodities.
+ * and soft inputs), what its population uses, and Hydrogen (Refuel, Q-03).
+ * Trade Hubs trade all commodities.
  */
 export function tradedCommodities(loc: Location, world: World, data: GameData): string[] {
   if (tradesAll(loc, data)) return data.commodities.map((c) => c.id);
   const { inputs, other } = nominalFlowParts(loc, world, data);
   const traded = new Set([...inputs.keys(), ...other.keys()]);
   traded.add('hydrogen');
-  for (const c of Object.keys(loc.relays)) traded.add(c);
   return data.commodities.map((c) => c.id).filter((id) => traded.has(id));
 }
 
@@ -74,9 +73,7 @@ export function initMarkets(world: World, data: GameData): void {
     for (const c of tradedCommodities(loc, world, data)) {
       const own = ((inputs.get(c) ?? 0) * e.inputTargetDays + (other.get(c) ?? 0) * e.targetDays) * mult;
       const hubTarget = hub ? (region.get(c) ?? 0) * e.tradeHubTargetDays : 0;
-      // A relay passes on its stock above half target, so it needs a stock of some days of the flow.
-      const relayTarget = (loc.relays[c] ?? 0) * e.relayTargetDays;
-      const target = Math.max(e.minTargetStock[c] ?? 1, own, hubTarget, relayTarget);
+      const target = Math.max(e.minTargetStock[c] ?? 1, own, hubTarget);
       loc.market[c] = { stock: target, target, history: [] };
     }
   }

@@ -5,10 +5,10 @@ import { gameData } from '../src/data';
 import { capitalFactor, installAndWear, kRef, nominalBatches } from '../src/econ/capital';
 import { createEconContext } from '../src/econ/context';
 import { economyDay } from '../src/econ/economy';
-import { pairFlow, securityFactor } from '../src/econ/flow';
+import { capacityFactor, runCarriers, transitDays, transportCost } from '../src/econ/carriers';
 import { priceGradient } from '../src/econ/gradient';
 import { inputTrickle, offMapExport, regionBalance } from '../src/econ/offmap';
-import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice } from '../src/econ/prices';
+import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice, stockAtPriceFactor } from '../src/econ/prices';
 import { produce, recipeOf } from '../src/econ/recipes';
 import { generateWorld } from '../src/world/generator';
 
@@ -35,7 +35,6 @@ function producer(id: string, size = 2): Location {
     population: 0,
     installedMachinery: 0,
     market: {},
-    relays: {},
     services: [],
   };
   for (const q of [...r.inputs, ...r.outputs]) loc.market[q.commodity] = { stock: 0, target: 100, history: [] };
@@ -122,6 +121,13 @@ describe('installed machinery (Section 9.5)', () => {
 });
 
 describe('prices (Section 9.10)', () => {
+  it('stockAtPriceFactor is the inverse of the price formula', () => {
+    const stock = stockAtPriceFactor(100, 1.5, data);
+    expect(priceAt(10, 100, stock, data)).toBeCloseTo(15);
+    expect(stockAtPriceFactor(100, e.priceClampMin, data)).toBe(Infinity);
+    expect(stockAtPriceFactor(100, e.priceClampMax, data)).toBe(0);
+  });
+
   const entry = (stock: number, target = 100): MarketEntry => ({ stock, target, history: [] });
 
   it('price = base x clamp((target / max(stock, 1)) ^ k, 0.3, 3.0)', () => {
@@ -147,35 +153,100 @@ describe('prices (Section 9.10)', () => {
   });
 });
 
-describe('background flow (Section 9.7)', () => {
-  it('securityFactor: 0.2 Lawless, 1.0 Secure, uses the lower level', () => {
+describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
+  const c = e.carriers;
+
+  /** A world where only two locations trade Water: a full source and an empty sink. */
+  function twoMarkets(seed: number, jumps: number) {
+    const w = generateWorld(seed, data);
+    const ctx = createEconContext(w, data);
+    const pair = (() => {
+      for (const a of w.locations) for (const b of w.locations) {
+        if (a.id !== b.id && ctx.sectorJumps[a.sectorId]?.[b.sectorId] === jumps) return [a, b] as const;
+      }
+      return null;
+    })();
+    if (!pair) throw new Error('no pair');
+    const [src, dst] = pair;
+    for (const l of w.locations) delete l.market.water;
+    src.market.water = { stock: 2000, target: 1000, history: [] };
+    dst.market.water = { stock: 0, target: 1000, history: [] };
+    // Only these two markets take part, so other commodities do not use the capacity.
+    ctx.traders.clear();
+    ctx.traders.set('water', [src.id, dst.id]);
+    w.economy.shipments = [];
+    return { w, ctx, src, dst };
+  }
+  const levels = (w: { sectors: unknown[] }, level = 4) => w.sectors.map(() => level);
+
+  it('capacity: 0.2 of sectorCapacityTonnes when Lawless, 1.0 when Secure', () => {
     const ctx = createEconContext(generateWorld(3, data), data);
-    expect(securityFactor(0, 4, ctx)).toBeCloseTo(0.2);
-    expect(securityFactor(4, 4, ctx)).toBeCloseTo(1.0);
-    expect(securityFactor(2, 3, ctx)).toBeCloseTo(0.6);
+    expect(capacityFactor(0, ctx)).toBeCloseTo(0.2);
+    expect(capacityFactor(4, ctx)).toBeCloseTo(1.0);
   });
 
-  it('flow = min(κ x surplus x gap x security, share x deficit)', () => {
-    expect(pairFlow(0.05, 100, 1000, 10, 20, 1, 0.1)).toBeCloseTo(0.05 * 100 * 0.5);
-    expect(pairFlow(0.05, 10000, 10, 10, 20, 1, 0.1)).toBeCloseTo(1);
+  it('transport cost and transit days grow with jumps', () => {
+    const ctx = createEconContext(generateWorld(3, data), data);
+    expect(transportCost(1, 2, 0, ctx)).toBeCloseTo(c.costPerTonne + 2 * c.costPerTonneJump);
+    expect(transportCost(0.2, 0, 400, ctx)).toBeCloseTo(0.2 * c.costPerTonne);
+    expect(transportCost(0.2, 2, 400, ctx)).toBeCloseTo(0.2 * (c.costPerTonne + 2 * c.costPerTonneJump) + 400 * 2 * c.riskPerJump);
+    expect(transitDays(3, ctx)).toBe(c.transitDays + 3 * c.transitDaysPerJump);
   });
 
-  it('no flow when the destination price is not higher', () => {
-    expect(pairFlow(0.05, 100, 100, 20, 20, 1, 0.1)).toBe(0);
-    expect(pairFlow(0.05, 100, 100, 20, 10, 1, 0.1)).toBe(0);
+  it('moves goods from a cheap source to a dear sink; they arrive after the transit days', () => {
+    const { w, ctx, src, dst } = twoMarkets(3, 1);
+    runCarriers(ctx, w.economy, levels(w));
+    const sent = 2000 - src.market.water!.stock;
+    expect(sent).toBeGreaterThan(0);
+    // dailyShare of min(surplus above half target, room up to the break-even stock at the sink).
+    const buy = buyPrice({ stock: 2000, target: 1000, history: [] }, 10, data);
+    const breakEven = (buy * (1 + c.minMargin) + transportCost(1, 1, buy, ctx)) / (1 - e.spread / 2) / 10;
+    // The sink's use during the transit days adds room.
+    const room = stockAtPriceFactor(1000, breakEven, data) + (ctx.dailyNeed.get(`${dst.id}:water`) ?? 0) * transitDays(1, ctx);
+    expect(sent).toBeCloseTo(c.dailyShare * Math.min(2000 - e.surplusShareOfTarget * 1000, room));
+    expect(dst.market.water!.stock).toBe(0);
+    const arrive = w.economy.shipments[0]!.arriveDay;
+    expect(arrive).toBe(w.economy.days + transitDays(1, ctx));
+    w.economy.days = arrive;
+    runCarriers(ctx, w.economy, levels(w));
+    expect(dst.market.water!.stock).toBeCloseTo(sent);
   });
 
-  it('κ is 0 for sectors more than one lane apart', () => {
+  it('counts goods in transit, so it does not send too much', () => {
+    const { w, ctx, src } = twoMarkets(3, 1);
+    for (let i = 0; i < 5; i++) runCarriers(ctx, w.economy, levels(w));
+    const sent = 2000 - src.market.water!.stock;
+    // Never more than the export limit of the sink (exportStockRatio x target).
+    expect(sent).toBeLessThanOrEqual(e.exportStockRatio * 1000 + 1e-6);
+    expect(sent).toBeLessThan(1000);
+  });
+
+  it('no route beyond maxJumps', () => {
     const w = generateWorld(3, data);
     const ctx = createEconContext(w, data);
-    for (const pairs of ctx.pairs.values()) {
-      for (const p of pairs) {
-        const a = w.locations[p.a]!.sectorId;
-        const b = w.locations[p.b]!.sectorId;
-        const lane = w.lanes.some((l) => (l.a === a && l.b === b) || (l.a === b && l.b === a));
-        expect(a === b || lane).toBe(true);
-      }
-    }
+    const far = Math.max(...ctx.sectorJumps.flat());
+    if (far <= c.maxJumps) return;
+    const { w: w2, ctx: ctx2, src } = twoMarkets(3, c.maxJumps + 1);
+    runCarriers(ctx2, w2.economy, levels(w2));
+    expect(src.market.water!.stock).toBe(2000);
+  });
+
+  it('no route if the margin after transport cost is below minMargin', () => {
+    const { w, ctx, src, dst } = twoMarkets(3, 1);
+    // Both near target: almost no price gap.
+    src.market.water!.stock = 1100;
+    dst.market.water!.stock = 950;
+    runCarriers(ctx, w.economy, levels(w));
+    expect(src.market.water!.stock).toBe(1100);
+  });
+
+  it('low security limits the tonnes per day', () => {
+    const { w, ctx, src } = twoMarkets(3, 1);
+    src.market.water!.stock = 1e6;
+    w.locations.find((l) => l.market.water && l.id !== src.id)!.market.water!.target = 1e6;
+    runCarriers(ctx, w.economy, levels(w, 0));
+    const sent = 1e6 - src.market.water!.stock;
+    expect(sent).toBeCloseTo(c.sectorCapacityTonnes * capacityFactor(0, ctx));
   });
 });
 

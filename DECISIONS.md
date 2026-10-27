@@ -93,20 +93,20 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-27 [§6.8] Sizing band 1.0 to 1.35 (`ratioLow`, `ratioHigh`); accept band 0.9 to 1.35 (`ratioAcceptLow`, `ratioAcceptHigh`). Brief: 0.9 to 1.1. Reason: with integer sizes 1 to 3 and at least 2 producers, one size step changes a ratio by 30% to 50%, so 0.9 to 1.1 is often not possible.
 - 2026-10-27 [§6.8] The size loop undoes a step that moves an accepted ratio out of the accept band, or that makes a ratio too low. Reason: two producers at sizes {2, 1} give 1.40 and {1, 1} give 0.93; without the undo the loop goes back and forth and stops at 1.40.
 - 2026-10-27 [§6.10] Floor exemption: a ratio above the accept band passes when the main makers of the commodity are at the minimum size and at the minimum count. Reason: the minimum producer count wins over the ratio; by-products and off-map export remove the rest.
-- 2026-10-27 [§6.7] `sectorMap.stationsMin` 2 (brief 1). Reason: each Middle and Core sector needs a slot for a relay Trade Hub.
-- 2026-10-27 [§6.7] Producer placement keeps the last free station slot of a Middle or Core sector for a Trade Hub (score −20), and avoids Frontier sectors that touch no Middle or Core sector (score −6). Reason: goods leave such sectors only through other Frontier sectors, which cannot have Trade Hubs.
+- 2026-10-27 [§6.7] `sectorMap.stationsMin` 2 (brief 1). Reason: each Middle and Core sector needs a slot for a relay Trade Hub. (Replaced 2026-10-27: see "Economy model change".)
+- 2026-10-27 [§6.7] Producer placement keeps the last free station slot of a Middle or Core sector for a Trade Hub (score −20), and avoids Frontier sectors that touch no Middle or Core sector (score −6). Reason: goods leave such sectors only through other Frontier sectors, which cannot have Trade Hubs. (Replaced 2026-10-27: see "Economy model change".)
 - 2026-10-27 [§6.7] Host planets: a producer that can stand only on planets (Gas Skimmer, Agri World) gets enough host planets. If the blueprint needs more, the generator changes "donor" planets (no resident population, and each producer they can host can also use a station) to the host type. Reason: Gas Giants are rare; 26 of the first 100 seeds failed on "no body for Gas Skimmer".
-- 2026-10-27 [§6.10] New rule "supply path": each producer must reach a maker of each input, and a user of each output, through a chain of relay sectors. Reason: background flow moves goods only one lane a day; without a chain a producer starves for ever.
-- 2026-10-27 [§6.10] A relay sector has a Trade Hub, a maker or user of the commodity, or a location with a relay commodity. The generator adds a Trade Hub in a free slot or a Habitat, else a relay commodity at a location with fewer than `maxCommodities` (8). A relay commodity has the target `relayTargetDays` (10) × the daily flow of the paths through it. Reason: full sectors blocked many paths; a relay passes on only its stock above half target, so it needs a stock of some days.
+- 2026-10-27 [§6.10] New rule "supply path": each producer must reach a maker of each input, and a user of each output, through a chain of relay sectors. Reason: background flow moves goods only one lane a day; without a chain a producer starves for ever. (Replaced 2026-10-27: see "Economy model change".)
+- 2026-10-27 [§6.10] A relay sector has a Trade Hub, a maker or user of the commodity, or a location with a relay commodity. The generator adds a Trade Hub in a free slot or a Habitat, else a relay commodity at a location with fewer than `maxCommodities` (8). A relay commodity has the target `relayTargetDays` (10) × the daily flow of the paths through it. Reason: full sectors blocked many paths; a relay passes on only its stock above half target, so it needs a stock of some days. (Replaced 2026-10-27: see "Economy model change".)
 - 2026-10-27 [§6.10] New rule "commodity count": each location (not a Trade Hub) trades `minCommodities` to `maxCommodities` (4 to 8) commodities. Reason: Q-03.
-- 2026-10-27 [§6.11] Repairs: supply path (add a maker near the location, move the cut-off producer, or move a station producer out of a full Middle or Core sector so that a Trade Hub can go there); gradient (add a maker of the dearest advanced good in a Core sector); producer count (place the missing producer, free a Habitat if necessary). Reason: each repair acts on the failed rule; repairs that add random producers did not help.
+- 2026-10-27 [§6.11] Repairs: supply path (add a maker near the location, move the cut-off producer, or move a station producer out of a full Middle or Core sector so that a Trade Hub can go there); gradient (add a maker of the dearest advanced good in a Core sector); producer count (place the missing producer, free a Habitat if necessary). Reason: each repair acts on the failed rule; repairs that add random producers did not help. (Replaced 2026-10-27: see "Economy model change".)
 - 2026-10-27 [§6.10] The producer count rule checks the world after each repair, not only the first try. Reason: a repair hid a missing producer, and a world with one Gas Skimmer passed.
 - 2026-10-27 [§6.11] The world keeps the market state of its validation run (200 days). Reason: a warm start; prices on day 1 are not all at base.
 
 ### Economy tick
 
-- 2026-10-27 [§9.7] `flowTwoLanes` 0: no background flow between sectors two lanes apart (brief: "farther 0"). Tested 0.1 and 0.25: the chain shock did not improve and the route check got worse. Reason: keep the brief.
-- 2026-10-27 [§9.7] `flowScale` per commodity (water and Hydrogen 0.4, oxygen 0.6, food and medicine 0.5, others 1). Reason: cheap bulk goods otherwise flatten all price differences, and no route has a margin.
+- 2026-10-27 [§9.7] `flowTwoLanes` 0: no background flow between sectors two lanes apart (brief: "farther 0"). Tested 0.1 and 0.25: the chain shock did not improve and the route check got worse. Reason: keep the brief. (Replaced 2026-10-27: see "Economy model change".)
+- 2026-10-27 [§9.7] `flowScale` per commodity (water and Hydrogen 0.4, oxygen 0.6, food and medicine 0.5, others 1). Reason: cheap bulk goods otherwise flatten all price differences, and no route has a margin. (Replaced 2026-10-27: see "Economy model change".)
 - 2026-10-27 [§9.2] Trade Hub target: 3 days of region use (`tradeHubTargetDays`). Reason: larger hubs carry more goods but hide each shock (the chain shock check).
 - 2026-10-27 [§9.8] Off-map export: each day, 50% (`exportShare`) of the stock above 2 × target (`exportStockRatio`) leaves the region. Reason: the brief has no sink for a small surplus, so stock grows for ever at producers.
 - 2026-10-27 [§9.13] Clamp check: a market-day counts when the raw price factor is at or outside the clamp (0.3 or 3.0). The limit is 20% of all market-days of the commodity, for each seed. Reason: "for more than 20% of days" has no unit.
@@ -134,6 +134,34 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-27 [G-20] Checks: each game module has an icon; icon glyphs are 2 cells; families and colors exist; the colors that `modules.json` (`family_colors`) and `effects.yaml` (`colors`) repeat must equal `style.json`; effect frames use only known line sets, patterns, and colors. Icons for modules that are not in `data/modules.json` yet (M3 weapons) are allowed. Reason: catch errors in a new design file at load time.
 - 2026-10-27 [M4-UI-04] Combat effects follow `effects.json` (frames, times scaled to path length, queue with stagger and 1.2 s budget), not the §18.4 table. Reason: brief §18 (Claude Design gives the final effects).
 - 2026-10-27 [M1-DBG] Debug panel item 7, last page: module icons with family mark, size, tier, and the four module states. Reason: a visual check of the import.
+
+## Economy model change (owner, 2026-10-27)
+
+### Record correction
+
+- 2026-10-27 [§9.7] Missing record: from M2 until this change, the build used `flowSameSector` 1.0, `flowOneLane` 0.5, and `flowDeficitShare` 0.5 (brief: 0.05, 0.02, 0.1). Reason at the time: with the brief values and no player, the chains stopped (Smelters at 16% output). This entry was not written then. The carrier model below replaces these values.
+
+### Background carriers (solution 1)
+
+- 2026-10-27 [§9.7] Background carriers replace the price-diffusion flow (`src/econ/carriers.ts`). Reason: diffusion moves goods one hop at a time and needs a price step at each hop; on chains of 2 to 4 hops both ends hit the price clamp. Sources piled up (export removed about 40% of raw goods) while Smelters and Electronics Fabs starved.
+- 2026-10-27 [§9.7] Carrier rules (`balance.economy.carriers`): routes of up to 3 jumps; a route must give a margin of 25% (`minMargin`) after transport cost; cost = mass x (1 + 3 x jumps) cr per tonne + buy price x 5% x jumps (`riskPerJump`); best profit per tonne first; `dailyShare` 0.5 of the open amount per day; capacity 3,000 t per sector per day x (0.2 + 0.2 x security level); transit 1 + 2 x jumps days. Reason: the brief's NPC agent rules (§9.9: routes within reach, live prices, a minimum margin) at a region level. Gaps below the margin stay for the player; pirates (low security) lower the capacity.
+- 2026-10-27 [§9.7] Carriers fill a sink until its price falls to the route's break-even price (source buy price x (1 + minMargin) + cost), at most `exportStockRatio` x target. The fill counts goods in transit less the sink's use during transit. Reason: with a fill to target, all sinks sat at the base price at any distance, so there was no Core-Frontier gradient for advanced goods. Without the use during transit, far Smelters starved (their goods in transit filled the limit).
+- 2026-10-27 [§9.7] Goods in transit are part of `EconomyState` (`shipments`) and so of the save. Reason: the state must stay one serializable object.
+- 2026-10-27 [M2] Removed because carriers replace them: relays and relay targets, the relay supply paths and Trade Hubs placed as relays, the relay repair, `flowScale`, `flowTwoLanes`, the slot reservation for relay hubs (score −20), and the penalty for Frontier sectors that touch no Middle or Core sector (score −6). Reason: a carrier reaches 3 jumps without a relay.
+- 2026-10-27 [§6.10] The "supply path" rule is now static: each producer has a maker of each hard input, and a user of each output that populations do not use, within `carriers.maxJumps` jumps. Reason: this is what carriers need.
+- 2026-10-27 [§6.7] `sectorMap.stationsMin` stays 2 (brief 1). New reason: with 1, the region has too few bodies for the producers (26 of 100 seeds failed "producers placed").
+
+### Volumes (solution 2)
+
+- 2026-10-27 [§9.3, §9.4] `balance.economy.volumeScale` 8 multiplies recipe batches, population use, and station use at data load. Prices and supply/demand ratios do not change. Reason: owner wants larger volumes; with the old volumes the largest Electronics market held 12 t and Machinery 1 t, less than one starting hold (30 t). Now Electronics 96 t, Composites 144 t, Medicine 215 t; a 30 t hold of Electronics costs 1.16 x base on average.
+
+### Manufactured goods outside the Core (solution 3)
+
+- 2026-10-27 [§9.4] New population rule `outsideCore`: all populations and crews in Middle and Frontier sectors use Electronics 0.02, Composites 0.02, and Machinery 0.01 per unit per day. Reason: owner wants a small Frontier demand for goods made in the Core, at higher prices; post-MVP this demand goes to station building, upgrades, and research.
+
+### Generator and economy (solution 5)
+
+- 2026-10-27 [§6.10] `generator.economyCheck` false: the generator checks structure only while the economy is tuned (owner). `sim-economy` checks the economy. The generator runs the economy for `warmupDays` (100) after a world passes, so the game starts with warm markets. Reason: owner decision; the generator pass rate no longer moves with economy tuning.
 
 ## Cuts
 

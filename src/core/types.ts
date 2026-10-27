@@ -67,9 +67,19 @@ export interface RegionCommodityStats {
   balancing: 'add' | 'remove' | null;
 }
 
+/** Goods that background carriers move; they arrive at `to` on `arriveDay` (DECISIONS.md, M2). */
+export interface Shipment {
+  to: number;
+  commodity: string;
+  qty: number;
+  arriveDay: number;
+}
+
 export interface EconomyState {
   days: number;
   region: Record<string, RegionCommodityStats>;
+  /** Carrier goods in transit. */
+  shipments: Shipment[];
 }
 
 export interface Location {
@@ -91,11 +101,6 @@ export interface Location {
   population: number;
   installedMachinery: number;
   market: Record<string, MarketEntry>;
-  /**
-   * Commodities traded only to pass goods on to the next sector, with the daily
-   * amount that the paths through it carry (DECISIONS.md, M2 relays).
-   */
-  relays: Record<string, number>;
   services: string[];
 }
 

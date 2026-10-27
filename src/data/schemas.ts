@@ -68,18 +68,9 @@ export const balanceSchema = z.object({
     inputTargetDays: pos,
     planetTargetMult: pos,
     tradeHubTargetDays: pos,
-    relayTargetDays: nonNeg,
     minTargetStock: z.record(z.string(), nonNeg),
-    flowSameSector: nonNeg,
-    /** Multiplies κ for each commodity (goods with many trade partners need a lower κ per pair). */
-    flowScale: z.record(z.string(), nonNeg),
-    flowOneLane: nonNeg,
-    /** κ for sectors two lanes apart. The brief says 0 ("farther"); an owner decision can change it. */
-    flowTwoLanes: nonNeg,
-    flowSecurityBase: nonNeg,
-    flowSecurityPerLevel: nonNeg,
+    /** A source keeps this share of its target; carriers take only the stock above it. */
     surplusShareOfTarget: nonNeg,
-    flowDeficitShare: nonNeg,
     offMapInputShare: prob,
     offMapBalance: prob,
     /** Stock above this multiple of target leaves the region (off-map export, DECISIONS.md). */
@@ -92,6 +83,32 @@ export const balanceSchema = z.object({
     balanceStopHigh: pos,
     noiseShare: prob,
     historyDays: z.number().int().positive(),
+    /**
+     * Multiplies all daily amounts: recipe batches, population use, and station use
+     * (applied at data load). Prices and supply/demand ratios do not change.
+     */
+    volumeScale: pos,
+    /** Background carriers (DECISIONS.md, M2: replaces the §9.7 flow formula). */
+    carriers: z.object({
+      maxJumps: z.number().int().min(0),
+      /** Carriers take a route only if (sell - buy - transport cost) / buy is at least this. */
+      minMargin: nonNeg,
+      /** Transport cost in credits per tonne: once per shipment, and for each jump. */
+      costPerTonne: nonNeg,
+      costPerTonneJump: nonNeg,
+      /** Risk and insurance for each jump, as a share of the buy price (far routes need larger gaps). */
+      riskPerJump: nonNeg,
+      /** Share of the open surplus or deficit that carriers move on one day. */
+      dailyShare: prob,
+      /** Tonnes per day that carriers can move through one sector at security level 4. */
+      sectorCapacityTonnes: nonNeg,
+      /** Capacity multiplier: base + perLevel x security level (Lawless 0.2, Secure 1.0). */
+      securityBase: nonNeg,
+      securityPerLevel: nonNeg,
+      /** Days in transit: transitDays + transitDaysPerJump x jumps. */
+      transitDays: z.number().int().min(0),
+      transitDaysPerJump: z.number().int().min(0),
+    }),
   }),
   generator: z.object({
     maxTries: z.number().int().positive(),
@@ -105,6 +122,13 @@ export const balanceSchema = z.object({
     /** Validation accepts supply/demand in ratioAcceptLow..ratioAcceptHigh. */
     ratioAcceptLow: pos,
     ratioAcceptHigh: pos,
+    /**
+     * Run the 200-day economy check (low output, gradient) as a generator rule. Off while the
+     * economy is tuned (owner, DECISIONS.md); then the generator only warms the markets up.
+     */
+    economyCheck: z.boolean(),
+    /** Days of economy run after generation, so the game starts with warm markets. */
+    warmupDays: z.number().int().min(0),
     minProducersPerType: z.number().int().min(0),
     averageSize: pos,
     minFrontierSectors: z.number().int().min(0),
@@ -168,7 +192,7 @@ export const populationSchema = z.object({
   useScale: pos,
   stationUse: z.record(z.string(), stationUseSchema),
   use: z.array(
-    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'resident', 'noAtmosphere', 'coreResident']) }),
+    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'resident', 'noAtmosphere', 'coreResident', 'outsideCore']) }),
   ),
   unitsPerSize: z.object({ terran: nonNeg, ocean: nonNeg, habitat: nonNeg, crew: nonNeg }),
 });

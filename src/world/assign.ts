@@ -5,7 +5,6 @@ import type { Location, Sector, World } from '../core/types';
 import type { GameData, ProducerType, StationType } from '../data';
 import { capitalFactor, kRef, nominalBatches } from '../econ/capital';
 import { dailyUse, hasResidentPopulation, populationFor } from '../econ/population';
-import { tradedCommodities } from '../econ/markets';
 import { recipeOf } from '../econ/recipes';
 import { type Blueprint, mainProduct } from './blueprint';
 import { securityLevelInfo } from './security';
@@ -146,20 +145,6 @@ export function placeProducer(
     if (adjacent.some((l) => l.producer !== null && neighbours.has(l.producer))) score += 3;
     if (loc.kind === 'station') score -= 1;
     if (prefer) score += prefer(loc);
-    // A Frontier sector that touches no Middle or Core sector can send goods out only through
-    // other Frontier sectors, which cannot have Trade Hubs.
-    if (sector.development === 'frontier') {
-      const touchesHubZone = world.lanes.some((l) => {
-        const other = l.a === sector.id ? l.b : l.b === sector.id ? l.a : -1;
-        return other >= 0 && (world.sectors[other] as Sector).development !== 'frontier';
-      });
-      if (!touchesHubZone) score -= 6;
-    }
-    // Keep the last station slot of a Middle or Core sector for a relay Trade Hub.
-    if (loc.kind === 'station' && sector.development !== 'frontier') {
-      const free = inSector.filter((l) => l.kind === 'station' && l.bodyType === SLOT && l.producer === null).length;
-      if (free <= 1) score -= 20;
-    }
     if (score > bestScore) {
       best = loc;
       bestType = type;
@@ -202,16 +187,6 @@ function freeSlots(world: World, sector: Sector, type: StationType): Location[] 
     .filter((l) => l.kind === 'station' && l.bodyType === SLOT);
 }
 
-/** Free station slots, then Habitats (filler that a relay may replace). */
-function relaySlots(world: World, sector: Sector, type: StationType): Location[] {
-  if (!stationAllowed(type, sector)) return [];
-  const locs = sector.locationIds.map((id) => world.locations[id] as Location);
-  return [
-    ...locs.filter((l) => l.kind === 'station' && l.bodyType === SLOT),
-    ...locs.filter((l) => l.bodyType === 'habitat' && l.producer === null),
-  ];
-}
-
 function setStation(loc: Location, typeId: string): void {
   loc.bodyType = typeId;
 }
@@ -244,101 +219,32 @@ export function sectorJumps(world: World): number[][] {
 }
 
 /**
- * Supply paths (DECISIONS.md, M2). Background flow moves goods only one lane a
- * day, so each producer needs a chain of relay sectors to its inputs and to the
- * users of its outputs. A relay sector has a Trade Hub (it trades all
- * commodities), a maker or user of the commodity, or a location that trades
- * it as a relay commodity. The search goes only through sectors that have a
- * relay or can get one: a Trade Hub (Middle or Core, with a free station slot
- * or a Habitat), else a relay commodity at a location in the sector. Adds the
- * relays that the paths need. Returns the paths
- * that are still missing ("commodity@location").
+ * Supply paths (DECISIONS.md, M2). Background carriers move goods up to
+ * `carriers.maxJumps` jumps. So each producer needs a maker of each hard input,
+ * and a user of each output (not population goods), within that range.
+ * Returns the paths that are missing ("commodity@location").
  */
-export function ensureSupplyPaths(world: World, data: GameData): string[] {
-  const hubType = stationType(data, 'trade_hub');
+export function supplyPathsMissing(world: World, data: GameData): string[] {
+  const maxJumps = data.balance.economy.carriers.maxJumps;
+  const jumps = sectorJumps(world);
   const missing: string[] = [];
   const populationGoods = new Set(data.population.use.map((u) => u.commodity));
-  for (const l of world.locations) l.relays = {};
-  const neighbours = (sid: number) =>
-    world.lanes.map((l) => (l.a === sid ? l.b : l.b === sid ? l.a : -1)).filter((v) => v >= 0).sort((a, b) => a - b);
   const makes = (l: Location, c: string) => l.producer !== null && recipeOf(data, l.producer).outputs.some((o) => o.commodity === c);
   const uses = (l: Location, c: string) =>
     (l.producer !== null &&
       (recipeOf(data, l.producer).inputs.some((i) => i.commodity === c) || recipeOf(data, l.producer).softInput === c)) ||
     (data.population.stationUse[l.bodyType] ?? []).some((u) => u.commodity === c);
-  const locsOf = (sid: number) => (world.sectors[sid] as Sector).locationIds.map((id) => world.locations[id] as Location);
-  /** Locations that can take a relay commodity, fewest commodities first (a short market list). */
-  const relayHosts = (sid: number) =>
-    locsOf(sid)
-      .filter((l) => l.bodyType !== SLOT && l.bodyType !== 'trade_hub')
-      .map((l) => ({ l, n: tradedCommodities(l, world, data).length }))
-      .sort((a, b) => a.n - b.n || a.l.id - b.l.id)
-      .map((x) => x.l);
-
-  /** Connects a location to the nearest sector in `targets`; adds relays that carry `daily`. */
-  const connect = (from: Location, c: string, targets: Set<number>, daily: number): void => {
-    if (targets.size === 0) {
-      missing.push(`${c}@${from.id}`);
-      return;
-    }
-    // A relay passes on its stock above half target. The economy check (low output) catches weak relays.
-    const relayAt = (sid: number) =>
-      locsOf(sid).find((l) => l.bodyType === 'trade_hub' || makes(l, c) || uses(l, c) || l.relays[c] !== undefined);
-    const canRelay = (sid: number) =>
-      relayAt(sid) !== undefined ||
-      relaySlots(world, world.sectors[sid] as Sector, hubType).length > 0 ||
-      relayHosts(sid).length > 0;
-    // Breadth-first search. A target sector next to a reached sector ends the search.
-    const prev = new Map<number, number>([[from.sectorId, -1]]);
-    const queue = [from.sectorId];
-    let found = targets.has(from.sectorId) ? from.sectorId : -1;
-    while (found < 0 && queue.length > 0) {
-      const u = queue.shift() as number;
-      for (const v of neighbours(u)) {
-        if (prev.has(v)) continue;
-        if (targets.has(v)) {
-          prev.set(v, u);
-          found = v;
-          break;
-        }
-        if (!canRelay(v)) continue;
-        prev.set(v, u);
-        queue.push(v);
-      }
-    }
-    if (found < 0) {
-      missing.push(`${c}@${from.id}`);
-      return;
-    }
-    for (let sid = prev.get(found) ?? -1; sid >= 0 && sid !== from.sectorId; sid = prev.get(sid) ?? -1) {
-      const relay = relayAt(sid);
-      if (relay) {
-        if (relay.relays[c] !== undefined) relay.relays[c] += daily;
-        continue;
-      }
-      const slot = relaySlots(world, world.sectors[sid] as Sector, hubType)[0];
-      if (slot) {
-        setStation(slot, 'trade_hub');
-        continue;
-      }
-      const host = relayHosts(sid)[0];
-      if (host) host.relays[c] = daily;
-      else missing.push(`${c}@${from.id}`);
-    }
-  };
-
+  const near = (from: Location, others: Location[]) =>
+    others.some((o) => o.id !== from.id && (jumps[from.sectorId]?.[o.sectorId] ?? Infinity) <= maxJumps);
   for (const loc of world.locations) {
     if (!loc.producer) continue;
     const recipe = recipeOf(data, loc.producer);
-    const batches = nominalBatches(loc, recipe);
     for (const input of recipe.inputs) {
-      const makers = world.locations.filter((l) => makes(l, input.commodity));
-      connect(loc, input.commodity, new Set(makers.map((l) => l.sectorId)), input.qty * batches);
+      if (!near(loc, world.locations.filter((l) => makes(l, input.commodity)))) missing.push(`${input.commodity}@${loc.id}`);
     }
     for (const output of recipe.outputs) {
       if (populationGoods.has(output.commodity)) continue;
-      const users = world.locations.filter((l) => l.id !== loc.id && uses(l, output.commodity));
-      connect(loc, output.commodity, new Set(users.map((l) => l.sectorId)), output.qty * batches);
+      if (!near(loc, world.locations.filter((l) => uses(l, output.commodity)))) missing.push(`${output.commodity}@${loc.id}`);
     }
   }
   return missing;

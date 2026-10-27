@@ -3,11 +3,11 @@ import { Rng } from '../core/rng';
 import type { JumpPoint, Lane, Location, Sector, World } from '../core/types';
 import type { GameData } from '../data';
 import { kRef } from '../econ/capital';
-import { resetEconContext } from '../econ/context';
-import { createEconomyState } from '../econ/economy';
+import { econContext, resetEconContext } from '../econ/context';
+import { createEconomyState, economyDay } from '../econ/economy';
 import { initMarkets } from '../econ/markets';
 import { recipeOf } from '../econ/recipes';
-import { assignProducers, balanceSizes, ensurePlanetHosts, ensureSupplyPaths, fillStations, setPopulation } from './assign';
+import { assignProducers, balanceSizes, ensurePlanetHosts, fillStations, setPopulation, supplyPathsMissing } from './assign';
 import { placeBodies, placeJumpPoints } from './bodies';
 import { computeBlueprint } from './blueprint';
 import { mapDistance } from './geometry';
@@ -99,6 +99,13 @@ function finishWorld(world: World, rng: Rng, data: GameData, keepStart: boolean)
   resetEconContext(world);
 }
 
+/** Runs the economy for `warmupDays`, so the game starts with warm markets (no checks). */
+function warmUp(world: World, data: GameData, seed: number): void {
+  const ctx = econContext(world, data);
+  const rng = Rng.fromSeed(seed, 'validation');
+  for (let day = 0; day < data.balance.generator.warmupDays; day++) economyDay(ctx, world.economy, rng);
+}
+
 export interface GenerationAttempt {
   seed: number;
   repairs: string[];
@@ -127,7 +134,8 @@ export class GenerationError extends Error {
  * Makes a world from a seed, with the full log of tries and repairs.
  * Steps 4 to 9 (Sections 6.6 to 6.11). If a world fails its rules after the
  * maximum repairs, the generator starts again with seed + 1. A world that
- * passes keeps the market state of its validation run (warm start).
+ * passes keeps the market state of its validation run, or of its warm-up run
+ * when the economy check is off (warm start).
  */
 export function generateWorldWithLog(seed: number, data: GameData, firstRng?: Rng): GenerationResult {
   const g = data.balance.generator;
@@ -142,8 +150,8 @@ export function generateWorldWithLog(seed: number, data: GameData, firstRng?: Rn
     let blueprint = computeBlueprint(world, data);
     if (ensurePlanetHosts(world, blueprint, rng, data).length > 0) blueprint = computeBlueprint(world, data);
     const unplaced = assignProducers(world, blueprint, rng, data);
-    let pathMissing = ensureSupplyPaths(world, data);
     fillStations(world, rng, data);
+    let pathMissing = supplyPathsMissing(world, data);
     setTechLevels(world, data);
     balanceSizes(world, rng, data);
     finishWorld(world, rng, data, false);
@@ -151,12 +159,13 @@ export function generateWorldWithLog(seed: number, data: GameData, firstRng?: Rn
     const attempt: GenerationAttempt = { seed: trySeed, repairs: [], rules: [], pass: false };
     attempts.push(attempt);
     for (;;) {
-      // Step 8: structure rules, then the short economy run.
+      // Step 8: structure rules, then the short economy run (off while the economy is tuned).
       let rules = validateRules(world, data, attempt.repairs.length === 0 ? unplaced : [], pathMissing);
-      if (rules.every((r) => r.pass)) rules = [...rules, ...validateEconomy(world, data, trySeed).results];
+      if (g.economyCheck && rules.every((r) => r.pass)) rules = [...rules, ...validateEconomy(world, data, trySeed).results];
       attempt.rules = rules;
       if (rules.every((r) => r.pass)) {
         attempt.pass = true;
+        if (!g.economyCheck) warmUp(world, data, trySeed);
         world.generator = {
           seedUsed: trySeed,
           tries: tryNo + 1,
@@ -171,8 +180,8 @@ export function generateWorldWithLog(seed: number, data: GameData, firstRng?: Rn
       const done = repairWorld(world, rules, rng, data);
       if (!done) break;
       attempt.repairs.push(done);
-      pathMissing = ensureSupplyPaths(world, data);
       fillStations(world, rng, data);
+      pathMissing = supplyPathsMissing(world, data);
       setTechLevels(world, data);
       balanceSizes(world, rng, data, false);
       finishWorld(world, rng, data, rules.find((r) => r.id === 'start')?.pass === false);

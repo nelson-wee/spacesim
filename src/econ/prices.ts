@@ -20,6 +20,17 @@ export function rawPriceFactor(target: number, stock: number, data: GameData): n
   return (target / Math.max(stock, 1)) ** data.balance.economy.priceExponent;
 }
 
+/**
+ * The stock at which the mid price is `factor` x base (inverse of the price formula).
+ * Infinity at or below the low clamp; 0 at or above the high clamp.
+ */
+export function stockAtPriceFactor(target: number, factor: number, data: GameData): number {
+  const e = data.balance.economy;
+  if (factor <= e.priceClampMin) return Infinity;
+  if (factor >= e.priceClampMax) return 0;
+  return target * factor ** (-1 / e.priceExponent);
+}
+
 export function midPrice(entry: MarketEntry, base: number, data: GameData): number {
   return priceAt(base, entry.target, entry.stock, data);
 }

@@ -5,7 +5,7 @@ import type { GameData } from '../data';
 import { securityLevel, securityLevelInfo } from '../world/security';
 import { installAndWear, installWant } from './capital';
 import type { EconContext } from './context';
-import { runFlows } from './flow';
+import { runCarriers } from './carriers';
 import { emptyRegionStats, inputTrickle, offMapExport, regionBalance } from './offmap';
 import { basePrice, midPrice } from './prices';
 import { produce, recipeOf } from './recipes';
@@ -14,7 +14,7 @@ import type { DayReport } from './report';
 export function createEconomyState(data: GameData): EconomyState {
   const region: EconomyState['region'] = {};
   for (const c of data.commodities) region[c.id] = emptyRegionStats();
-  return { days: 0, region };
+  return { days: 0, region, shipments: [] };
 }
 
 export interface EconomyDayOptions {
@@ -32,7 +32,7 @@ function addTo(map: Map<string, number>, key: string, qty: number): void {
 /**
  * Runs one economy day:
  * 1 population use, 2 production, 3 Machinery install and wear,
- * 4 background flow, 5 off-map supply and demand, 6 noise,
+ * 4 background carriers, 5 off-map supply and demand, 6 noise,
  * 7 stock = max(stock, 0), 8 events (M7). Then each market keeps its price.
  */
 export function economyDay(
@@ -89,8 +89,8 @@ export function economyDay(
     report?.add(loc.id, recipe.softInput, 'consumed', installed);
   }
 
-  // 4. Background flow.
-  runFlows(ctx, levels, report);
+  // 4. Background trade: carriers (replaces the Section 9.7 flow; DECISIONS.md).
+  runCarriers(ctx, economy, levels, report);
 
   // 5. Off-map supply and demand.
   for (const [c, qty] of inputTrickle(ctx, report)) addTo(supply, c, qty);

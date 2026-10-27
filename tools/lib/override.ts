@@ -1,4 +1,4 @@
-// Tuning sweeps: --override='{"balance":{"economy":{"flowOneLane":0.3}}}' deep-merges
+// Tuning sweeps: --override='{"balance":{"economy":{"carriers":{"minMargin":0.3}}}}' deep-merges
 // into the raw data files before the checks. For tools only.
 import { buildGameData, type GameData, RAW_DATA, type RawData } from '../../src/data';
 

@@ -27,7 +27,7 @@
 | M2-GEN-11 | **Services.** Add services with the rules in `services.json` (§7.4 table). Bounty Guild on planets uses the baseline security at generation (Q-22). | §6.9, §7.4 | T |
 | M2-GEN-12 | **Start location.** In the core sector, with an Outfitter and a Merchants' Guild. | §6.10 | T |
 | M2-GEN-13 | **Validate rules.** Check all rules in §6.10. Return a result for each rule. | §6.10 | T |
-| M2-GEN-14 | **Validate economy.** Run the economy for 200 days with no player. No producer is below 30% output for 60 days in a row. The core-frontier gradient exists (raw goods: Core median > Frontier median; advanced goods: Core median < Frontier median). | §6.10 | T |
+| M2-GEN-14 | **Validate economy.** Run the economy for 200 days with no player. No producer is below 30% output for 60 days in a row. The core-frontier gradient exists (Q-34). **On hold (owner, 2026-10-27):** the generator checks structure only (`generator.economyCheck` false) while the economy is tuned; `sim-economy` checks the economy. The generator runs `warmupDays` (100) so the game starts with warm markets. | §6.10 | T |
 | M2-GEN-15 | **Repair.** If a rule fails, try a repair for that rule: change a size, change the producer at one location, or add a service. Maximum 5 repairs. Validate again after each repair. | §6.11 | T |
 | M2-GEN-16 | **Reject.** If the world still fails, start again from step 1 with `seed + 1`. Maximum 20 tries, then report an error. | §6.11 | T |
 | M2-GEN-17 | **Log.** Write the number of repairs and retries, and the rule results, to the generator log. | §6.11 | T |
@@ -40,7 +40,7 @@
 |---|---|---|---|
 | M2-LOC-01 | Each `Location` has all fields of §7.1: `kind`, `bodyType`, `producer`, `population`, `size`, `techLevel`, `gravity`, `installedMachinery`, `market`, `services`. | §7.1 | T |
 | M2-LOC-02 | A location trades a commodity if its producer makes or uses it (hard or soft input), or its population uses it. All locations trade Hydrogen (Refuel). | §9.2, Q-03 | T |
-| M2-LOC-03 | A location trades what its producer makes or uses, what its population uses, Hydrogen, and its relay commodities. No limit on the count (Q-03). Trade Hubs trade all 12. | §9.2, Q-03 | T |
+| M2-LOC-03 | A location trades what its producer makes or uses, what its population uses, and Hydrogen. No limit on the count (Q-03). Trade Hubs trade all 12. | §9.2, Q-03 | T |
 | M2-LOC-04 | `target` = 10 days of the location's daily use or output for that commodity. Planets: target × 2. Trade Hubs: a large target for all commodities (value in `balance.json`). Commodities with no local use or output: `minTargetStock` (Q-05). | §9.2, §7.2 | T |
 | M2-LOC-05 | Shipyard Stations buy Alloys, Composites, Electronics, and Machinery. Pirate Havens buy Food, Medicine, and Oxygen. Military Outposts have crew population. | §7.2 | T |
 | M2-LOC-06 | At generation, `stock = target` and `K = K_ref` for each producer. | §9.5 | T |
@@ -49,17 +49,17 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M2-ECON-01 | The daily tick runs in this order: population use, production, Machinery install and wear, background flow, off-map supply and demand, noise (±3% of target), `stock = max(stock, 0)`, events update (stub until M7). | §9.6 | T |
-| M2-ECON-02 | **Population.** Each population unit uses the amounts in `population.json` per day. Oxygen only for stations and planets without atmosphere. Electronics and Composites only for Core populations. Multiply by the sector economy multiplier. | §9.4, §10.2 | T |
-| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size`. | §9.3 | T |
+| M2-ECON-01 | The daily tick runs in this order: population use, production, Machinery install and wear, background carriers (arrivals, then new shipments), off-map supply and demand, noise (±3% of target), `stock = max(stock, 0)`, events update (stub until M7). | §9.6 | T |
+| M2-ECON-02 | **Population.** Each population unit uses the amounts in `population.json` per day. Oxygen only for stations and planets without atmosphere. Electronics and Composites mainly for Core resident populations; all populations and crews in Middle and Frontier sectors use small amounts of Electronics, Composites, and Machinery (owner, 2026-10-27; post-MVP this demand goes to station building, upgrades, and research). Multiply by the sector economy multiplier. | §9.4, §10.2 | T |
+| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size × volumeScale` (owner: larger volumes; `volumeScale` 8 also multiplies population and station use). | §9.3 | T |
 | M2-ECON-04 | `inputFactor` = minimum over hard inputs of `stock / required`, maximum 1.0. A producer with no hard inputs has `inputFactor` = 1.0. If a hard input has 0 stock, output is 0. | §9.3 | T |
 | M2-ECON-05 | The producer removes the inputs that it uses from stock and adds its outputs to stock. | §9.3 | T |
 | M2-ECON-06 | **Capital.** `K_ref = machineryPerBatch × batches`. `capitalFactor = 0.6 + 0.6 × K / (K + K_ref)`. | §9.5 | T |
 | M2-ECON-07 | **Install.** Each day, move Machinery from market stock into K, up to 10% of `K_ref` per day, until `K = 1.5 × K_ref`. | §9.5 | T |
 | M2-ECON-08 | **Wear.** Each day, K goes down by `machineryWear` (default 0.25%). | §9.5 | T |
-| M2-ECON-09 | **Background flow.** For each commodity and each pair (A, B) with `price_B > price_A`: `flow = min(κ × surplus_A × (price_B − price_A) / price_B × securityFactor, 0.1 × deficit_B)`. κ by distance: same sector 0.05, one lane 0.02, farther 0. `securityFactor = 0.2 + 0.2 × min(level_A, level_B)`. | §9.7 | T |
-| M2-ECON-10 | Calculate flows only between locations that trade the commodity. Flows of one day use the prices at the start of the flow step. | §9.7 | T |
-| M2-ECON-11 | **Input trickle.** Each producer gets `offMapInputShare` (15%) of its hard input needs each day from outside the region. | §9.8 | T |
+| M2-ECON-09 | **Background carriers** (owner, 2026-10-27; replace the §9.7 flow formula). Carriers buy at a source (stock above `surplusShareOfTarget` × target) and sell at a sink within `maxJumps` (3) jumps if `(sellPrice_B − buyPrice_A − cost) / buyPrice_A ≥ minMargin`. `cost = mass × (costPerTonne + costPerTonneJump × jumps) + buyPrice_A × riskPerJump × jumps`. Best profit per tonne first. Each day they move `dailyShare` of the open amount. They fill a sink up to the stock where its price falls to the route's break-even price (at most `exportStockRatio` × target), counting goods in transit less the sink's use during transit. Capacity per sector: `sectorCapacityTonnes × (0.2 + 0.2 × security level)` tonnes per day, on each sector of the path. Goods arrive after `transitDays + transitDaysPerJump × jumps` days. | §9.7, DECISIONS.md | T |
+| M2-ECON-10 | Carriers trade only between locations that trade the commodity. All decisions of one day use the prices at the start of the step. Goods in transit are part of the saved economy state. | §9.7 | T |
+| M2-ECON-11 | **Input trickle.** Each producer gets `offMapInputShare` (owner: 5%, toward an economy with no off-map supply) of its hard input needs each day from outside the region. | §9.8 | T |
 | M2-ECON-12 | **Region balance.** If the region supply/demand ratio of a commodity (Q-06) stays outside 0.8–1.2 for 30 days, add or remove `offMapBalance` (5%) of region demand each day, split between Trade Hubs. Stop when the ratio is in 0.9–1.1. | §9.8 | T |
 | M2-ECON-13 | **Price.** `price = base × clamp((target / max(stock, 1)) ^ k, 0.3, 3.0)`. `buyPrice = price × (1 + spread/2)`. `sellPrice = price × (1 − spread/2)`. `k` = 0.6, `spread` = 0.08. | §9.10 | T |
 | M2-ECON-14 | **Trade quote.** A function quotes a buy or sell of N units unit by unit. Each unit sold adds 1 to stock. Each unit bought removes 1 from stock. Large trades get worse prices. (The Market screen uses it in M3.) | §9.10 | T |
@@ -89,7 +89,7 @@
 - `capitalFactor`: K = 0 gives 0.6. K = K_ref gives 0.9. Large K approaches 1.2.
 - `inputFactor`, output formula, and stock changes for one producer.
 - Price formula, clamp, spread, and unit-by-unit quotes.
-- Flow formula: κ by distance, `securityFactor`, the `0.1 × deficit` limit, no flow when `price_B ≤ price_A`.
+- Carriers: route limit, minimum margin after cost and risk, break-even fill, transit days, capacity by security, goods in transit counted.
 - Off-map trickle and region balance start and stop.
 - Each generator rule in §6.10, over at least 20 seeds.
 - Blueprint: counts and minimum 2.
@@ -122,7 +122,7 @@ Build this only if all exit checks pass early on Day 2. If not, it is the first 
 | M2-AGT-01 | An agent is an Actor with one ship (hull and default loadout), a home sector, and a budget per trip. | §9.9 | T |
 | M2-AGT-02 | Route choice: profit per day within 2 jumps with live prices. Select at random from the top 3. Trade only if the margin is 20% or more. Reservations reduce demand that other agents see. | §9.9 | T |
 | M2-AGT-03 | Travel is abstract. Each trip rolls for pirates by sector security. A lost agent comes back after 10–20 days. | §9.9 | T |
-| M2-AGT-04 | Agents do `agentTradeShare` (0.3) of the trade. Reduce κ by the same share. Start with 15–25 agents. | §9.9 | S |
+| M2-AGT-04 | Agents do `agentTradeShare` (0.3) of the trade. Reduce the carrier capacity by the same share. Start with 15–25 agents. | §9.9 | S |
 
 ## 8. Open questions for this milestone
 

@@ -129,25 +129,6 @@ function moveProducer(world: World, loc: Location, rng: Rng, data: GameData, pre
   return `move ${producer} from ${loc.name} to ${to.name}`;
 }
 
-/**
- * Frees a station slot for a relay Trade Hub next to a cut-off location: in a
- * full Middle or Core sector one lane away (or the same sector), moves a
- * station producer to another sector. The next supply-path pass adds the hub.
- */
-function freeRelaySlot(world: World, loc: Location, rng: Rng, data: GameData): string | null {
-  for (const sid of [...nearSectors(world, loc.sectorId)].sort((a, b) => a - b)) {
-    const sector = world.sectors[sid];
-    if (!sector || sector.development === 'frontier') continue;
-    const locs = sector.locationIds.map((id) => world.locations[id] as Location);
-    if (locs.some((l) => l.bodyType === 'trade_hub' || l.bodyType === 'station_slot' || (l.bodyType === 'habitat' && !l.producer))) continue;
-    for (const station of locs.filter((l) => l.kind === 'station' && l.producer)) {
-      const done = moveProducer(world, station, rng, data, () => 0);
-      if (done) return done;
-    }
-  }
-  return null;
-}
-
 function removeProducer(world: World, producer: string, data: GameData): string | null {
   const g = data.balance.generator;
   const list = world.locations.filter((l) => l.producer === producer);
@@ -225,13 +206,12 @@ export function repairWorld(world: World, failed: RuleResult[], rng: Rng, data: 
       }
       const done =
         (makes ? null : addProducer(world, mainMaker(data, commodity) ?? '', rng, data, (l) => (near.has(l.sectorId) ? 5 : 0))) ??
-        moveProducer(world, loc, rng, data, (l) => (ends.has(l.sectorId) ? 5 : 0)) ??
-        freeRelaySlot(world, loc, rng, data);
+        moveProducer(world, loc, rng, data, (l) => (ends.has(l.sectorId) ? 5 : 0));
       if (done) return done;
     }
   }
   if (ids.has('lowOutput')) {
-    // Change a Habitat next to a starving producer to a Trade Hub (a relay).
+    // Change a Habitat next to a starving producer to a Trade Hub (a market with a large stock).
     const starving = world.locations.filter((l) => l.producer && (l.production?.outputRatio ?? 1) < data.balance.generator.lowOutputShare);
     const sectors = new Set<number>();
     for (const l of starving.length > 0 ? starving : world.locations.filter((x) => x.producer)) {

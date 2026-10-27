@@ -28,19 +28,20 @@ export interface Use {
 
 /**
  * True if a population rule applies to a location (data/population.json `who`):
- * `all` and `noAtmosphere` apply to resident populations and crew; `resident`
- * and `coreResident` apply only to resident populations (planets with
- * atmosphere and Habitats). This keeps each location at 4 to 8 commodities
- * (Q-03, DECISIONS.md).
+ * `all` and `noAtmosphere` apply to resident populations and crew; `outsideCore`
+ * applies to all populations and crews in Middle and Frontier sectors (a small
+ * demand for manufactured goods, DECISIONS.md); `resident` and `coreResident`
+ * apply only to resident populations (planets with atmosphere and Habitats).
  */
 export function useApplies(
-  who: 'all' | 'resident' | 'noAtmosphere' | 'coreResident',
+  who: 'all' | 'resident' | 'noAtmosphere' | 'coreResident' | 'outsideCore',
   bodyType: string,
   airless: boolean,
   core: boolean,
 ): boolean {
   if (who === 'all') return true;
   if (who === 'noAtmosphere') return airless;
+  if (who === 'outsideCore') return !core;
   if (!hasResidentPopulation(bodyType)) return false;
   return who === 'resident' || core;
 }

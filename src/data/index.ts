@@ -180,9 +180,6 @@ export function checkReferences(data: GameData): string[] {
   for (const c of Object.keys(b.economy.minTargetStock)) {
     if (!data.commodityById.has(c)) problems.push(`balance.economy.minTargetStock: unknown commodity ${c}`);
   }
-  for (const c of Object.keys(b.economy.flowScale)) {
-    if (!data.commodityById.has(c)) problems.push(`balance.economy.flowScale: unknown commodity ${c}`);
-  }
   for (const c of data.commodities) {
     if (b.economy.minTargetStock[c.id] === undefined) problems.push(`balance.economy.minTargetStock: no value for ${c.id}`);
   }
@@ -356,14 +353,27 @@ export function buildGameData(raw: RawData): GameData {
   parse('contracts.json', S.plannedSchema, raw.contracts);
   parse('battleMaps.json', S.plannedSchema, raw.battleMaps);
 
+  const balance = parse('balance.json', S.balanceSchema, raw.balance);
+  // volumeScale multiplies all daily amounts (DECISIONS.md, M2). GameData holds the scaled values.
+  const scale = balance.economy.volumeScale;
+  recipes.recipes = recipes.recipes.map((r) => ({ ...r, batchesPerSize: r.batchesPerSize * scale }));
+  const rawPopulation = parse('population.json', S.populationSchema, raw.population);
+  const population = {
+    ...rawPopulation,
+    useScale: rawPopulation.useScale * scale,
+    stationUse: Object.fromEntries(
+      Object.entries(rawPopulation.stationUse).map(([k, uses]) => [k, uses.map((u) => ({ ...u, perSizePerDay: u.perSizePerDay * scale }))]),
+    ),
+  };
+
   const data: GameData = {
-    balance: parse('balance.json', S.balanceSchema, raw.balance),
+    balance,
     commodities,
     commodityById: byId(commodities, (c) => c.id, 'commodities.json'),
     recipes,
     recipeByProducer: byId(recipes.recipes, (r) => r.producer, 'recipes.json'),
     producerTypes: parse('producerTypes.json', S.producerTypesSchema, raw.producerTypes).producerTypes,
-    population: parse('population.json', S.populationSchema, raw.population),
+    population,
     bodyTypes,
     planetTypeById: byId(bodyTypes.planets, (p) => p.id, 'bodyTypes.json'),
     stationTypeById: byId(bodyTypes.stations, (s) => s.id, 'bodyTypes.json'),
