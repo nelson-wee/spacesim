@@ -70,6 +70,12 @@ describe('Code Page 437 (Section 4, M1-DATA-11)', () => {
       ...data.commodities.map((c) => c.name),
       ...data.hulls.map((h) => h.name),
       ...data.modules.modules.map((m) => m.name),
+      ...data.art.modules.modules.flatMap((m) => [m.glyph, m.short]),
+      ...Object.values(data.art.modules.families).map((f) => f.mark),
+      ...Object.values(data.art.modules.states).map((s) => s.glyph),
+      ...Object.values(data.art.effects.lineSets).flat(),
+      JSON.stringify(data.art.effects.effects),
+      JSON.stringify(data.art.effects.patterns),
     ];
     expect(texts.flatMap(nonCp437)).toEqual([]);
   });

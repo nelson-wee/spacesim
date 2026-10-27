@@ -20,6 +20,7 @@ import servicesJson from '../../data/services.json';
 import templatesJson from '../../data/templates.json';
 import artEffectsJson from '../../data/art/effects.json';
 import artIconsJson from '../../data/art/icons.json';
+import artModulesJson from '../../data/art/modules.json';
 import artShipsJson from '../../data/art/ships.json';
 import artStyleJson from '../../data/art/style.json';
 import * as S from './schemas';
@@ -34,6 +35,8 @@ export type SecurityLevel = z.infer<typeof S.securitySchema>['levels'][number];
 export type Hull = z.infer<typeof S.hullsSchema>['hulls'][number];
 export type ModuleDef = z.infer<typeof S.modulesSchema>['modules'][number];
 export type ModuleValues = z.infer<typeof S.moduleValuesSchema>;
+export type ServiceDef = z.infer<typeof S.servicesSchema>['services'][number];
+export type ServiceClause = ServiceDef['where'][number];
 export type Loadout = z.infer<typeof S.loadoutsSchema>['loadouts'][number];
 export type LoadoutSlot = Loadout['internal'][number];
 export type Development = z.infer<typeof S.developmentSchema>;
@@ -41,6 +44,7 @@ export type SlotSize = z.infer<typeof S.slotSizeSchema>;
 export type Tier = z.infer<typeof S.tierSchema>;
 export type Style = z.infer<typeof S.artStyleSchema>;
 export type Icons = z.infer<typeof S.artIconsSchema>;
+export type ModuleArt = z.infer<typeof S.artModulesSchema>;
 export type ShipArt = z.infer<typeof S.artShipsSchema>;
 
 export interface RawData {
@@ -64,6 +68,7 @@ export interface RawData {
   artShips: unknown;
   artEffects: unknown;
   artIcons: unknown;
+  artModules: unknown;
   artStyle: unknown;
 }
 
@@ -85,11 +90,13 @@ export interface GameData {
   modules: z.infer<typeof S.modulesSchema>;
   moduleById: Map<string, ModuleDef>;
   loadoutById: Map<string, Loadout>;
+  services: ServiceDef[];
   art: {
     ships: ShipArt;
     icons: Icons;
     style: Style;
     effects: z.infer<typeof S.artEffectsSchema>;
+    modules: ModuleArt;
   };
 }
 
@@ -114,6 +121,7 @@ export const RAW_DATA: RawData = {
   artShips: artShipsJson,
   artEffects: artEffectsJson,
   artIcons: artIconsJson,
+  artModules: artModulesJson,
   artStyle: artStyleJson,
 };
 
@@ -168,6 +176,21 @@ export function checkReferences(data: GameData): string[] {
   }
   for (const u of data.population.use) {
     if (!data.commodityById.has(u.commodity)) problems.push(`population: unknown commodity ${u.commodity}`);
+  }
+  for (const c of Object.keys(b.economy.minTargetStock)) {
+    if (!data.commodityById.has(c)) problems.push(`balance.economy.minTargetStock: unknown commodity ${c}`);
+  }
+  for (const c of data.commodities) {
+    if (b.economy.minTargetStock[c.id] === undefined) problems.push(`balance.economy.minTargetStock: no value for ${c.id}`);
+  }
+  for (const [station, uses] of Object.entries(data.population.stationUse)) {
+    if (!data.stationTypeById.has(station)) problems.push(`population.stationUse: unknown station type ${station}`);
+    for (const u of uses) if (!data.commodityById.has(u.commodity)) problems.push(`population.stationUse.${station}: unknown commodity ${u.commodity}`);
+  }
+  for (const svc of data.services) {
+    for (const clause of svc.where) {
+      for (const t of clause.bodyType ?? []) if (!hostIds.has(t)) problems.push(`services.json ${svc.id}: unknown body type ${t}`);
+    }
   }
   for (const m of data.modules.modules) {
     const sizes = Object.keys(m.sizes);
@@ -245,7 +268,76 @@ export function checkArt(data: GameData): string[] {
   if (ships.surrenderMarker.fg && !hasColor(ships.surrenderMarker.fg)) {
     problems.push(`art/ships.json: surrender marker color "${ships.surrenderMarker.fg}" is unknown`);
   }
+  problems.push(...checkModuleArt(data), ...checkEffectsArt(data));
   return problems;
+}
+
+/** Module icons: each game module has an icon; families and colors exist (data/art/modules.json). */
+function checkModuleArt(data: GameData): string[] {
+  const problems: string[] = [];
+  const { modules: art, style } = data.art;
+  const hasColor = (name: string) => name in style.colors;
+  const byId = new Map(art.modules.map((m) => [m.id, m]));
+  for (const m of data.modules.modules) {
+    const icon = byId.get(m.id);
+    if (!icon) {
+      problems.push(`art/modules.json: no icon for module ${m.id}`);
+      continue;
+    }
+    if (!(icon.default_size in m.sizes)) problems.push(`art/modules.json: ${m.id} default size ${icon.default_size} is not a size in modules.json`);
+  }
+  // Icons for modules that come in later milestones (M3 weapons) are allowed.
+  for (const m of art.modules) {
+    if (!art.families[m.family]) problems.push(`art/modules.json: ${m.id} has unknown family "${m.family}"`);
+    if (Array.from(m.glyph).length !== art.icon.width - 1) problems.push(`art/modules.json: ${m.id} glyph "${m.glyph}" is not ${art.icon.width - 1} cells`);
+    if (!hasColor(m.fg)) problems.push(`art/modules.json: ${m.id} color "${m.fg}" is unknown`);
+    if (byId.get(m.id) !== m) problems.push(`art/modules.json: ${m.id} listed twice`);
+  }
+  for (const [k, f] of Object.entries(art.families)) if (!hasColor(f.fg)) problems.push(`art/modules.json: family ${k} color "${f.fg}" is unknown`);
+  for (const [k, s] of Object.entries(art.states)) {
+    for (const c of [s.fg, s.icon_fg]) if (c && !hasColor(c)) problems.push(`art/modules.json: state ${k} color "${c}" is unknown`);
+  }
+  // The file repeats the family colors of the style; they must agree.
+  for (const [k, v] of Object.entries(art.family_colors)) {
+    if (style.colors[k] !== v) problems.push(`art: family color "${k}" is ${v} in modules.json, ${String(style.colors[k])} in style.json`);
+  }
+  return problems;
+}
+
+/** Combat effects: color names exist and agree with the style (data/art/effects.json). */
+function checkEffectsArt(data: GameData): string[] {
+  const problems: string[] = [];
+  const { effects, style } = data.art;
+  for (const [k, v] of Object.entries(effects.colors)) {
+    if (style.colors[k] !== v) problems.push(`art: effect color "${k}" is ${v} in effects.yaml, ${String(style.colors[k])} in style.json`);
+  }
+  for (const [name, e] of Object.entries(effects.effects)) {
+    for (const f of [...e.frames, ...(e.persist ? [e.persist] : [])]) {
+      for (const c of frameColorNames(f)) if (!(c in style.colors)) problems.push(`art/effects.json: ${name} uses unknown color "${c}"`);
+    }
+  }
+  return problems;
+}
+
+/** Color names in an effect frame: fg, pfg, pods, trail and cell colors. */
+export function frameColorNames(frame: unknown): string[] {
+  const found: string[] = [];
+  const visit = (v: unknown, key: string): void => {
+    if (Array.isArray(v)) {
+      // trail: [[glyph, color], ...]; cells: [[x, y, glyph, color], ...]
+      if (key === 'trail') for (const t of v) if (Array.isArray(t) && typeof t[1] === 'string') found.push(t[1]);
+      if (key === 'cells') for (const c of v) if (Array.isArray(c) && typeof c[3] === 'string') found.push(c[3]);
+      for (const x of v) visit(x, '');
+      return;
+    }
+    if (v === null || typeof v !== 'object') return;
+    for (const [k, x] of Object.entries(v)) {
+      if ((k === 'fg' || k === 'pfg' || k === 'pods') && typeof x === 'string') found.push(x);
+      else visit(x, k);
+    }
+  };
+  visit(frame, '');
+  return found;
 }
 
 export function buildGameData(raw: RawData): GameData {
@@ -255,21 +347,33 @@ export function buildGameData(raw: RawData): GameData {
   const hulls = parse('hulls.json', S.hullsSchema, raw.hulls).hulls;
   const modules = parse('modules.json', S.modulesSchema, raw.modules);
   const loadouts = parse('loadouts.json', S.loadoutsSchema, raw.loadouts).loadouts;
-  parse('services.json', S.plannedSchema, raw.services);
   parse('events.json', S.plannedSchema, raw.events);
   parse('encounters.json', S.plannedSchema, raw.encounters);
   parse('templates.json', S.plannedSchema, raw.templates);
   parse('contracts.json', S.plannedSchema, raw.contracts);
   parse('battleMaps.json', S.plannedSchema, raw.battleMaps);
 
+  const balance = parse('balance.json', S.balanceSchema, raw.balance);
+  // volumeScale multiplies all daily amounts (DECISIONS.md, M2). GameData holds the scaled values.
+  const scale = balance.economy.volumeScale;
+  recipes.recipes = recipes.recipes.map((r) => ({ ...r, batchesPerSize: r.batchesPerSize * scale }));
+  const rawPopulation = parse('population.json', S.populationSchema, raw.population);
+  const population = {
+    ...rawPopulation,
+    useScale: rawPopulation.useScale * scale,
+    stationUse: Object.fromEntries(
+      Object.entries(rawPopulation.stationUse).map(([k, uses]) => [k, uses.map((u) => ({ ...u, perSizePerDay: u.perSizePerDay * scale }))]),
+    ),
+  };
+
   const data: GameData = {
-    balance: parse('balance.json', S.balanceSchema, raw.balance),
+    balance,
     commodities,
     commodityById: byId(commodities, (c) => c.id, 'commodities.json'),
     recipes,
     recipeByProducer: byId(recipes.recipes, (r) => r.producer, 'recipes.json'),
     producerTypes: parse('producerTypes.json', S.producerTypesSchema, raw.producerTypes).producerTypes,
-    population: parse('population.json', S.populationSchema, raw.population),
+    population,
     bodyTypes,
     planetTypeById: byId(bodyTypes.planets, (p) => p.id, 'bodyTypes.json'),
     stationTypeById: byId(bodyTypes.stations, (s) => s.id, 'bodyTypes.json'),
@@ -280,11 +384,13 @@ export function buildGameData(raw: RawData): GameData {
     modules,
     moduleById: byId(modules.modules, (m) => m.id, 'modules.json'),
     loadoutById: byId(loadouts, (l) => l.id, 'loadouts.json'),
+    services: parse('services.json', S.servicesSchema, raw.services).services,
     art: {
       ships: parse('art/ships.json', S.artShipsSchema, raw.artShips),
       icons: parse('art/icons.json', S.artIconsSchema, raw.artIcons),
       style: parse('art/style.json', S.artStyleSchema, raw.artStyle),
       effects: parse('art/effects.json', S.artEffectsSchema, raw.artEffects),
+      modules: parse('art/modules.json', S.artModulesSchema, raw.artModules),
     },
   };
   const problems = checkReferences(data);

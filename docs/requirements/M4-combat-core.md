@@ -92,10 +92,10 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M4-UI-01 | Combat screen: grid, right panel (hull, shields, armor, engine value, heat bar, power list with ON/OFF and keys), and battle log. The heat bar uses `style.json` `heat` (12 cells, zones normal/hot/over, flash rate). | §13.1, §17.1, §18 | M |
+| M4-UI-01 | Combat screen: grid, right panel (hull, shields, armor, engine value, heat bar, power list with ON/OFF and keys), and battle log. The power list uses the module icons and states (on, off, cannot fire, no ammunition) of `data/art/modules.json`. The heat bar uses `style.json` `heat` (12 cells, zones normal/hot/over, flash rate). | §13.1, §17.1, §18 | M |
 | M4-UI-02 | The player selects target cells with the mouse or the keyboard, and selects Hull or Engines. The UI shows hit chance before a shot. | §17.5, §13.6 | M |
 | M4-UI-03 | Ship colors by side and role code (`roleColor`, `style.json` `sides` and `roles`). Engines that are OFF use `engineOff`. Hot ships use the hot tint on hull and armor cells. Engine flicker cells from the art. | §18, §18.2 | M |
-| M4-UI-04 | Effect glyphs and times come from `/data/art/effects.json`. Effects queue: laser line (120 ms), ballistic `*` (15 ms per cell), flak area (150 ms), shield hit flash (100 ms), explosion (300 ms). The renderer plays the effects after the turn resolves. Total ≤ 1.2 s per turn. `Space` skips. | §18.4 | M |
+| M4-UI-04 | Effect frames, glyphs, colors, and times come from `/data/art/effects.json` (Claude Design `effects.yaml`, not the §18.4 table). Times scale with path length (`totalMsAt18Cells`). Effects queue from the file: stagger 150 ms (120 ms for 5 or more effects), budget 1.2 s per turn, scale down if over, minimum frame 15 ms. The renderer plays the effects after the turn resolves. `Space` skips. M4 uses the laser, ballistic, flak, shield, hull, armor, engine, and destroy effects; M5 adds missiles, torpedoes, point defense, reinforcements, flee, and surrender. | §18.4, G-20 | M |
 | M4-UI-05 | Debug panel: start a test battle with any hulls and loadouts on each side. | §4.3 | M |
 
 ## 10. Tools (TOOL)

@@ -1,16 +1,29 @@
 {
+  "useScale": 0.12,
   "use": [
-    { "commodity": "food", "perUnitPerDay": 1.0, "who": "all" },
-    { "commodity": "water", "perUnitPerDay": 1.0, "who": "all" },
+    { "commodity": "food", "perUnitPerDay": 1, "who": "all" },
+    { "commodity": "water", "perUnitPerDay": 1, "who": "all" },
     { "commodity": "oxygen", "perUnitPerDay": 0.5, "who": "noAtmosphere" },
-    { "commodity": "medicine", "perUnitPerDay": 0.1, "who": "all" },
-    { "commodity": "electronics", "perUnitPerDay": 0.1, "who": "core" },
-    { "commodity": "composites", "perUnitPerDay": 0.05, "who": "core" }
+    { "commodity": "medicine", "perUnitPerDay": 0.15, "who": "resident" },
+    { "commodity": "electronics", "perUnitPerDay": 0.3, "who": "coreResident" },
+    { "commodity": "composites", "perUnitPerDay": 0.3, "who": "coreResident" },
+    { "commodity": "hydrogen", "perUnitPerDay": 0.5, "who": "all" },
+    { "commodity": "electronics", "perUnitPerDay": 0.02, "who": "outsideCore" },
+    { "commodity": "composites", "perUnitPerDay": 0.02, "who": "outsideCore" },
+    { "commodity": "machinery", "perUnitPerDay": 0.01, "who": "outsideCore" }
   ],
-  "unitsPerSize": {
-    "terran": 20,
-    "ocean": 15,
-    "habitat": 10,
-    "crew": 2
+  "unitsPerSize": { "terran": 20, "ocean": 15, "habitat": 10, "crew": 2 },
+  "stationUse": {
+    "shipyard_station": [
+      { "commodity": "alloys", "perSizePerDay": 2 },
+      { "commodity": "composites", "perSizePerDay": 0.5 },
+      { "commodity": "electronics", "perSizePerDay": 0.3 },
+      { "commodity": "machinery", "perSizePerDay": 0.5 }
+    ],
+    "pirate_haven": [
+      { "commodity": "food", "perSizePerDay": 1 },
+      { "commodity": "medicine", "perSizePerDay": 0.2 },
+      { "commodity": "oxygen", "perSizePerDay": 0.5 }
+    ]
   }
 }

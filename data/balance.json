@@ -30,37 +30,84 @@
     "bodiesMax": 6,
     "planetsMin": 1,
     "planetsMax": 4,
-    "stationsMin": 1,
+    "stationsMin": 2,
     "stationsMax": 3
   },
-  "travel": {
-    "cruiseFactor": 8,
-    "jumpFactor": 1.5,
-    "kSector": 0.0035,
-    "kJump": 0.038,
-    "kDock": 0.06,
-    "fuelMassExponent": 0.64
+  "travel": { "cruiseFactor": 8, "jumpFactor": 1.5, "kSector": 0.0035, "kJump": 0.038, "kDock": 0.06, "fuelMassExponent": 0.64 },
+  "ship": { "mRef": 10, "engineStackFalloff": 1, "engineValueShare": 0.2 },
+  "fuel": { "fuelPerHydrogen": 2 },
+  "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },
+  "fleet": { "maxFleetSize": 4 },
+  "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Second Chance" },
+  "economy": {
+    "priceExponent": 0.6,
+    "priceClampMin": 0.3,
+    "priceClampMax": 3,
+    "spread": 0.08,
+    "volumeScale": 8,
+    "targetDays": 10,
+    "inputTargetDays": 10,
+    "planetTargetMult": 2,
+    "tradeHubTargetDays": 3,
+    "minTargetStock": {
+      "water": 20,
+      "hydrogen": 20,
+      "iron_ore": 20,
+      "silicates": 20,
+      "rare_elements": 5,
+      "oxygen": 10,
+      "alloys": 10,
+      "food": 10,
+      "composites": 4,
+      "electronics": 4,
+      "machinery": 3,
+      "medicine": 4
+    },
+    "surplusShareOfTarget": 0.5,
+    "offMapInputShare": 0.05,
+    "offMapBalance": 0.05,
+    "balanceWindowDays": 30,
+    "balanceStartLow": 0.8,
+    "balanceStartHigh": 1.2,
+    "balanceStopLow": 0.9,
+    "balanceStopHigh": 1.1,
+    "noiseShare": 0.03,
+    "historyDays": 30,
+    "exportStockRatio": 2,
+    "exportShare": 0.5,
+    "carriers": {
+      "maxJumps": 3,
+      "minMargin": 0.25,
+      "costPerTonne": 1,
+      "costPerTonneJump": 3,
+      "riskPerJump": 0.05,
+      "dailyShare": 0.5,
+      "sectorCapacityTonnes": 3000,
+      "securityBase": 0.2,
+      "securityPerLevel": 0.2,
+      "transitDays": 1,
+      "transitDaysPerJump": 2
+    }
   },
-  "ship": {
-    "mRef": 10,
-    "engineStackFalloff": 1.0,
-    "engineValueShare": 0.2
-  },
-  "fuel": {
-    "fuelPerHydrogen": 2
-  },
-  "recovery": {
-    "base": 300,
-    "perDistance": 10,
-    "fullTankShare": 0.2,
-    "fuelShareAfterTow": 0.25
-  },
-  "fleet": {
-    "maxFleetSize": 4
-  },
-  "start": {
-    "credits": 2000,
-    "loadoutId": "start_shuttle",
-    "shipName": "Second Chance"
+  "generator": {
+    "maxTries": 20,
+    "maxRepairs": 5,
+    "sizePasses": 20,
+    "sizeMin": 1,
+    "sizeMax": 3,
+    "ratioLow": 1,
+    "ratioHigh": 1.35,
+    "minProducersPerType": 2,
+    "averageSize": 2,
+    "minFrontierSectors": 2,
+    "blueprintPasses": 4,
+    "validationDays": 200,
+    "lowOutputShare": 0.3,
+    "lowOutputDays": 60,
+    "fill": { "minTradeHubs": 2, "militaryOutposts": 2, "pirateHavens": 1, "minShipyards": 2, "habitatWeight": 2, "tradeHubWeight": 1 },
+    "ratioAcceptLow": 0.9,
+    "ratioAcceptHigh": 1.35,
+    "economyCheck": false,
+    "warmupDays": 100
   }
 }

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { checkArt, gameData } from '../src/data';
 import { palette, roleColor } from '../src/render/palette';
+import { convertEffects, effectsJson } from '../tools/lib/effectsArt';
 import { convertShipArt, ROLE_CODES, shipArtJson } from '../tools/lib/shipArt';
 
 const data = gameData();
@@ -92,5 +93,51 @@ describe('ship art drawing helpers', () => {
     const { dimColor } = await import('../src/render/shipArt');
     expect(dimColor('#FF8040', 0.5)).toBe('#804020');
     expect(dimColor('#123456', 1)).toBe('#123456');
+  });
+});
+
+describe('module icons (data/art/modules.json)', () => {
+  it('each game module has an icon of one mark and two glyphs', () => {
+    for (const m of data.modules.modules) {
+      const icon = data.art.modules.modules.find((x) => x.id === m.id);
+      expect(icon, m.id).toBeDefined();
+      expect(Array.from(icon?.glyph ?? '').length).toBe(2);
+      expect(data.art.modules.families[icon?.family ?? '']).toBeDefined();
+    }
+  });
+
+  it('the art check finds an unknown color', () => {
+    const broken = structuredClone(data);
+    broken.art.modules.modules[0]!.fg = 'noSuchColor';
+    expect(checkArt(broken).join()).toMatch(/noSuchColor/);
+  });
+});
+
+describe('combat effects (data/art/effects.yaml)', () => {
+  const effectsYaml = readFileSync('data/art/effects.yaml', 'utf8');
+
+  it('effects.json matches effects.yaml (run `npm run import-art` after a change)', () => {
+    expect(readFileSync('data/art/effects.json', 'utf8')).toBe(effectsJson(effectsYaml));
+  });
+
+  it('has the effects of Section 18.4 and a 1.2 s budget per turn', () => {
+    const names = Object.keys(data.art.effects.effects);
+    for (const n of ['pulse_laser_hit', 'autocannon_hit', 'flak_cannon', 'missile_move', 'point_defense', 'shield_hit_small', 'destroy_small', 'reinforcement_arrival']) {
+      expect(names).toContain(n);
+    }
+    expect(data.art.effects.queue.budgetMs).toBe(1200);
+    expect(data.art.effects.queue.skipKey).toBe('Space');
+  });
+
+  it('the art check finds an unknown effect color', () => {
+    const broken = structuredClone(data);
+    broken.art.effects.effects.pulse_laser_hit!.frames[0] = { ms: 30, at: { at: 'target', g: '*', fg: 'noSuchColor' } };
+    expect(checkArt(broken).join()).toMatch(/noSuchColor/);
+  });
+
+  it('rejects an unknown line set', () => {
+    const broken = effectsYaml.replace('"set":"thin","fg":"laserHi"}}', '"set":"wavy","fg":"laserHi"}}');
+    expect(broken).not.toBe(effectsYaml);
+    expect(() => convertEffects(broken)).toThrow(/line set/);
   });
 });

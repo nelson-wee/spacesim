@@ -1,0 +1,197 @@
+# Combat effects v0.1 · source of truth · see Combat Effects.dc.html
+line_sets: {"thin":["─","│","/","\\"],"thick":["═","║","/","\\"],"dot":["·","·","·","·"]}
+patterns: {"spark":[[-1,-1,"\\"],[-1,1,"/"]],"spark2":[[-2,-1,"·"],[-1,1,"·"]],"ring8":[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],"plus":[[0,-1],[-1,0],[1,0],[0,1]],"muzzle":[[0,-1,"·"],[1,0,"-"],[0,1,"·"]],"burst3":[[-1,-1],[0,-1],[1,-1],[-1,0],[0,0],[1,0],[-1,1],[0,1],[1,1]]}
+travel: "repeat frame, head += advance, until head reaches end of path; miss paths overshoot to grid edge, then fade 60 ms"
+queue: { stagger_ms: 150, stagger_ms_5plus: 120, budget_ms: 1200, scale_if_over: true, min_frame_ms: 15, skip_key: Space }
+colors: {"laser":"#F59ED6","laserHi":"#FFE3F3","laserDim":"#8A4F73","ballistic":"#EBAE7A","ballisticHi":"#FFF0DC","guided":"#C0A6FF","guidedHi":"#EDE5FF","defense":"#7FD6B8","defenseHi":"#E0FFF4","white":"#FFF1C9","fire":"#FFD27A","hot":"#FF9A2E","over":"#FF3B30","smoke":"#857F76","smokeDim":"#3E4852","shield":"#BFE8FF","shieldHi":"#F2FBFF","shieldDim":"#4F6B7D","cargoPod":"#5BE37A","cargoDim":"#2F7A44","patrolDim":"#2B3F70"}
+effects:
+- effect: pulse_laser_hit
+  total_ms_at_18_cells: 150
+  frames:
+    - {"ms":30,"line":{"path":"hit","set":"thin","fg":"laserHi"}}
+    - {"ms":60,"line":{"path":"hit","set":"thin","fg":"laser"},"at":{"at":"target","g":"*","fg":"laserHi"}}
+    - {"ms":60,"at":{"at":"target","g":"·","fg":"laser"}}
+- effect: pulse_laser_miss
+  total_ms_at_18_cells: 130
+  frames:
+    - {"ms":30,"line":{"path":"miss","set":"thin","fg":"laserHi"}}
+    - {"ms":60,"line":{"path":"miss","set":"thin","fg":"laserDim"}}
+    - {"ms":40,"at":{"at":"end","g":"·","fg":"laserDim"}}
+- effect: beam_laser_hit
+  total_ms_at_18_cells: 340
+  frames:
+    - {"ms":40,"line":{"path":"hit","set":"thin","fg":"laser"}}
+    - {"ms":160,"line":{"path":"hit","set":"thick","fg":"laserHi"},"at":{"at":"target","g":"▒","fg":"laserHi","pat":"spark","pfg":"laser"}}
+    - {"ms":80,"line":{"path":"hit","set":"thick","fg":"laser"},"at":{"at":"target","g":"*","fg":"laserHi"}}
+    - {"ms":60,"line":{"path":"hit","set":"thin","fg":"laserDim"}}
+- effect: autocannon_hit
+  total_ms_at_18_cells: 250
+  frames:
+    - {"travel":{"ms":30,"adv":5,"path":"hit","g":"·","fg":"ballisticHi","count":3,"gap":1}}
+    - {"ms":40,"at":{"at":"target","g":"*","fg":"ballisticHi","pat":"spark","pfg":"ballistic"}}
+    - {"ms":50,"at":{"at":"target","g":"+","fg":"ballistic"}}
+    - {"ms":40,"at":{"at":"target","g":"·","fg":"smoke"}}
+- effect: autocannon_miss
+  total_ms_at_18_cells: 240
+  frames:
+    - {"travel":{"ms":30,"adv":5,"path":"miss","g":"·","fg":"ballisticHi","count":3,"gap":1}}
+    - {"ms":60,"at":{"at":"end","g":"·","fg":"smoke"}}
+- effect: mass_driver_hit
+  total_ms_at_18_cells: 260
+  frames:
+    - {"travel":{"ms":30,"adv":6,"path":"hit","g":"•","fg":"ballisticHi","trail":[["-","ballistic"],["·","smoke"]]}}
+    - {"ms":50,"at":{"at":"target","g":"*","fg":"white","pat":"spark","pfg":"fire"}}
+    - {"ms":70,"at":{"at":"target","g":"+","fg":"hot"}}
+    - {"ms":50,"at":{"at":"target","g":"·","fg":"smoke"}}
+- effect: heavy_cannon_hit
+  total_ms_at_18_cells: 420
+  frames:
+    - {"ms":50,"at":{"at":"origin","g":"*","fg":"white","pat":"muzzle","pfg":"fire"}}
+    - {"travel":{"ms":30,"adv":4,"path":"hit","g":"■","fg":"ballisticHi","trail":[["=","ballistic"],["-","ballistic"],["·","smoke"]]}}
+    - {"ms":60,"at":{"at":"target","g":"█","fg":"white","pat":"ring8","pg":"*","pfg":"fire"}}
+    - {"ms":80,"at":{"at":"target","g":"▓","fg":"hot","pat":"ring8","pg":"·","pfg":"hot"}}
+    - {"ms":80,"at":{"at":"target","g":"░","fg":"smoke"}}
+- effect: flak_cannon
+  total_ms_at_18_cells: 400
+  frames:
+    - {"travel":{"ms":30,"adv":5,"path":"hit","g":"•","fg":"ballisticHi","trail":[["·","smoke"]]}}
+    - {"ms":60,"at":{"at":"target","g":"*","fg":"white","pat":"burst3","pg":"+","pfg":"ballisticHi"}}
+    - {"ms":80,"at":{"at":"target","pat":"burst3","pg":"▒","pfg":"ballistic"}}
+    - {"ms":80,"at":{"at":"target","pat":"burst3","pg":"░","pfg":"smoke"}}
+    - {"ms":60,"at":{"at":"target","pat":"burst3","pg":"·","pfg":"smokeDim","pfrac":0.5}}
+- effect: missile_move
+  total_ms_at_18_cells: 240
+  frames:
+    - {"travel":{"ms":40,"adv":1,"start":2,"cells":6,"path":"hit","g":"►","fg":"guided","trail":[["°","smoke"],["·","smoke"],["·","smokeDim"]]}}
+  persist: {"proj":{"path":"hit","head":8,"g":"►","fg":"guided","trail":[["·","smokeDim"]]}}
+- effect: missile_hit
+  total_ms_at_18_cells: 180
+  frames:
+    - {"ms":60,"at":{"at":"target","g":"*","fg":"white","pat":"spark","pfg":"fire"}}
+    - {"ms":60,"at":{"at":"target","g":"▒","fg":"hot","pat":"plus","pg":"·","pfg":"fire"}}
+    - {"ms":60,"at":{"at":"target","g":"·","fg":"smoke"}}
+- effect: torpedo_move
+  total_ms_at_18_cells: 240
+  frames:
+    - {"travel":{"ms":80,"adv":1,"start":4,"cells":3,"path":"hit","g":"■►","fg":"guided","trail":[["▒","smoke"],["░","smoke"],["·","smoke"],["·","smokeDim"]]}}
+  persist: {"proj":{"path":"hit","head":7,"g":"■►","fg":"guided","trail":[["░","smokeDim"]]}}
+- effect: torpedo_hit
+  total_ms_at_18_cells: 340
+  frames:
+    - {"ms":60,"at":{"at":"target","g":"█","fg":"white","pat":"ring8","pg":"*","pfg":"fire"}}
+    - {"ms":100,"at":{"at":"target","g":"▓","fg":"hot","pat":"ring8","pg":"▒","pfg":"hot"}}
+    - {"ms":100,"at":{"at":"target","g":"%","fg":"over","pat":"ring8","pg":"░","pfg":"smoke"}}
+    - {"ms":80,"at":{"at":"target","pat":"ring8","pg":"·","pfg":"smokeDim","pfrac":0.6}}
+- effect: point_defense
+  total_ms_at_18_cells: 200
+  frames:
+    - {"ms":30,"line":{"path":"pd","set":"dot","fg":"defense"}}
+    - {"ms":30}
+    - {"ms":30,"line":{"path":"pd","set":"thin","fg":"defenseHi"}}
+    - {"ms":50,"noMunition":true,"at":{"at":"munition","g":"*","fg":"white","pat":"plus","pg":"·","pfg":"defense"}}
+    - {"ms":60,"noMunition":true,"at":{"at":"munition","g":"·","fg":"smoke"}}
+- effect: shield_hit_small
+  total_ms_at_18_cells: 160
+  frames:
+    - {"ms":40,"perim":{"part":"facing","g":"▒","fg":"shieldHi"}}
+    - {"ms":60,"perim":{"part":"facing","g":"░","fg":"shield"}}
+    - {"ms":60,"perim":{"part":"facing","g":"·","fg":"shieldDim"}}
+- effect: shield_hit_large
+  total_ms_at_18_cells: 240
+  frames:
+    - {"ms":40,"perim":[{"part":"all","g":"░","fg":"shield"},{"part":"facing","g":"▓","fg":"shieldHi"}]}
+    - {"ms":80,"perim":[{"part":"all","g":"░","fg":"shield"},{"part":"facing","g":"▒","fg":"shieldHi"}]}
+    - {"ms":60,"perim":[{"part":"all","g":"·","fg":"shieldDim"},{"part":"facing","g":"░","fg":"shield"}]}
+    - {"ms":60,"perim":{"part":"facing","g":"·","fg":"shieldDim"}}
+- effect: shield_break
+  total_ms_at_18_cells: 280
+  frames:
+    - {"ms":60,"perim":{"part":"all","g":"▓","fg":"shieldHi"}}
+    - {"ms":60,"perim":{"part":"all","g":"▒","fg":"shield","frac":0.6}}
+    - {"ms":80,"perim":{"part":"all","g":",","fg":"shieldDim","frac":0.35}}
+    - {"ms":80,"perim":{"part":"all","g":"·","fg":"shieldDim","frac":0.15}}
+- effect: shield_regenerate
+  total_ms_at_18_cells: 360
+  frames:
+    - {"ms":120,"perim":{"part":"all","g":"·","fg":"shieldDim"}}
+    - {"ms":120,"perim":{"part":"all","g":"░","fg":"shieldDim"}}
+    - {"ms":120,"perim":{"part":"all","g":"·","fg":"shieldDim"}}
+- effect: hull_hit
+  total_ms_at_18_cells: 160
+  frames:
+    - {"ms":40,"at":{"at":"target","g":"*","fg":"white","pat":"spark","pfg":"fire"}}
+    - {"ms":60,"at":{"at":"target","g":"+","fg":"hot","pat":"spark2","pfg":"fire"}}
+    - {"ms":60,"at":{"at":"target","g":"@damage"}}
+- effect: armor_deflect
+  total_ms_at_18_cells: 140
+  frames:
+    - {"ms":40,"at":{"at":"target","g":"*","fg":"hi"}}
+    - {"ms":50,"at":{"at":"target","pat":"spark","pg":"\\","pfg":"hi","pfrac":0.5}}
+    - {"ms":50,"cells":[[21,0,"·","dim"]]}
+- effect: engine_hit
+  total_ms_at_18_cells: 240
+  frames:
+    - {"ms":60,"foot":{"role":"e","g":"*","fg":"hot"}}
+    - {"ms":60,"foot":{"role":"e","g":"·","fg":"engineOff"}}
+    - {"ms":60,"foot":{"role":"e","g":"@glyph","fg":"engine"}}
+    - {"ms":60,"foot":{"role":"e","g":"@glyph","fg":"engineOff"}}
+- effect: destroy_small
+  total_ms_at_18_cells: 300
+  frames:
+    - {"ms":100,"foot":{"g":"█","fg":"white"}}
+    - {"ms":100,"foot":{"g":"▒","fg":"hot"},"perim":{"part":"all","g":"*","fg":"fire","frac":0.5}}
+    - {"ms":100,"foot":{"g":",","fg":"smoke"},"perim":{"part":"all","g":"·","fg":"smokeDim","frac":0.4}}
+  persist: {"hide":true,"foot":{"g":",","fg":"debris"}}
+- effect: destroy_medium
+  total_ms_at_18_cells: 450
+  frames:
+    - {"ms":90,"foot":{"g":"█","fg":"white"}}
+    - {"ms":90,"foot":{"g":"▓","fg":"fire"},"perim":{"part":"all","g":"*","fg":"hot"}}
+    - {"ms":90,"foot":{"g":"▒","fg":"hot"},"perim":{"part":"all","g":"+","fg":"over","frac":0.6}}
+    - {"ms":90,"foot":{"g":"░","fg":"smoke"},"perim":{"part":"all","g":"·","fg":"smoke","frac":0.4}}
+    - {"ms":90,"hide":true,"foot":{"g":",","fg":"smoke","frac":0.5}}
+  persist: {"hide":true,"foot":[{"g":",","fg":"debris","frac":0.5},{"g":";","fg":"debris","frac":0.2,"seed":4}]}
+- effect: destroy_capital
+  total_ms_at_18_cells: 1000
+  frames:
+    - {"ms":120,"blast":[{"at":[3,1],"phase":1}]}
+    - {"ms":120,"blast":[{"at":[3,1],"phase":2},{"at":[9,3],"phase":1}]}
+    - {"ms":120,"blast":[{"at":[3,1],"phase":3},{"at":[9,3],"phase":2},{"at":[12,2],"phase":1}]}
+    - {"ms":120,"blast":[{"at":[9,3],"phase":3},{"at":[12,2],"phase":2},{"at":[6,2],"phase":1}]}
+    - {"ms":120,"blast":[{"at":[12,2],"phase":3},{"at":[6,2],"phase":2}]}
+    - {"ms":140,"foot":{"g":"█","fg":"white"},"perim":{"part":"all","g":"*","fg":"fire"}}
+    - {"ms":120,"foot":{"g":"▓","fg":"hot"},"perim":{"part":"all","g":"▒","fg":"hot","frac":0.7}}
+    - {"ms":140,"hide":true,"foot":{"g":"░","fg":"smoke","frac":0.6},"perim":{"part":"all","g":"·","fg":"smoke","frac":0.3}}
+  persist: {"hide":true,"foot":[{"g":",","fg":"debris","frac":0.45},{"g":";","fg":"debris","frac":0.2,"seed":4}]}
+- effect: cargo_drop
+  total_ms_at_18_cells: 1000
+  loop: true
+  frames:
+    - {"ms":500,"hide":true,"foot":{"g":",","fg":"debris","frac":0.5},"pods":"cargoPod"}
+    - {"ms":500,"hide":true,"foot":{"g":",","fg":"debris","frac":0.5},"pods":"cargoDim"}
+- effect: reinforcement_arrival
+  total_ms_at_18_cells: 240
+  frames:
+    - {"ms":60,"row":{"y":[1,2],"x0":0,"x1":9,"g":"─","fg":"patrolDim"}}
+    - {"ms":60,"row":{"y":[1,2],"x0":0,"x1":9,"g":"═","fg":"patrolBright"}}
+    - {"ms":60,"row":{"y":[1,2],"x0":0,"x1":5,"g":"─","fg":"patrol"},"ship":{"k":"gunship","x":6,"y":1,"side":"patrol"}}
+    - {"ms":60,"row":{"y":[1,2],"x0":0,"x1":2,"g":"·","fg":"patrolDim"},"ship":{"k":"gunship","x":6,"y":1,"side":"patrol"}}
+  persist: {"ship":{"k":"gunship","x":6,"y":1,"side":"patrol"}}
+- effect: flee
+  total_ms_at_18_cells: 240
+  frames:
+    - {"ms":60,"hide":true,"ship":{"k":"gunship","x":24,"y":1,"side":"pirate","mirror":true},"row":{"y":[1,2],"x0":22,"x1":23,"g":"─","fg":"pirateDeep"}}
+    - {"ms":60,"hide":true,"ship":{"k":"gunship","x":26,"y":1,"side":"pirate","mirror":true},"row":{"y":[1,2],"x0":22,"x1":25,"g":"═","fg":"pirate"}}
+    - {"ms":60,"hide":true,"row":{"y":[1,2],"x0":23,"x1":27,"g":"─","fg":"pirateDeep"}}
+    - {"ms":60,"hide":true,"row":{"y":[1,2],"x0":25,"x1":27,"g":"·","fg":"smokeDim"}}
+- effect: surrender
+  total_ms_at_18_cells: 200
+  frames:
+    - {"ms":100,"foot":{"g":"@glyph","fg":"hi"},"flag":true}
+    - {"ms":100,"state":"surrendered","flag":true}
+  persist: {"state":"surrendered","flag":true}
+- effect: target_and_line_of_fire
+  total_ms_at_18_cells: 0
+  static: true
+  frames:
+    - {"ms":0,"line":{"path":"hit","set":"dot","fg":"frameHi"},"cells":[[12,0,",","debris"],[13,1,":","hot"],[14,1,":","hot"],[22,0,"┌","hi"],[27,0,"┐","hi"],[22,3,"└","hi"],[27,3,"┘","hi"],[17,0,"4","hi"],[18,0,"8","hi"],[19,0,"%","hi"],[20,0,"▼","hot"]]}

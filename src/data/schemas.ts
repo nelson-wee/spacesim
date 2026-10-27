@@ -59,6 +59,92 @@ export const balanceSchema = z.object({
   fuel: z.object({ fuelPerHydrogen: pos }),
   recovery: z.object({ base: nonNeg, perDistance: nonNeg, fullTankShare: prob, fuelShareAfterTow: prob }),
   fleet: z.object({ maxFleetSize: z.number().int().min(1) }),
+  economy: z.object({
+    priceExponent: pos,
+    priceClampMin: pos,
+    priceClampMax: pos,
+    spread: prob,
+    targetDays: pos,
+    inputTargetDays: pos,
+    planetTargetMult: pos,
+    tradeHubTargetDays: pos,
+    minTargetStock: z.record(z.string(), nonNeg),
+    /** A source keeps this share of its target; carriers take only the stock above it. */
+    surplusShareOfTarget: nonNeg,
+    offMapInputShare: prob,
+    offMapBalance: prob,
+    /** Stock above this multiple of target leaves the region (off-map export, DECISIONS.md). */
+    exportStockRatio: pos,
+    exportShare: prob,
+    balanceWindowDays: z.number().int().positive(),
+    balanceStartLow: pos,
+    balanceStartHigh: pos,
+    balanceStopLow: pos,
+    balanceStopHigh: pos,
+    noiseShare: prob,
+    historyDays: z.number().int().positive(),
+    /**
+     * Multiplies all daily amounts: recipe batches, population use, and station use
+     * (applied at data load). Prices and supply/demand ratios do not change.
+     */
+    volumeScale: pos,
+    /** Background carriers (DECISIONS.md, M2: replaces the §9.7 flow formula). */
+    carriers: z.object({
+      maxJumps: z.number().int().min(0),
+      /** Carriers take a route only if (sell - buy - transport cost) / buy is at least this. */
+      minMargin: nonNeg,
+      /** Transport cost in credits per tonne: once per shipment, and for each jump. */
+      costPerTonne: nonNeg,
+      costPerTonneJump: nonNeg,
+      /** Risk and insurance for each jump, as a share of the buy price (far routes need larger gaps). */
+      riskPerJump: nonNeg,
+      /** Share of the open surplus or deficit that carriers move on one day. */
+      dailyShare: prob,
+      /** Tonnes per day that carriers can move through one sector at security level 4. */
+      sectorCapacityTonnes: nonNeg,
+      /** Capacity multiplier: base + perLevel x security level (Lawless 0.2, Secure 1.0). */
+      securityBase: nonNeg,
+      securityPerLevel: nonNeg,
+      /** Days in transit: transitDays + transitDaysPerJump x jumps. */
+      transitDays: z.number().int().min(0),
+      transitDaysPerJump: z.number().int().min(0),
+    }),
+  }),
+  generator: z.object({
+    maxTries: z.number().int().positive(),
+    maxRepairs: z.number().int().min(0),
+    sizePasses: z.number().int().positive(),
+    sizeMin: z.number().int().min(1),
+    sizeMax: z.number().int().min(1),
+    /** Sizes step aims for supply/demand in ratioLow..ratioHigh. */
+    ratioLow: pos,
+    ratioHigh: pos,
+    /** Validation accepts supply/demand in ratioAcceptLow..ratioAcceptHigh. */
+    ratioAcceptLow: pos,
+    ratioAcceptHigh: pos,
+    /**
+     * Run the 200-day economy check (low output, gradient) as a generator rule. Off while the
+     * economy is tuned (owner, DECISIONS.md); then the generator only warms the markets up.
+     */
+    economyCheck: z.boolean(),
+    /** Days of economy run after generation, so the game starts with warm markets. */
+    warmupDays: z.number().int().min(0),
+    minProducersPerType: z.number().int().min(0),
+    averageSize: pos,
+    minFrontierSectors: z.number().int().min(0),
+    blueprintPasses: z.number().int().positive(),
+    validationDays: z.number().int().positive(),
+    lowOutputShare: prob,
+    lowOutputDays: z.number().int().positive(),
+    fill: z.object({
+      minTradeHubs: z.number().int().min(0),
+      militaryOutposts: z.number().int().min(0),
+      pirateHavens: z.number().int().min(0),
+      minShipyards: z.number().int().min(0),
+      habitatWeight: nonNeg,
+      tradeHubWeight: nonNeg,
+    }),
+  }),
   start: z.object({ credits: z.number(), loadoutId: z.string(), shipName: z.string() }),
 });
 
@@ -100,9 +186,13 @@ export const producerTypesSchema = z.object({
   ),
 });
 
+const stationUseSchema = z.array(z.object({ commodity: z.string(), perSizePerDay: nonNeg }));
 export const populationSchema = z.object({
+  /** Multiplies all population use. Tunes demand to the number of bodies (DECISIONS.md). */
+  useScale: pos,
+  stationUse: z.record(z.string(), stationUseSchema),
   use: z.array(
-    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'noAtmosphere', 'core']) }),
+    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'resident', 'noAtmosphere', 'coreResident', 'outsideCore']) }),
   ),
   unitsPerSize: z.object({ terran: nonNeg, ocean: nonNeg, habitat: nonNeg, crew: nonNeg }),
 });
@@ -124,6 +214,8 @@ export const bodyTypesSchema = z.object({
       development: z.array(developmentSchema).min(1),
       minBaselineSecurity: nonNeg.optional(),
       maxBaselineSecurity: nonNeg.optional(),
+      techBonus: z.number().int().min(0).optional(),
+      tradesAll: z.boolean().optional(),
     }),
   ),
   stars: z.array(z.object({ id: z.string(), weight: pos })).min(1),
@@ -258,7 +350,21 @@ export const loadoutsSchema = z.object({
   ),
 });
 
-// Filled in later milestones (M2: services; M5: encounters, templates, battleMaps; M7: events, contracts).
+// A location gets a service if it matches one clause of `where`. All conditions of a clause must match.
+const serviceClauseSchema = z
+  .object({
+    kind: z.enum(['planet', 'station']).optional(),
+    bodyType: z.array(z.string()).optional(),
+    minTech: z.number().int().min(1).max(3).optional(),
+    residentPopulation: z.boolean().optional(),
+    minBaselineSecurity: nonNeg.optional(),
+  })
+  .strict();
+export const servicesSchema = z.object({
+  services: z.array(z.object({ id: z.string(), name: z.string(), where: z.array(serviceClauseSchema).min(1) })),
+});
+
+// Filled in later milestones (M5: encounters, templates, battleMaps; M7: events, contracts).
 export const plannedSchema = z.object({}).strict();
 
 const glyph = z.string().length(1);
@@ -339,4 +445,47 @@ export const artStyleSchema = z.object({
     titlePrefix: z.string(),
   }),
 });
-export const artEffectsSchema = z.object({ source: z.string(), effects: z.object({}).strict() });
+/** data/art/effects.json: generated from data/art/effects.yaml by tools/import-art.ts. M4 plays the frames. */
+export const artEffectsSchema = z.object({
+  source: z.string(),
+  lineSets: z.record(z.string(), z.array(z.string()).length(4)),
+  patterns: z.record(z.string(), z.array(z.array(z.union([z.number(), z.string()])))),
+  travel: z.string(),
+  queue: z.object({
+    staggerMs: nonNeg,
+    staggerMs5Plus: nonNeg,
+    budgetMs: pos,
+    scaleIfOver: z.boolean(),
+    minFrameMs: nonNeg,
+    skipKey: z.string(),
+  }),
+  colors: z.record(z.string(), color),
+  effects: z.record(
+    z.string(),
+    z.object({
+      totalMsAt18Cells: nonNeg,
+      frames: z.array(z.record(z.string(), z.unknown())).min(1),
+      persist: z.record(z.string(), z.unknown()).optional(),
+      loop: z.boolean().optional(),
+      static: z.boolean().optional(),
+    }),
+  ),
+});
+/** data/art/modules.json: Claude Design module icons (mark + 2 glyphs, then size and tier). */
+export const artModulesSchema = z.object({
+  icon: z.object({ width: z.number().int().positive(), height: z.number().int().positive(), layout: z.string(), suffix: z.string() }),
+  states: z.record(z.string(), z.object({ glyph, fg: z.string(), icon_fg: z.string().optional() })),
+  family_colors: z.record(z.string(), color),
+  families: z.record(z.string(), z.object({ mark: glyph, fg: z.string() })),
+  modules: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      short: z.string(),
+      family: z.string(),
+      glyph: z.string(),
+      fg: z.string(),
+      default_size: z.enum(['S', 'M', 'L']),
+    }),
+  ),
+});

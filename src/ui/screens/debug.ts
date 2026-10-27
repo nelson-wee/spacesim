@@ -11,11 +11,14 @@ import { HEIGHT, WIDTH } from '../../render/display';
 import type { App, Screen } from '../app';
 import { DigitInput, type KeyInput } from '../input';
 import { type DamageState, type DrawArtOptions, drawArt } from '../../render/shipArt';
-import { palette } from '../../render/palette';
+import { palette, styleColor, techColor } from '../../render/palette';
+import { displayDay } from '../../core/clock';
+import { midPrice } from '../../econ/prices';
 
-type Mode = 'menu' | 'teleport' | 'skip' | 'art';
+type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices';
 
-const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical'];
+const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
+const MODULE_PAGE = 5;
 /** Ships on each battle art page. */
 const BATTLE_PAGE_SPLIT = 6;
 
@@ -24,6 +27,7 @@ export class DebugScreen implements Screen {
   private mode: Mode = 'menu';
   private input = new DigitInput('', 4);
   private artPage = 0;
+  private pricePage = 0;
 
   constructor(private readonly app: App) {}
 
@@ -50,6 +54,7 @@ export class DebugScreen implements Screen {
         ['5', 'Teleport to a location'],
         ['6', 'Skip N days'],
         ['7', 'Ship art gallery'],
+        ['8', 'Show all prices'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -61,6 +66,11 @@ export class DebugScreen implements Screen {
     if (this.mode === 'art') {
       this.renderArt(t, x + 2, y + 4);
       t.text(x + 2, y + h - 2, `Page ${this.artPage + 1}/${ART_PAGES.length}: ${ART_PAGES[this.artPage]}   Left/Right: page   Esc: back`, ui.highlight);
+      return;
+    }
+    if (this.mode === 'prices') {
+      const pages = this.renderPrices(t, x + 2, y + 4, h - 8);
+      t.text(x + 2, y + h - 2, `Page ${this.pricePage + 1}/${pages}   Left/Right: page   Esc: back`, ui.highlight);
       return;
     }
     if (this.mode === 'teleport') {
@@ -81,6 +91,13 @@ export class DebugScreen implements Screen {
   onKey(k: KeyInput): boolean {
     const game = this.game;
     const player = game.state.player;
+    if (this.mode === 'prices') {
+      const pages = Math.max(1, Math.ceil(game.state.world.locations.length / this.priceRows()));
+      if (k.key === 'ArrowRight') this.pricePage = (this.pricePage + 1) % pages;
+      else if (k.key === 'ArrowLeft') this.pricePage = (this.pricePage + pages - 1) % pages;
+      else if (k.key === 'Escape') this.mode = 'menu';
+      return true;
+    }
     if (this.mode === 'art') {
       if (k.key === 'ArrowRight') this.artPage = (this.artPage + 1) % ART_PAGES.length;
       else if (k.key === 'ArrowLeft') this.artPage = (this.artPage + ART_PAGES.length - 1) % ART_PAGES.length;
@@ -126,6 +143,10 @@ export class DebugScreen implements Screen {
       case '7':
         this.mode = 'art';
         return true;
+      case '8':
+        this.mode = 'prices';
+        this.pricePage = 0;
+        return true;
       case 'F12':
       case '`':
       case '~':
@@ -136,11 +157,58 @@ export class DebugScreen implements Screen {
     }
   }
 
+  /** Location rows on one page of the price table. */
+  private priceRows(): number {
+    return HEIGHT - 6 - 8 - 3;
+  }
+
+  /**
+   * Mid prices of all commodities at all locations (M2-TOOL-08). Colors show
+   * the price against the base price. Returns the number of pages.
+   */
+  private renderPrices(t: Term, x0: number, y0: number, height: number): number {
+    const { data, state } = this.game;
+    const { world } = state;
+    const ui = palette(data).ui;
+    const rows = this.priceRows();
+    const pages = Math.max(1, Math.ceil(world.locations.length / rows));
+    const nameW = 15;
+    const colW = 6;
+    t.text(x0, y0, `Day ${displayDay(state.day)}. Mid price; - = not traded.`, ui.dim);
+    t.text(x0 + 40, y0, 'x0.75 or less', ui.good);
+    t.text(x0 + 55, y0, 'x1.25 or more', ui.warning);
+    t.text(x0 + 70, y0, 'x2 or more', ui.danger);
+    data.commodities.forEach((c, i) => t.text(x0 + nameW + i * colW, y0 + 2, c.name.replace(/ /g, '').slice(0, colW - 1), ui.dim));
+    world.locations.slice(this.pricePage * rows, (this.pricePage + 1) * rows).forEach((loc, r) => {
+      if (r >= height - 3) return;
+      const y = y0 + 3 + r;
+      const dev = world.sectors[loc.sectorId]?.development ?? 'core';
+      t.text(x0, y, `${dev[0]?.toUpperCase()} ${loc.name}`, ui.text, undefined, nameW - 1);
+      data.commodities.forEach((c, i) => {
+        const entry = loc.market[c.id];
+        const cx = x0 + nameW + i * colW;
+        if (!entry) {
+          t.text(cx, y, '    -', ui.dim);
+          return;
+        }
+        const price = midPrice(entry, c.basePrice, data);
+        const factor = price / c.basePrice;
+        const color = factor >= 2 ? ui.danger : factor >= 1.25 ? ui.warning : factor <= 0.75 ? ui.good : ui.text;
+        t.text(cx, y, String(Math.round(price)).padStart(colW - 1), color);
+      });
+    });
+    return pages;
+  }
+
   /** Ship art from data/art/ships.json, for a visual check of the Claude Design import. */
   private renderArt(t: Term, x0: number, y0: number): void {
     const data = this.game.data;
     const ui = palette(data).ui;
     const ships = Object.entries(data.art.ships.ships);
+    if (this.artPage === MODULE_PAGE) {
+      this.renderModuleIcons(t, x0, y0);
+      return;
+    }
     if (this.artPage <= 1) {
       const cols: [string, DrawArtOptions][] = [
         ['player', { side: 'player' }],
@@ -179,6 +247,38 @@ export class DebugScreen implements Screen {
           }),
         );
       }
+    });
+  }
+
+  /**
+   * Module icons from data/art/modules.json: family mark, two glyphs, size,
+   * and tier (M3 uses them in the Outfitter), and the four module states.
+   */
+  private renderModuleIcons(t: Term, x0: number, y0: number): void {
+    const data = this.game.data;
+    const ui = palette(data).ui;
+    const art = data.art.modules;
+    const color = (name: string) => styleColor(data.art.style, name);
+    t.text(x0, y0, 'Icon: mark + glyph(2) + size + tier.  Tier 1/2/3 in tech colors.', ui.dim);
+    art.modules.forEach((m, i) => {
+      const x = x0 + Math.floor(i / 12) * 44;
+      const y = y0 + 2 + (i % 12);
+      const family = art.families[m.family];
+      t.text(x, y, family?.mark ?? ' ', color(family?.fg ?? 'dim'));
+      t.text(x + 1, y, m.glyph, color(m.fg));
+      t.text(x + 3, y, m.default_size, ui.bright);
+      t.text(x + 4, y, String((i % 3) + 1), techColor(data, (i % 3) + 1));
+      t.text(x + 6, y, m.short, ui.text, undefined, 12);
+      t.text(x + 19, y, m.id, ui.dim, undefined, 24);
+    });
+    const sy = y0 + 15;
+    t.text(x0, sy, 'States (Pulse Laser):', ui.dim);
+    const laser = art.modules.find((m) => m.id === 'pulse_laser');
+    Object.entries(art.states).forEach(([name, s], i) => {
+      const x = x0 + i * 20;
+      t.text(x, sy + 1, s.glyph, color(s.fg));
+      if (laser) t.text(x + 2, sy + 1, laser.glyph, color(s.icon_fg ?? laser.fg));
+      t.text(x + 5, sy + 1, name, ui.text);
     });
   }
 

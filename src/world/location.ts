@@ -22,6 +22,7 @@ export function createLocation(spec: NewLocation, data: GameData): Location {
     // Stations and Gas Giants have gravity 0 (Section 8.4).
     gravity: planet ? planet.gravity : 0,
     producer: null,
+    production: null,
     population: 0,
     installedMachinery: 0,
     market: {},
