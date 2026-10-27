@@ -197,10 +197,17 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 | ID | Problem | Proposed default | Milestone |
 |---|---|---|---|
 | Q-31 | **Price clamp.** **Decided (owner):** a soft check; fail only on a systemic problem (more than 50% of market-days). Input targets were tested (`PROGRESS.md`): smaller targets starve producers, so the default stays 10 days. A producer uses its inputs each day, so at day end it keeps about 1 day of input. Its target is 10 days (20 on planets). Then the price is at the 3.0 clamp, also when the producer gets enough input to work. 13 of 20 seeds fail check 2. | Done: `inputTargetDays` exists in `balance.json` (10). | M2 |
-| Q-32 | **Chain shock.** (Carrier model: carriers bring Iron Ore from other sectors within 3 jumps, so the rise is 0%–9%.) Stopping the ore mines of one sector raises Alloys prices next door by 0%–3% (one seed: 17%). The off-map trickle (15% of inputs), other ore sectors, and relay stocks feed the Smelters. The 30% rise does not happen. | Measure at the Smelters that get ore from the stopped sector, not at all locations next door, and stop the ore for 30 days. Or lower `offMapInputShare` to 0.05. | M2 |
-| Q-33 | **Capital test.** On 7 of 20 seeds the extra output lasts 8–40 days, not 60. The control run also installs Machinery when it gets some, so the two runs come together. | Compare with a control run that gets no Machinery for the full test, or change the check to 30 days. | M2 |
+| Q-32 | **Chain shock.** **Decided (owner): report only.** Swings and boom/bust cycles are a feature; a player who makes a shortage (for example by piracy) can use it. (Carrier model: carriers bring Iron Ore from other sectors within 3 jumps, so the rise is 0%–9%.) Stopping the ore mines of one sector raises Alloys prices next door by 0%–3% (one seed: 17%). The off-map trickle (15% of inputs), other ore sectors, and relay stocks feed the Smelters. The 30% rise does not happen. | Measure at the Smelters that get ore from the stopped sector, not at all locations next door, and stop the ore for 30 days. Or lower `offMapInputShare` to 0.05. | M2 |
+| Q-33 | **Capital test.** **Decided (owner): replaced.** New check "capital responds" (K* falls when Machinery is dear; the price recovers), and a report of the player effect. On 7 of 20 seeds the extra output lasts 8–40 days, not 60. The control run also installs Machinery when it gets some, so the two runs come together. | Compare with a control run that gets no Machinery for the full test, or change the check to 30 days. | M2 |
 | Q-34 | **Gradient for advanced goods.** **Decided (owner): proposed default.** Frontier markets trade only Machinery (and Medicine) from the advanced goods, so the Frontier median is the Machinery price. Core consumers of Electronics are often at the clamp (Q-31). 3 of 20 seeds fail. | Compare each advanced commodity separately, only where both Core and Frontier trade it, and use the median of the results. | M2 |
 | Q-35 | **Generator margin.** **Decided (owner): accept, measure again.** With the economy check on hold (owner), the generator passes 98 of 100 on structure rules. 95 of 100 seeds (1–100) pass with 2 tries or fewer, but only 186 of 200 (1–200). Most failures are the gradient rule (Q-34) and "producers in 2 sectors" when no body is free. | Accept the result for M2. After Q-31 and Q-34, measure again. | M2 |
+
+### 8.5 Trade checks (M3 results, 2026-10-27)
+
+| ID | Problem | Proposed default | Milestone |
+|---|---|---|---|
+| Q-36 | **First hull upgrade (M3 exit check 1).** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
+| Q-37 | **Light Freighter slots.** The brief gives internal S3 M2 L0; the build uses S2 M2 L1, so the trader loadout can fit a Cargo Rack L (`DECISIONS.md`, M3). | Keep S2 M2 L1. | M3 |
 
 ## 9. Risks
 
@@ -224,4 +231,16 @@ These items need the repository owner. Claude Code cannot do them.
 3. **Open questions:** read Section 8. Change a proposed default if you do not agree with it. If you do not change a default, the build uses it.
 4. **Visual design:** ship art (`ships.yaml`) and style (`style.json`) are in `data/art/`. Module icons (`modules.json`) and combat effects (`effects.yaml`) are also in `data/art/`. Still to come from Claude Design: map icons and the visual brief (`space-sim-visual-brief.md`, `Ship Art.dc.html`). Answer Q-29 and Q-30 with the designer.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.
-6. **Economy checks (M2):** decide Q-32 (chain shock) and Q-33 (capital test). Decide when to set the off-map input trickle to 0 (it passes the checks at 0). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
+6. **Economy checks (M2):** done (Q-31 to Q-35 decided, 2026-10-27). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
+7. **Trade checks (M3):** decide Q-36 (first hull upgrade check) and Q-37 (Light Freighter slots). M4 starts after the M3 exit checks pass, or after you accept the M3 results.
+
+## 11. After the MVP (owner notes)
+
+These items are not in the MVP. Do not build them before the MVP is done. Keep the code ready for them where it costs little.
+
+| Item | Owner note | Effect on the MVP code |
+|---|---|---|
+| No career limit | Remove the hard career end at day 730 (§16), so that the player can see how their actions change the world over a long time. | M7: keep the day-730 end in one place (one value in `balance.json`), and keep the economy and world stable past day 730 (`sim-economy` can run longer). |
+| Demand for manufactured goods | Station building, station upgrades, and research use manufactured goods. Until then, a small population demand outside the Core stands in for them (DECISIONS.md, 2026-10-27). | None. |
+| Money for producers | A full money economy (producers and populations hold credits) is not needed for the MVP. Producers use local prices as signals (K*, carriers). | None. |
+

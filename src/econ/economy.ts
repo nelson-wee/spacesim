@@ -4,9 +4,12 @@ import type { EconomyState, Location } from '../core/types';
 import type { GameData } from '../data';
 import { securityLevel, securityLevelInfo } from '../world/security';
 import { installAndWear, installWant } from './capital';
-import type { EconContext } from './context';
+import { type EconContext, refreshNeeds } from './context';
 import { runCarriers } from './carriers';
-import { emptyRegionStats, inputTrickle, offMapExport, regionBalance } from './offmap';
+import { emptyRegionStats, inputTrickle, regionBalance } from './offmap';
+import { updateCapacity } from './capacity';
+import { createReplacementPricer } from './costs';
+import { refreshTargets } from './markets';
 import { basePrice, midPrice } from './prices';
 import { produce, recipeOf } from './recipes';
 import type { DayReport } from './report';
@@ -31,7 +34,7 @@ function addTo(map: Map<string, number>, key: string, qty: number): void {
 
 /**
  * Runs one economy day:
- * 1 population use, 2 production, 3 Machinery install and wear,
+ * 1 population use, 2 production, 3 Machinery install and wear, 3b capacity,
  * 4 background carriers, 5 off-map supply and demand, 6 noise,
  * 7 stock = max(stock, 0), 8 events (M7). Then each market keeps its price.
  */
@@ -81,20 +84,25 @@ export function economyDay(
     report?.outputRatio.set(loc.id, result.outputRatio);
   }
 
-  // 3. Machinery install and wear.
+  // 3. Machinery install and wear. Producers value inputs and Machinery at replacement cost.
+  const inputPrice = createReplacementPricer(ctx);
   for (const loc of ctx.producers) {
     const recipe = recipeOf(data, loc.producer as string);
-    addTo(demand, recipe.softInput, installWant(loc, recipe, data));
-    const installed = installAndWear(loc, recipe, data);
+    addTo(demand, recipe.softInput, installWant(loc, recipe, data, inputPrice));
+    const installed = installAndWear(loc, recipe, data, inputPrice);
     report?.add(loc.id, recipe.softInput, 'consumed', installed);
   }
+
+  // 3b. Capacity follows profit (DECISIONS.md, M2); targets and needs follow capacity.
+  updateCapacity(ctx.producers, data, inputPrice);
+  refreshTargets(world, data);
+  refreshNeeds(ctx);
 
   // 4. Background trade: carriers (replaces the Section 9.7 flow; DECISIONS.md).
   runCarriers(ctx, economy, levels, report);
 
   // 5. Off-map supply and demand.
   for (const [c, qty] of inputTrickle(ctx, report)) addTo(supply, c, qty);
-  for (const [c, qty] of offMapExport(ctx, report)) addTo(demand, c, qty);
   regionBalance(ctx, economy, supply, demand, report);
 
   // 6. Noise, and 7. no stock below 0.

@@ -21,7 +21,8 @@ interface Candidate {
   profitPerTonne: number;
   /**
    * Stock at the sink where the route stops paying: there the sell price is
-   * buy x (1 + minMargin) + transport cost. At most exportStockRatio x target.
+   * buy x (1 + minMargin) + transport cost. The minimum margin keeps this price
+   * above the low clamp, so the stock is finite.
    */
   fillTo: number;
 }
@@ -34,12 +35,14 @@ export function capacityFactor(level: number, ctx: EconContext): number {
 
 /**
  * Transport cost of one unit: mass x (costPerTonne + costPerTonneJump x jumps),
- * plus risk: buy price x riskPerJump x jumps. Mass cost makes raw goods dearer
- * far from their mines; risk makes all goods dearer far from their makers.
+ * plus risk: buy price x riskPerJump x jumps, plus the cost of the capital in
+ * transit: buy price x capitalCostPerDay x transit days. Mass cost makes raw
+ * goods dearer far from their mines; risk and capital cost make all goods
+ * dearer far from their makers.
  */
 export function transportCost(mass: number, jumps: number, buy: number, ctx: EconContext): number {
   const c = ctx.data.balance.economy.carriers;
-  return mass * (c.costPerTonne + c.costPerTonneJump * jumps) + buy * c.riskPerJump * jumps;
+  return mass * (c.costPerTonne + c.costPerTonneJump * jumps) + buy * (c.riskPerJump * jumps + c.capitalCostPerDay * transitDays(jumps, ctx));
 }
 
 /** Days in transit for a route of `jumps` jumps. */
@@ -124,7 +127,7 @@ export function runCarriers(ctx: EconContext, economy: EconomyState, sectorLevel
           jumps,
           mass: commodity.massPerUnit,
           profitPerTonne: gain / commodity.massPerUnit,
-          fillTo: Math.min(stockAtPriceFactor(dstEntry.target, breakEven, data), e.exportStockRatio * dstEntry.target),
+          fillTo: stockAtPriceFactor(dstEntry.target, breakEven, data),
         });
       }
     }

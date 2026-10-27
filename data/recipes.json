@@ -1,5 +1,5 @@
 {
-  "capital": { "machineryWear": 0.004, "installRatePerDay": 0.1, "maxInstallRatio": 1.5 },
+  "capital": { "machineryWear": 0.004, "installRatePerDay": 0.1, "requiredReturn": 0.0088 },
   "recipes": [
     { "producer": "ice_mine", "name": "Ice Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "water", "qty": 4 }], "softInput": "machinery", "batchesPerSize": 5, "machineryPerBatch": 0.6 },
     { "producer": "ore_mine", "name": "Ore Mine", "class": "extractor", "inputs": [], "outputs": [{ "commodity": "iron_ore", "qty": 4 }], "softInput": "machinery", "batchesPerSize": 3, "machineryPerBatch": 0.6 },

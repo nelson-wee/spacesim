@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import type { Location, MarketEntry } from '../src/core/types';
 import { gameData } from '../src/data';
-import { capitalFactor, installAndWear, kRef, nominalBatches } from '../src/econ/capital';
+import { capitalFactor, capitalTarget, installAndWear, installWant, kRef, nominalBatches } from '../src/econ/capital';
 import { createEconContext } from '../src/econ/context';
 import { economyDay } from '../src/econ/economy';
 import { capacityFactor, runCarriers, transitDays, transportCost } from '../src/econ/carriers';
 import { priceGradient } from '../src/econ/gradient';
-import { inputTrickle, offMapExport, regionBalance } from '../src/econ/offmap';
+import { inputTrickle, regionBalance } from '../src/econ/offmap';
+import { capacitySignal, profitMargin, updateCapacity } from '../src/econ/capacity';
 import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice, stockAtPriceFactor } from '../src/econ/prices';
 import { produce, recipeOf } from '../src/econ/recipes';
 import { generateWorld } from '../src/world/generator';
@@ -34,6 +35,7 @@ function producer(id: string, size = 2): Location {
     production: null,
     population: 0,
     installedMachinery: 0,
+    capacity: 1,
     market: {},
     services: [],
   };
@@ -106,17 +108,77 @@ describe('installed machinery (Section 9.5)', () => {
     },
   );
 
-  it('installs up to 10% of K_ref a day, until K = 1.5 K_ref, then wears', () => {
+  it('installs up to 10% of K_ref a day, until K = K*, then wears', () => {
     const loc = producer('ore_mine');
     const r = recipeOf(data, 'ore_mine');
     const ref = kRef(loc, r);
-    loc.market.machinery!.stock = 100;
+    loc.market.machinery!.stock = 1e6;
+    loc.market.machinery!.target = 1e6;
     const installed = installAndWear(loc, r, data);
     expect(installed).toBeCloseTo(0.1 * ref);
     expect(loc.installedMachinery).toBeCloseTo(1.1 * ref * (1 - data.recipes.capital.machineryWear));
-    for (let i = 0; i < 50; i++) installAndWear(loc, r, data);
-    expect(loc.installedMachinery).toBeLessThanOrEqual(1.5 * ref);
-    expect(loc.installedMachinery).toBeGreaterThan(1.45 * ref);
+    const target = capitalTarget(loc, r, data);
+    for (let i = 0; i < 200; i++) installAndWear(loc, r, data);
+    expect(loc.installedMachinery).toBeLessThanOrEqual(target);
+    expect(loc.installedMachinery).toBeGreaterThan(0.98 * target);
+  });
+});
+
+describe('capital target K* (DECISIONS.md, M2: marginal gain = cost of capital)', () => {
+  /** An Ore Mine with all markets at their targets (prices at base). */
+  const atBase = () => {
+    const loc = producer('ore_mine');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    return { loc, r: recipeOf(data, 'ore_mine') };
+  };
+
+  it('an Ore Mine at base prices targets 1.5 x K_ref (the value of brief Section 9.5)', () => {
+    const { loc, r } = atBase();
+    expect(capitalTarget(loc, r, data) / kRef(loc, r)).toBeCloseTo(1.5, 1);
+  });
+
+  it('at K*, the gain of one more unit of K equals its daily cost', () => {
+    const { loc, r } = atBase();
+    const ref = kRef(loc, r);
+    const k = capitalTarget(loc, r, data);
+    const value = 4 * 15; // 4 Iron Ore at base price, no hard inputs
+    const gain = nominalBatches(loc, r) * value * (0.6 * ref) / (k + ref) ** 2;
+    const cost = 750 * (data.recipes.capital.machineryWear + data.recipes.capital.requiredReturn);
+    expect(gain).toBeCloseTo(cost);
+  });
+
+  it('K* rises when the output is dearer, and falls when Machinery is dearer', () => {
+    const { loc, r } = atBase();
+    const k0 = capitalTarget(loc, r, data);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target / 2; // ore dearer
+    const kOre = capitalTarget(loc, r, data);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target;
+    loc.market.machinery!.stock = loc.market.machinery!.target / 2; // Machinery dearer
+    const kMach = capitalTarget(loc, r, data);
+    expect(kOre).toBeGreaterThan(k0);
+    expect(kMach).toBeLessThan(k0);
+  });
+
+  it('no limit at 1.5 x K_ref: very dear output and cheap Machinery give a larger K*', () => {
+    const { loc, r } = atBase();
+    loc.market.iron_ore!.stock = 1; // price at the high clamp
+    loc.market.machinery!.stock = loc.market.machinery!.target * 10; // cheap Machinery
+    expect(capitalTarget(loc, r, data)).toBeGreaterThan(1.5 * kRef(loc, r));
+  });
+
+  it('a producer above K* installs nothing; K wears down toward K*', () => {
+    const { loc, r } = atBase();
+    loc.installedMachinery = 3 * capitalTarget(loc, r, data);
+    expect(installWant(loc, r, data)).toBe(0);
+  });
+
+  it('no value added (inputs dearer than outputs) gives K* = 0', () => {
+    const loc = producer('smelter');
+    const r = recipeOf(data, 'smelter');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    loc.market.iron_ore!.stock = 1; // ore at the high clamp
+    loc.market.alloys!.stock = loc.market.alloys!.target * 100; // alloys at the low clamp
+    expect(capitalTarget(loc, r, data)).toBe(0);
   });
 });
 
@@ -188,8 +250,10 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
   it('transport cost and transit days grow with jumps', () => {
     const ctx = createEconContext(generateWorld(3, data), data);
     expect(transportCost(1, 2, 0, ctx)).toBeCloseTo(c.costPerTonne + 2 * c.costPerTonneJump);
-    expect(transportCost(0.2, 0, 400, ctx)).toBeCloseTo(0.2 * c.costPerTonne);
-    expect(transportCost(0.2, 2, 400, ctx)).toBeCloseTo(0.2 * (c.costPerTonne + 2 * c.costPerTonneJump) + 400 * 2 * c.riskPerJump);
+    expect(transportCost(0.2, 0, 400, ctx)).toBeCloseTo(0.2 * c.costPerTonne + 400 * c.capitalCostPerDay * transitDays(0, ctx));
+    expect(transportCost(0.2, 2, 400, ctx)).toBeCloseTo(
+      0.2 * (c.costPerTonne + 2 * c.costPerTonneJump) + 400 * (2 * c.riskPerJump + c.capitalCostPerDay * transitDays(2, ctx)),
+    );
     expect(transitDays(3, ctx)).toBe(c.transitDays + 3 * c.transitDaysPerJump);
   });
 
@@ -216,8 +280,8 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
     const { w, ctx, src } = twoMarkets(3, 1);
     for (let i = 0; i < 5; i++) runCarriers(ctx, w.economy, levels(w));
     const sent = 2000 - src.market.water!.stock;
-    // Never more than the export limit of the sink (exportStockRatio x target).
-    expect(sent).toBeLessThanOrEqual(e.exportStockRatio * 1000 + 1e-6);
+    // Never more than the source's surplus above half target.
+    expect(sent).toBeLessThanOrEqual(2000 - e.surplusShareOfTarget * 1000 + 1e-6);
     expect(sent).toBeLessThan(1000);
   });
 
@@ -231,7 +295,7 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
     expect(src.market.water!.stock).toBe(2000);
   });
 
-  it('no route if the margin after transport cost is below minMargin', () => {
+  it('no route if the gap does not pay the transport cost and minMargin', () => {
     const { w, ctx, src, dst } = twoMarkets(3, 1);
     // Both near target: almost no price gap.
     src.market.water!.stock = 1100;
@@ -272,14 +336,75 @@ describe('off-map rules (Section 9.8)', () => {
     expect(econ.region.water.balancing).toBeNull();
   });
 
-  it('off-map export removes a share of stock above the export limit (DECISIONS.md)', () => {
-    const w = generateWorld(5, data);
-    const ctx = createEconContext(w, data);
-    const loc = w.locations.find((l) => l.market.water)!;
-    const m = loc.market.water!;
-    m.stock = m.target * (e.exportStockRatio + 1);
-    offMapExport(ctx);
-    expect(m.stock).toBeCloseTo(m.target * (e.exportStockRatio + 1 - e.exportShare));
+});
+
+describe('production capacity (DECISIONS.md, M2)', () => {
+  const cap = e.capacity;
+  /** An Ore Mine with all markets at their targets (prices at base). */
+  const atBase = () => {
+    const loc = producer('ore_mine');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    return loc;
+  };
+
+  it('no change at base prices (the economy was sized at base prices)', () => {
+    const loc = atBase();
+    expect(capacitySignal(loc, data)).toBeCloseTo(0);
+    updateCapacity([loc], data);
+    expect(loc.capacity).toBeCloseTo(1);
+  });
+
+  it('grows when the output is dear, shrinks when it is cheap', () => {
+    const dear = atBase();
+    dear.market.iron_ore!.stock = dear.market.iron_ore!.target / 3;
+    updateCapacity([dear], data);
+    expect(dear.capacity).toBeGreaterThan(1);
+    const cheap = atBase();
+    cheap.market.iron_ore!.stock = cheap.market.iron_ore!.target * 5;
+    updateCapacity([cheap], data);
+    expect(cheap.capacity).toBeLessThan(1);
+  });
+
+  it('no upper limit, and nothing below 0; a closed producer can grow again', () => {
+    const loc = atBase();
+    loc.market.iron_ore!.stock = 1; // output at the high clamp
+    for (let i = 0; i < 2000; i++) updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThan(3);
+    loc.market.iron_ore!.stock = 1e9; // output at the low clamp
+    for (let i = 0; i < 20000; i++) updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThanOrEqual(0);
+    expect(loc.capacity).toBeLessThan(0.01);
+    loc.market.iron_ore!.stock = 1;
+    updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThanOrEqual(cap.changeRate * cap.restartCapacity * 0.99);
+  });
+
+  it('input prices count: a Smelter shrinks when its inputs cost more than its output earns', () => {
+    const loc = producer('smelter');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    expect(capacitySignal(loc, data)).toBeCloseTo(0); // output at base: no demand signal
+    expect(profitMargin(loc, data)).toBeGreaterThan(0); // and it covers its costs at base
+    loc.market.alloys!.stock = loc.market.alloys!.target / 2; // Alloys dear: grow
+    expect(capacitySignal(loc, data)).toBeGreaterThan(0);
+    loc.market.iron_ore!.stock = 1; // ore at the high clamp: inputs cost more than Alloys earn
+    expect(profitMargin(loc, data)).toBeLessThan(0);
+    expect(capacitySignal(loc, data)).toBeLessThan(0);
+  });
+
+  it('a mine has no inputs: its output price rules', () => {
+    const loc = atBase();
+    expect(profitMargin(loc, data)).toBeGreaterThan(1);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target / 2;
+    expect(capacitySignal(loc, data)).toBeCloseTo(2 ** e.priceExponent - 1);
+  });
+
+  it('batches and K_ref follow capacity', () => {
+    const loc = atBase();
+    const r = recipeOf(data, 'ore_mine');
+    const b = nominalBatches(loc, r);
+    loc.capacity = 2;
+    expect(nominalBatches(loc, r)).toBeCloseTo(2 * b);
+    expect(kRef(loc, r)).toBeCloseTo(2 * b * r.machineryPerBatch);
   });
 });
 

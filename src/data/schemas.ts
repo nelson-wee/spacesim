@@ -54,6 +54,8 @@ export const balanceSchema = z.object({
     kJump: nonNeg,
     kDock: nonNeg,
     fuelMassExponent: pos,
+    /** Lane length for "fuel per jump" in ship stats and reports (M1 world report: mean lane 18.7). */
+    referenceLaneLength: pos,
   }),
   ship: z.object({ mRef: pos, engineStackFalloff: z.number().min(0).max(1), engineValueShare: prob }),
   fuel: z.object({ fuelPerHydrogen: pos }),
@@ -73,9 +75,13 @@ export const balanceSchema = z.object({
     surplusShareOfTarget: nonNeg,
     offMapInputShare: prob,
     offMapBalance: prob,
-    /** Stock above this multiple of target leaves the region (off-map export, DECISIONS.md). */
-    exportStockRatio: pos,
-    exportShare: prob,
+    /**
+     * Production capacity (DECISIONS.md, M2): each day a producer's capacity changes by
+     * changeRate x clamp(min(output price / (growthPriceFactor x base) - 1, output value /
+     * unit cost - 1), -1, 1). Growth uses at least restartCapacity, so a closed producer
+     * can start again. A lower growthPriceFactor gives a lower general price level.
+     */
+    capacity: z.object({ changeRate: prob, restartCapacity: nonNeg, growthPriceFactor: pos }),
     balanceWindowDays: z.number().int().positive(),
     balanceStartLow: pos,
     balanceStartHigh: pos,
@@ -98,6 +104,8 @@ export const balanceSchema = z.object({
       costPerTonneJump: nonNeg,
       /** Risk and insurance for each jump, as a share of the buy price (far routes need larger gaps). */
       riskPerJump: nonNeg,
+      /** Cost of the capital in transit, as a share of the buy price per transit day. */
+      capitalCostPerDay: nonNeg,
       /** Share of the open surplus or deficit that carriers move on one day. */
       dailyShare: prob,
       /** Tonnes per day that carriers can move through one sector at security level 4. */
@@ -165,7 +173,12 @@ export const commoditiesSchema = z.object({
 
 const qtySchema = z.object({ commodity: z.string(), qty: pos });
 export const recipesSchema = z.object({
-  capital: z.object({ machineryWear: prob, installRatePerDay: prob, maxInstallRatio: pos }),
+  capital: z.object({
+    machineryWear: prob,
+    installRatePerDay: prob,
+    /** Daily return that installed Machinery must earn, above its wear (sets K*, DECISIONS.md). */
+    requiredReturn: nonNeg,
+  }),
   recipes: z.array(
     z.object({
       producer: z.string(),
@@ -269,6 +282,8 @@ export const hullsSchema = z.object({
       tech: z.number().int().min(1).max(3).nullable(),
       price: pos.nullable(),
       enemyOnly: z.boolean(),
+      /** Loadout id for NPC ships of this hull and for reports. A bought hull is empty (Q-14). */
+      defaultLoadout: z.string(),
     }),
   ),
 });
@@ -299,6 +314,18 @@ export const moduleValuesSchema = z
     vsHull: nonNeg.optional(),
     armorPierce: nonNeg.optional(),
     heatPerShot: nonNeg.optional(),
+    // Flak (Section 12.2): area side in cells and flat hit chance.
+    area: z.number().int().positive().optional(),
+    flatHitChance: prob.optional(),
+    // Guided weapons (Section 12.4): ammunition and munition values.
+    ammo: z.number().int().positive().optional(),
+    munitionSpeed: pos.optional(),
+    munitionAgility: pos.optional(),
+    munitionLife: z.number().int().positive().optional(),
+    munitionHp: pos.optional(),
+    // Point defense: shots per turn and hit chance of each shot.
+    shotsPerTurn: z.number().int().positive().optional(),
+    hitChance: prob.optional(),
   })
   .strict();
 
@@ -361,6 +388,24 @@ const serviceClauseSchema = z
   })
   .strict();
 export const servicesSchema = z.object({
+  rules: z.object({
+    /** Mechanic price per repaired point (Section 7.4). */
+    mechanic: z.object({ hullPerPoint: nonNeg, armorPerPoint: nonNeg, enginePerPoint: nonNeg }),
+    /** Outfitter sell price as a share of the module price (Q-13). */
+    moduleSellShare: prob,
+    /** Shipyard trade-in share of hull and module prices (Section 11.1). */
+    tradeInShare: prob,
+    /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3). */
+    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos }),
+    /** Merchants' Guild live-price range (Section 9.12). */
+    guildRangeJumps: z.number().int().nonnegative(),
+    /** Days for the trend arrow (Section 9.12). */
+    trendDays: z.number().int().positive(),
+    /** Chain alerts (Sections 9.4, 14.4): producer output below lowOutputRatio; population stock below deficitDays of use. */
+    alerts: z.object({ lowOutputRatio: prob, deficitDays: nonNeg }),
+    /** Most days of one Wait (Section 8.8). */
+    waitMaxDays: z.number().int().positive(),
+  }),
   services: z.array(z.object({ id: z.string(), name: z.string(), where: z.array(serviceClauseSchema).min(1) })),
 });
 

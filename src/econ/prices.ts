@@ -53,19 +53,23 @@ export interface Quote {
 
 /**
  * Cost of buying `units` units, unit by unit. Each unit bought removes 1 from
- * stock, so large trades get worse prices. Does not change the entry.
+ * stock, so large trades get worse prices. A part unit pays its share of the
+ * next unit price (fuel and Food lots can be part units). Does not change the entry.
  */
 export function quoteBuy(entry: MarketEntry, base: number, units: number, data: GameData): Quote {
-  const mult = 1 + data.balance.economy.spread / 2;
-  let total = 0;
-  for (let i = 0; i < units; i++) total += priceAt(base, entry.target, entry.stock - i, data) * mult;
-  return { units, total, average: units > 0 ? total / units : 0 };
+  return quote(entry, base, units, data, -1, 1 + data.balance.economy.spread / 2);
 }
 
 /** Value of selling `units` units, unit by unit. Each unit sold adds 1 to stock. */
 export function quoteSell(entry: MarketEntry, base: number, units: number, data: GameData): Quote {
-  const mult = 1 - data.balance.economy.spread / 2;
+  return quote(entry, base, units, data, 1, 1 - data.balance.economy.spread / 2);
+}
+
+function quote(entry: MarketEntry, base: number, units: number, data: GameData, step: number, mult: number): Quote {
+  const whole = Math.floor(units + 1e-9);
   let total = 0;
-  for (let i = 0; i < units; i++) total += priceAt(base, entry.target, entry.stock + i, data) * mult;
+  for (let i = 0; i < whole; i++) total += priceAt(base, entry.target, entry.stock + step * i, data) * mult;
+  const part = units - whole;
+  if (part > 1e-9) total += part * priceAt(base, entry.target, entry.stock + step * whole, data) * mult;
   return { units, total, average: units > 0 ? total / units : 0 };
 }

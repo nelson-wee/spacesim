@@ -27,7 +27,10 @@ export function nominalFlowParts(loc: Location, world: World, data: GameData): {
     const r = recipeOf(data, loc.producer);
     const batches = nominalBatches(loc, r);
     for (const i of r.inputs) add(inputs, i.commodity, i.qty * batches);
-    for (const o of r.outputs) add(other, o.commodity, o.qty * batches);
+    // Output targets keep the size at generation (capacity 1): a producer's own
+    // capacity must not move the price of its own output (DECISIONS.md, M2).
+    const startBatches = r.batchesPerSize * loc.size;
+    for (const o of r.outputs) add(other, o.commodity, o.qty * startBatches);
     add(inputs, r.softInput, data.recipes.capital.machineryWear * kRef(loc, r));
   }
   return { inputs, other };
@@ -61,20 +64,37 @@ export function regionDailyUse(world: World, data: GameData): Map<string, number
   return total;
 }
 
+/** Target stock of each commodity that a location trades (Section 9.2; DECISIONS.md, M2). */
+function marketTargets(loc: Location, world: World, data: GameData, region: Map<string, number>): Map<string, number> {
+  const e = data.balance.economy;
+  const { inputs, other } = nominalFlowParts(loc, world, data);
+  const hub = tradesAll(loc, data);
+  const mult = loc.kind === 'planet' ? e.planetTargetMult : 1;
+  const targets = new Map<string, number>();
+  for (const c of tradedCommodities(loc, world, data)) {
+    const own = ((inputs.get(c) ?? 0) * e.inputTargetDays + (other.get(c) ?? 0) * e.targetDays) * mult;
+    const hubTarget = hub ? (region.get(c) ?? 0) * e.tradeHubTargetDays : 0;
+    targets.set(c, Math.max(e.minTargetStock[c] ?? 1, own, hubTarget));
+  }
+  return targets;
+}
+
 /** Sets the market of each location: traded commodities, targets, and stock = target (Section 9.5). */
 export function initMarkets(world: World, data: GameData): void {
-  const e = data.balance.economy;
   const region = regionDailyUse(world, data);
   for (const loc of world.locations) {
-    const { inputs, other } = nominalFlowParts(loc, world, data);
-    const hub = tradesAll(loc, data);
-    const mult = loc.kind === 'planet' ? e.planetTargetMult : 1;
     loc.market = {};
-    for (const c of tradedCommodities(loc, world, data)) {
-      const own = ((inputs.get(c) ?? 0) * e.inputTargetDays + (other.get(c) ?? 0) * e.targetDays) * mult;
-      const hubTarget = hub ? (region.get(c) ?? 0) * e.tradeHubTargetDays : 0;
-      const target = Math.max(e.minTargetStock[c] ?? 1, own, hubTarget);
-      loc.market[c] = { stock: target, target, history: [] };
+    for (const [c, target] of marketTargets(loc, world, data, region)) loc.market[c] = { stock: target, target, history: [] };
+  }
+}
+
+/** Updates the targets after capacity changes (stocks and price history stay). */
+export function refreshTargets(world: World, data: GameData): void {
+  const region = regionDailyUse(world, data);
+  for (const loc of world.locations) {
+    for (const [c, target] of marketTargets(loc, world, data, region)) {
+      const entry = loc.market[c];
+      if (entry) entry.target = target;
     }
   }
 }

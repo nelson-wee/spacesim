@@ -116,7 +116,7 @@
 
 ## 8. Open questions for this milestone
 
-Q-01 (fuel ratio, decided), Q-02 (fuel per Hydrogen), Q-09 (weapon data), Q-13 (Outfitter sell price), Q-14 (trade-in with cargo). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
+Q-01 (fuel ratio, decided), Q-02 (fuel per Hydrogen), Q-09 (weapon data), Q-13 (Outfitter sell price), Q-14 (trade-in with cargo). From the M3 results: Q-36 (first hull upgrade check) and Q-37 (Light Freighter slots). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
 
 ## 9. Not in this milestone
 

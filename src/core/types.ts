@@ -1,9 +1,10 @@
 // The game state. It is one plain object that JSON can save and load (G-10).
 // Derived ship stats are not stored here (G-12).
 import type { Development, SlotSize, Tier } from '../data';
+import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface Vec {
   x: number;
@@ -100,6 +101,8 @@ export interface Location {
   production: ProductionState | null;
   population: number;
   installedMachinery: number;
+  /** Production capacity: multiplies the batches; grows and shrinks with profit (DECISIONS.md, M2). Starts at 1. */
+  capacity: number;
   market: Record<string, MarketEntry>;
   services: string[];
 }
@@ -165,6 +168,8 @@ export interface Actor {
   credits: number;
   notoriety: number;
   position: Position;
+  /** Known prices and map knowledge (Section 9.12). */
+  knowledge: Knowledge;
 }
 
 export type LogKind = 'info' | 'good' | 'warning' | 'danger';

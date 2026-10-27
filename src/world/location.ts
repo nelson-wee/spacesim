@@ -25,6 +25,7 @@ export function createLocation(spec: NewLocation, data: GameData): Location {
     production: null,
     population: 0,
     installedMachinery: 0,
+    capacity: 1,
     market: {},
     services: [],
   };

@@ -14,7 +14,9 @@
     "world-report": "tsx tools/world-report.ts",
     "import-art": "tsx tools/import-art.ts",
     "gen-report": "tsx tools/gen-report.ts",
-    "sim-economy": "tsx tools/sim-economy.ts"
+    "sim-economy": "tsx tools/sim-economy.ts",
+    "ship-report": "tsx tools/ship-report.ts",
+    "sim-trader": "tsx tools/sim-trader.ts"
   },
   "dependencies": {
     "jetbrains-mono": "1.0.6",

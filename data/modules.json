@@ -1,21 +1,29 @@
 {
   "tiers": {
-    "1": { "main": 1.0, "power": 1.0, "heat": 1.0, "mass": 1.0, "price": 1 },
-    "2": { "main": 1.25, "power": 1.0, "heat": 0.9, "mass": 0.95, "price": 2.5 },
-    "3": { "main": 1.5, "power": 1.0, "heat": 0.8, "mass": 0.9, "price": 6 }
+    "1": { "main": 1, "power": 1, "heat": 1, "mass": 1, "price": 1 },
+    "2": { "main": 1.25, "power": 1, "heat": 0.9, "mass": 0.95, "price": 2.5 },
+    "3": { "main": 1.5, "power": 1, "heat": 0.8, "mass": 0.9, "price": 6 }
   },
-  "engineFuelRateByTier": { "1": 1.0, "2": 0.9, "3": 0.8 },
+  "engineFuelRateByTier": { "1": 1, "2": 0.9, "3": 0.8 },
   "modules": [
     {
-      "id": "engine", "name": "Engine", "slot": "internal", "category": "engine", "mainStats": ["thrust"],
+      "id": "engine",
+      "name": "Engine",
+      "slot": "internal",
+      "category": "engine",
+      "mainStats": ["thrust"],
       "sizes": {
-        "S": { "thrust": 30, "fuelRate": 1.0, "power": 2, "heatPerTurn": 2, "mass": 2, "price": 1500 },
-        "M": { "thrust": 80, "fuelRate": 1.0, "power": 4, "heatPerTurn": 3, "mass": 6, "price": 5000 },
-        "L": { "thrust": 200, "fuelRate": 1.0, "power": 7, "heatPerTurn": 5, "mass": 16, "price": 16000 }
+        "S": { "thrust": 30, "fuelRate": 1, "power": 2, "heatPerTurn": 2, "mass": 2, "price": 1500 },
+        "M": { "thrust": 80, "fuelRate": 1, "power": 4, "heatPerTurn": 3, "mass": 6, "price": 5000 },
+        "L": { "thrust": 200, "fuelRate": 1, "power": 7, "heatPerTurn": 5, "mass": 16, "price": 16000 }
       }
     },
     {
-      "id": "reactor", "name": "Reactor", "slot": "internal", "category": "reactor", "mainStats": ["powerOutput"],
+      "id": "reactor",
+      "name": "Reactor",
+      "slot": "internal",
+      "category": "reactor",
+      "mainStats": ["powerOutput"],
       "sizes": {
         "S": { "powerOutput": 8, "power": 0, "heatPerTurn": 1, "mass": 3, "price": 1200 },
         "M": { "powerOutput": 18, "power": 0, "heatPerTurn": 2, "mass": 8, "price": 4500 },
@@ -23,7 +31,11 @@
       }
     },
     {
-      "id": "shield_generator", "name": "Shield Generator", "slot": "internal", "category": "shield", "mainStats": ["shieldCapacity", "shieldRegen"],
+      "id": "shield_generator",
+      "name": "Shield Generator",
+      "slot": "internal",
+      "category": "shield",
+      "mainStats": ["shieldCapacity", "shieldRegen"],
       "sizes": {
         "S": { "shieldCapacity": 20, "shieldRegen": 4, "power": 2, "heatPerTurn": 2, "mass": 2, "price": 2000 },
         "M": { "shieldCapacity": 50, "shieldRegen": 8, "power": 4, "heatPerTurn": 3, "mass": 5, "price": 7000 },
@@ -31,55 +43,158 @@
       }
     },
     {
-      "id": "cargo_rack", "name": "Cargo Rack", "slot": "internal", "category": "cargo", "mainStats": ["cargoCapacity"],
+      "id": "cargo_rack",
+      "name": "Cargo Rack",
+      "slot": "internal",
+      "category": "cargo",
+      "mainStats": ["cargoCapacity"],
+      "sizes": { "S": { "cargoCapacity": 10, "mass": 1, "price": 500 }, "M": { "cargoCapacity": 30, "mass": 3, "price": 1800 }, "L": { "cargoCapacity": 80, "mass": 8, "price": 6000 } }
+    },
+    {
+      "id": "fuel_tank",
+      "name": "Fuel Tank",
+      "slot": "internal",
+      "category": "fuel",
+      "mainStats": ["fuelCapacity"],
+      "sizes": { "S": { "fuelCapacity": 10, "mass": 1, "price": 400 }, "M": { "fuelCapacity": 30, "mass": 3, "price": 1400 }, "L": { "fuelCapacity": 80, "mass": 8, "price": 4500 } }
+    },
+    {
+      "id": "armor_plating",
+      "name": "Armor Plating",
+      "slot": "internal",
+      "category": "armor",
+      "mainStats": ["armor", "armorHp"],
+      "sizes": { "S": { "armor": 1, "armorHp": 15, "mass": 4, "price": 1000 }, "M": { "armor": 2, "armorHp": 40, "mass": 10, "price": 4000 }, "L": { "armor": 3, "armorHp": 100, "mass": 25, "price": 12000 } }
+    },
+    {
+      "id": "heat_sink",
+      "name": "Heat Sink",
+      "slot": "internal",
+      "category": "heatSink",
+      "mainStats": ["heatCapacity"],
+      "sizes": { "S": { "heatCapacity": 20, "mass": 2, "price": 800 }, "M": { "heatCapacity": 50, "mass": 5, "price": 2800 } }
+    },
+    {
+      "id": "radiator",
+      "name": "Radiator",
+      "slot": "internal",
+      "category": "radiator",
+      "mainStats": ["cooling"],
+      "sizes": { "S": { "cooling": 2, "mass": 2, "price": 900 }, "M": { "cooling": 5, "mass": 5, "price": 3000 } }
+    },
+    {
+      "id": "maneuvering_thrusters",
+      "name": "Maneuvering Thrusters",
+      "slot": "internal",
+      "category": "thrusters",
+      "mainStats": ["agilityBonus"],
+      "sizes": { "S": { "agilityBonus": 0.15, "power": 1, "heatPerTurn": 1, "mass": 1, "price": 1500 }, "M": { "agilityBonus": 0.25, "power": 2, "heatPerTurn": 2, "mass": 3, "price": 5000 } }
+    },
+    {
+      "id": "pulse_laser",
+      "name": "Pulse Laser",
+      "slot": "hardpoint",
+      "category": "laser",
+      "mainStats": ["damage"],
+      "sizes": { "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 2, "heatPerShot": 4, "mass": 1, "price": 2000 } }
+    },
+    {
+      "id": "beam_laser",
+      "name": "Beam Laser",
+      "slot": "hardpoint",
+      "category": "laser",
+      "mainStats": ["damage"],
+      "sizes": { "M": { "damage": 12, "range": 10, "tracking": 130, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 4, "heatPerShot": 6, "mass": 4, "price": 6000 } }
+    },
+    {
+      "id": "autocannon",
+      "name": "Autocannon",
+      "slot": "hardpoint",
+      "category": "ballistic",
+      "mainStats": ["damage"],
+      "sizes": { "S": { "damage": 6, "range": 7, "tracking": 40, "vsShield": 0.6, "vsHull": 1.3, "armorPierce": 1, "power": 1, "heatPerShot": 2, "mass": 1, "price": 2000 } }
+    },
+    {
+      "id": "mass_driver",
+      "name": "Mass Driver",
+      "slot": "hardpoint",
+      "category": "ballistic",
+      "mainStats": ["damage"],
+      "sizes": { "M": { "damage": 20, "range": 12, "tracking": 25, "vsShield": 0.5, "vsHull": 1.6, "armorPierce": 2, "power": 2, "heatPerShot": 4, "mass": 4, "price": 6000 } }
+    },
+    {
+      "id": "heavy_cannon",
+      "name": "Heavy Cannon",
+      "slot": "hardpoint",
+      "category": "ballistic",
+      "mainStats": ["damage"],
+      "sizes": { "L": { "damage": 45, "range": 14, "tracking": 12, "vsShield": 0.5, "vsHull": 1.8, "armorPierce": 4, "power": 4, "heatPerShot": 8, "mass": 10, "price": 18000 } }
+    },
+    {
+      "id": "flak_cannon",
+      "name": "Flak Cannon",
+      "slot": "hardpoint",
+      "category": "ballistic",
+      "mainStats": ["damage"],
+      "sizes": { "M": { "damage": 4, "range": 6, "vsShield": 0.8, "vsHull": 1, "armorPierce": 0, "power": 1, "heatPerShot": 3, "area": 3, "flatHitChance": 0.6, "mass": 4, "price": 6000 } }
+    },
+    {
+      "id": "missile_rack",
+      "name": "Missile Rack",
+      "slot": "hardpoint",
+      "category": "guided",
+      "mainStats": ["damage"],
       "sizes": {
-        "S": { "cargoCapacity": 10, "mass": 1, "price": 500 },
-        "M": { "cargoCapacity": 30, "mass": 3, "price": 1800 },
-        "L": { "cargoCapacity": 80, "mass": 8, "price": 6000 }
+        "S": {
+          "damage": 14,
+          "range": 16,
+          "vsShield": 1,
+          "vsHull": 1,
+          "armorPierce": 1,
+          "power": 1,
+          "heatPerShot": 1,
+          "ammo": 8,
+          "munitionSpeed": 6,
+          "munitionAgility": 120,
+          "munitionLife": 4,
+          "munitionHp": 1,
+          "mass": 1,
+          "price": 2000
+        }
       }
     },
     {
-      "id": "fuel_tank", "name": "Fuel Tank", "slot": "internal", "category": "fuel", "mainStats": ["fuelCapacity"],
+      "id": "torpedo_tube",
+      "name": "Torpedo Tube",
+      "slot": "hardpoint",
+      "category": "guided",
+      "mainStats": ["damage"],
       "sizes": {
-        "S": { "fuelCapacity": 10, "mass": 1, "price": 400 },
-        "M": { "fuelCapacity": 30, "mass": 3, "price": 1400 },
-        "L": { "fuelCapacity": 80, "mass": 8, "price": 4500 }
+        "L": {
+          "damage": 60,
+          "range": 20,
+          "vsShield": 0.7,
+          "vsHull": 2,
+          "armorPierce": 6,
+          "power": 2,
+          "heatPerShot": 2,
+          "ammo": 3,
+          "munitionSpeed": 3,
+          "munitionAgility": 20,
+          "munitionLife": 8,
+          "munitionHp": 10,
+          "mass": 10,
+          "price": 18000
+        }
       }
     },
     {
-      "id": "armor_plating", "name": "Armor Plating", "slot": "internal", "category": "armor", "mainStats": ["armor", "armorHp"],
-      "sizes": {
-        "S": { "armor": 1, "armorHp": 15, "mass": 4, "price": 1000 },
-        "M": { "armor": 2, "armorHp": 40, "mass": 10, "price": 4000 },
-        "L": { "armor": 3, "armorHp": 100, "mass": 25, "price": 12000 }
-      }
-    },
-    {
-      "id": "heat_sink", "name": "Heat Sink", "slot": "internal", "category": "heatSink", "mainStats": ["heatCapacity"],
-      "sizes": {
-        "S": { "heatCapacity": 20, "mass": 2, "price": 800 },
-        "M": { "heatCapacity": 50, "mass": 5, "price": 2800 }
-      }
-    },
-    {
-      "id": "radiator", "name": "Radiator", "slot": "internal", "category": "radiator", "mainStats": ["cooling"],
-      "sizes": {
-        "S": { "cooling": 2, "mass": 2, "price": 900 },
-        "M": { "cooling": 5, "mass": 5, "price": 3000 }
-      }
-    },
-    {
-      "id": "maneuvering_thrusters", "name": "Maneuvering Thrusters", "slot": "internal", "category": "thrusters", "mainStats": ["agilityBonus"],
-      "sizes": {
-        "S": { "agilityBonus": 0.15, "power": 1, "heatPerTurn": 1, "mass": 1, "price": 1500 },
-        "M": { "agilityBonus": 0.25, "power": 2, "heatPerTurn": 2, "mass": 3, "price": 5000 }
-      }
-    },
-    {
-      "id": "pulse_laser", "name": "Pulse Laser", "slot": "hardpoint", "category": "laser", "mainStats": ["damage"],
-      "sizes": {
-        "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 2, "heatPerShot": 4, "mass": 1, "price": 2000 }
-      }
+      "id": "point_defense",
+      "name": "Point Defense",
+      "slot": "hardpoint",
+      "category": "pointDefense",
+      "mainStats": ["damage"],
+      "sizes": { "S": { "damage": 10, "range": 3, "power": 1, "heatPerShot": 1, "shotsPerTurn": 2, "hitChance": 0.5, "mass": 1, "price": 2000 } }
     }
   ]
 }

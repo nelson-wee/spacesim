@@ -24,28 +24,6 @@ export function inputTrickle(ctx: EconContext, report?: DayReport): Map<string, 
   return added;
 }
 
-/**
- * Off-map export (DECISIONS.md, M2): a share of each stock above
- * `exportStockRatio x target` leaves the region each day. Without it, a small
- * surplus piles up at a producer for ever, because the brief has no other
- * sink. Returns the units removed for each commodity.
- */
-export function offMapExport(ctx: EconContext, report?: DayReport): Map<string, number> {
-  const e = ctx.data.balance.economy;
-  const removed = new Map<string, number>();
-  for (const loc of ctx.world.locations) {
-    for (const [c, entry] of Object.entries(loc.market)) {
-      const excess = entry.stock - e.exportStockRatio * entry.target;
-      if (excess <= 0) continue;
-      const qty = excess * e.exportShare;
-      entry.stock -= qty;
-      removed.set(c, (removed.get(c) ?? 0) + qty);
-      report?.add(loc.id, c, 'offMap', -qty);
-    }
-  }
-  return removed;
-}
-
 export function emptyRegionStats(): RegionCommodityStats {
   return { supply: [], demand: [], outOfRangeDays: 0, balancing: null };
 }

@@ -1,5 +1,6 @@
 // A new career (Section 11.8): world from the seed, starting ship, credits.
 import { createActor } from '../actor/actor';
+import { observe } from '../actor/knowledge';
 import { type GameData, gameData } from '../data';
 import { createShipFromLoadout } from '../ship/loadout';
 import { generateWorld } from '../world/generator';
@@ -28,6 +29,7 @@ export function createGame(seed: number, data: GameData = gameData()): Game {
     nextId: 1,
   };
   const game = wrapGame(state, data);
+  observe(game, player);
   const loc = world.locations[world.startLocationId];
   game.bus.message(`Day 1. Your ship, the ${ship.name}, is docked at ${loc?.name ?? '?'}. Seed: ${cleanSeed}.`, 'good');
   return game;

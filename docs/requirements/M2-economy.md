@@ -49,18 +49,18 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M2-ECON-01 | The daily tick runs in this order: population use, production, Machinery install and wear, background carriers (arrivals, then new shipments), off-map supply and demand, noise (±3% of target), `stock = max(stock, 0)`, events update (stub until M7). | §9.6 | T |
+| M2-ECON-01 | The daily tick runs in this order: population use, production, Machinery install and wear, capacity change and target update, background carriers (arrivals, then new shipments), off-map supply and demand, noise (±3% of target), `stock = max(stock, 0)`, events update (stub until M7). | §9.6 | T |
 | M2-ECON-02 | **Population.** Each population unit uses the amounts in `population.json` per day. Oxygen only for stations and planets without atmosphere. Electronics and Composites mainly for Core resident populations; all populations and crews in Middle and Frontier sectors use small amounts of Electronics, Composites, and Machinery (owner, 2026-10-27; post-MVP this demand goes to station building, upgrades, and research). Multiply by the sector economy multiplier. | §9.4, §10.2 | T |
-| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size × volumeScale` (owner: larger volumes; `volumeScale` 8 also multiplies population and station use). | §9.3 | T |
+| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size × capacity × volumeScale`. **Capacity** (start 1, no limits) changes each day by `changeRate × clamp(min(outputPriceFactor / growthPriceFactor − 1, outputValue / unitCost − 1), −1, 1)`, inputs and Machinery at replacement cost; growth × inputFactor; growth base at least `restartCapacity` (owner, 2026-10-27). | §9.3, DECISIONS.md | T |
 | M2-ECON-04 | `inputFactor` = minimum over hard inputs of `stock / required`, maximum 1.0. A producer with no hard inputs has `inputFactor` = 1.0. If a hard input has 0 stock, output is 0. | §9.3 | T |
 | M2-ECON-05 | The producer removes the inputs that it uses from stock and adds its outputs to stock. | §9.3 | T |
 | M2-ECON-06 | **Capital.** `K_ref = machineryPerBatch × batches`. `capitalFactor = 0.6 + 0.6 × K / (K + K_ref)`. | §9.5 | T |
-| M2-ECON-07 | **Install.** Each day, move Machinery from market stock into K, up to 10% of `K_ref` per day, until `K = 1.5 × K_ref`. | §9.5 | T |
+| M2-ECON-07 | **Install.** Each day, move Machinery from market stock into K, up to 10% of `K_ref` per day, until K = K*. K* is the K where the daily gain of one more unit (`batches × valueAdded × 0.6 × K_ref / (K + K_ref)²`, local prices) equals its daily cost (`machineryPrice × (wear + requiredReturn)`). No upper limit (owner, 2026-10-27; the brief's 1.5 × K_ref is removed). | §9.5, DECISIONS.md | T |
 | M2-ECON-08 | **Wear.** Each day, K goes down by `machineryWear` (default 0.25%). | §9.5 | T |
 | M2-ECON-09 | **Background carriers** (owner, 2026-10-27; replace the §9.7 flow formula). Carriers buy at a source (stock above `surplusShareOfTarget` × target) and sell at a sink within `maxJumps` (3) jumps if `(sellPrice_B − buyPrice_A − cost) / buyPrice_A ≥ minMargin`. `cost = mass × (costPerTonne + costPerTonneJump × jumps) + buyPrice_A × riskPerJump × jumps`. Best profit per tonne first. Each day they move `dailyShare` of the open amount. They fill a sink up to the stock where its price falls to the route's break-even price (at most `exportStockRatio` × target), counting goods in transit less the sink's use during transit. Capacity per sector: `sectorCapacityTonnes × (0.2 + 0.2 × security level)` tonnes per day, on each sector of the path. Goods arrive after `transitDays + transitDaysPerJump × jumps` days. | §9.7, DECISIONS.md | T |
 | M2-ECON-10 | Carriers trade only between locations that trade the commodity. All decisions of one day use the prices at the start of the step. Goods in transit are part of the saved economy state. | §9.7 | T |
-| M2-ECON-11 | **Input trickle.** Each producer gets `offMapInputShare` (owner: 5%, toward an economy with no off-map supply) of its hard input needs each day from outside the region. | §9.8 | T |
-| M2-ECON-12 | **Region balance.** If the region supply/demand ratio of a commodity (Q-06) stays outside 0.8–1.2 for 30 days, add or remove `offMapBalance` (5%) of region demand each day, split between Trade Hubs. Stop when the ratio is in 0.9–1.1. | §9.8 | T |
+| M2-ECON-11 | **Off-map supply and demand:** none (owner, 2026-10-27). Input trickle and region balance are 0; the export rule is removed. The economy is closed. | §9.8, DECISIONS.md | T |
+| M2-ECON-12 | **Region balance:** off (`offMapBalance` 0). The code stays for tests and tuning. | §9.8 | T |
 | M2-ECON-13 | **Price.** `price = base × clamp((target / max(stock, 1)) ^ k, 0.3, 3.0)`. `buyPrice = price × (1 + spread/2)`. `sellPrice = price × (1 − spread/2)`. `k` = 0.6, `spread` = 0.08. | §9.10 | T |
 | M2-ECON-14 | **Trade quote.** A function quotes a buy or sell of N units unit by unit. Each unit sold adds 1 to stock. Each unit bought removes 1 from stock. Large trades get worse prices. (The Market screen uses it in M3.) | §9.10 | T |
 | M2-ECON-15 | The economy keeps daily prices for each location and commodity for at least 30 days (for trend arrows in M3). | §9.12 | T |
@@ -75,10 +75,10 @@
 |---|---|---|---|
 | M2-TOOL-01 | `tools/gen-report.ts` generates 100 seeds. It prints blueprint ratios, rule results, repairs, retries, and station-slot use for each seed, and a summary. | §6.11 | S |
 | M2-TOOL-02 | `tools/sim-economy.ts` runs N days on M seeds (default 1000 days, 20 seeds) with no player and fixed security. | §9.13 | S |
-| M2-TOOL-03 | `sim-economy.ts` writes one CSV file per run: one row per day, location, and commodity, with stock, target, price, production, consumption, flow in, flow out, and installed machinery. | §4.3 | S |
+| M2-TOOL-03 | `sim-economy.ts` writes one CSV file per run: one row per day, location, and commodity, with stock, target, price, production, consumption, flow in, flow out, installed machinery, and capacity. | §4.3 | S |
 | M2-TOOL-04 | `sim-economy.ts` prints minimum, median, and maximum price per commodity per development level, and a PASS or FAIL line for each check in §9.13. | §9.13 | S |
-| M2-TOOL-05 | `sim-economy.ts` has a "chain shock" mode: stop all Iron Ore output in one sector for 30 days, then measure Alloys prices in its neighbor sectors. | §9.13 | S |
-| M2-TOOL-06 | `sim-economy.ts` has a "capital" mode: deliver 10 Machinery to a Frontier mine with `K = K_ref`, then track its output for 60+ days. | §9.13 | S |
+| M2-TOOL-05 | `sim-economy.ts` reports a "chain shock": stop all Iron Ore output in one sector for 30 days, then report the Alloys price rise in its neighbor sectors and the days to recover. Report only (owner, Q-32). | §9.13 | S |
+| M2-TOOL-06 | `sim-economy.ts` checks "capital responds": stop all Machine Works for 60 days; the Machinery price rises, K* falls, and the price is back within 20% within 180 days after the restart. It reports the player effect: 10 Machinery delivered to a Frontier mine at 0.5 × K* and at K* (Q-33). | §9.13, Q-33 | S |
 | M2-TOOL-07 | Route margin (for the §9.13 route checks) = `(sellPrice_B − buyPrice_A) / buyPrice_A`, for routes of 1 to 3 jumps (1 to 2 jumps for raw goods). | §9.13 | S |
 | M2-TOOL-08 | Debug panel: "show all prices". | §4.3 | M |
 
@@ -104,12 +104,12 @@
 | 1 | At least 95 of 100 seeds pass with 2 tries or fewer. | §6.11 | S (`gen-report.ts`) |
 | 2 | No systemic price clamp: no commodity is at the price clamp (0.3 or 3.0) on more than 50% of its market-days. Shares above 20% are reported only (owner, Q-31: price gaps are good for trade). | §9.13, Q-31 | S |
 | 3 | No stock is below 0. | §9.13 | S, T |
-| 4 | No producer is below 30% output for more than 60 days in a row. | §9.13 | S |
-| 5 | Gradient: raw goods cost more in Core than in Frontier. Advanced goods cost less in Core, compared per commodity where both trade it (Q-34). | §9.13, Q-34 | S |
-| 6 | Each commodity has at least one route (1–3 jumps) with a margin of 25% or more, on at least 60% of days. | §9.13 | S |
-| 7 | Raw goods have routes of 1–2 jumps with margins of 40%–80%, on at least 50% of days. | §9.13 | S |
-| 8 | Chain shock: Alloys prices in neighbor sectors rise 30% or more, and return to within 10% of normal within 60 days after the stop ends. | §9.13 | S |
-| 9 | Capital: output rises after the Machinery delivery and stays higher than normal for 60 days or more. | §9.13 | S |
+| 4 | No permanent stop: no producer is below 30% output for more than 365 days in a row. Shorter busts are reported (owner, 2026-10-27). | §9.13, DECISIONS.md | S |
+| 5 | Report: gradient (raw goods dearer in Core; advanced goods cheaper in Core, per commodity, Q-34). Not a check (owner, 2026-10-27). | §9.13 | S |
+| 6 | Report: each commodity has a route (1–3 jumps) with a margin of 25% or more on 60% of days. Not a check (owner, 2026-10-27). | §9.13 | S |
+| 7 | Report: raw goods have routes of 1–2 jumps with margins of 40%–80% on 50% of days. Not a check (owner, 2026-10-27). | §9.13 | S |
+| 8 | Chain shock: report only (owner, Q-32). Swings and boom/bust cycles are a feature. | §9.13, Q-32 | S |
+| 9 | Capital responds: when Machine Works stop for 60 days, Machinery is dearer and K* falls; after the restart, the Machinery price is within 20% of a control run (no stop) in 180 days (owner, Q-33). | §9.13, Q-33 | S |
 | 10 | Recipe value and wear unit tests pass. | §19 | T |
 | 11 | `PROGRESS.md` is updated with the tool results. | §0.9 | I |
 

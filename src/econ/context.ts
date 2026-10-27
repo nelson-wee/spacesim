@@ -69,12 +69,7 @@ export function createEconContext(world: World, data: GameData): EconContext {
     return sector ? dailyUse(l, sector, data) : [];
   });
   const dailyNeed = new Map<string, number>();
-  const addNeed = (id: number, c: string, q: number) => dailyNeed.set(`${id}:${c}`, (dailyNeed.get(`${id}:${c}`) ?? 0) + q);
-  for (const l of world.locations) {
-    for (const u of uses[l.id] ?? []) addNeed(l.id, u.commodity, u.amount);
-    for (const [c, q] of nominalFlowParts(l, world, data).inputs) addNeed(l.id, c, q);
-  }
-  return {
+  const ctx: EconContext = {
     world,
     data,
     traders,
@@ -85,6 +80,19 @@ export function createEconContext(world: World, data: GameData): EconContext {
     sectorJumps: routes.jumps,
     sectorPaths: routes.paths,
   };
+  refreshNeeds(ctx);
+  return ctx;
+}
+
+/** Recalculates the daily need of each market (after capacity changes). */
+export function refreshNeeds(ctx: EconContext): void {
+  const { world, data, dailyNeed } = ctx;
+  dailyNeed.clear();
+  const addNeed = (id: number, c: string, q: number) => dailyNeed.set(`${id}:${c}`, (dailyNeed.get(`${id}:${c}`) ?? 0) + q);
+  for (const l of world.locations) {
+    for (const u of ctx.uses[l.id] ?? []) addNeed(l.id, u.commodity, u.amount);
+    for (const [c, q] of nominalFlowParts(l, world, data).inputs) addNeed(l.id, c, q);
+  }
 }
 
 const cache = new WeakMap<World, EconContext>();

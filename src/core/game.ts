@@ -1,5 +1,6 @@
 // The runtime game context: state, data, and event bus. Simulation functions
 // take a Game. Only `state` is saved.
+import { decayCargo } from '../actor/cargo';
 import type { GameData } from '../data';
 import { econContext } from '../econ/context';
 import { economyDay } from '../econ/economy';
@@ -38,10 +39,11 @@ export function newId(game: Game, prefix: string): string {
   return `${prefix}-${game.state.nextId}`;
 }
 
-/** Things that happen once per day: the economy tick (Section 9.6). */
+/** Things that happen once per day: the economy tick (Section 9.6) and Food loss in cargo (Section 9.1). */
 function dailyTick(game: Game, day: number): void {
   const { world } = game.state;
   economyDay(econContext(world, game.data), world.economy, rng(game, 'economy'));
+  decayCargo(game.state.player, game.data);
   game.bus.emit({ type: 'newDay', day });
 }
 

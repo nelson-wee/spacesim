@@ -5,8 +5,8 @@ Update this file at the end of each milestone (brief §0, item 9).
 | Milestone | Day | Status | Exit checks |
 |---|---|---|---|
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
-| M2 Economy | 2 | Built; economy model changed to carriers. Exit checks not all pass. | 7 of 11 pass; 4 fail (5: 19/20, 7: 17/20, 8 and 9: Q-32, Q-33). |
-| M3 Trade and ships | 3 | Not started | — |
+| M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
+| M3 Trade and ships | 3 | Built. Exit check 1 waits on the owner (Q-36). | 5 of 6 pass; check 1: 11 of 20 seeds in day 60–120 (median day 82, 18 of 20 upgrade by day 130). |
 | M4 Combat core | 4 | Not started | — |
 | M5 Threat and encounters | 5 | Not started | — |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
@@ -78,7 +78,7 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 ### What works
 
 - **Data:** economy, generator, population, recipe, and service values in `/data`, with schemas and link checks. Q-05, Q-06, Q-07, and Q-22 use their defaults (`DECISIONS.md`).
-- **Economy tick (§9):** population and station use, production (input factor, capital factor, security), Machinery install and wear, background carriers (routes of up to 3 jumps, margin after cost and risk, break-even fill, transit days, capacity by security), off-map input trickle, off-map export, region balance, noise, price history. Prices with clamp, spread, and unit-by-unit quotes. The tick runs once each game day (about 3 ms for 44 locations).
+- **Economy tick (§9):** population and station use, production (input factor, capital factor, security), Machinery install toward the capital target K* (marginal gain = cost of capital) and wear, production capacity that follows the output price and the input prices (no limits; inputs at replacement cost), background carriers (routes of up to 3 jumps, margin after cost and risk, break-even fill, transit days, capacity by security), noise, price history. No off-map supply or demand: the economy is closed. Prices with clamp, spread, and unit-by-unit quotes. The tick runs once each game day (about 3 ms for 44 locations).
 - **Volumes:** `volumeScale` 8. The largest markets hold Electronics 96 t, Composites 144 t, Medicine 215 t, and raw goods 1,400–7,000 t. A 30 t hold of Electronics costs 1.16 × base on average.
 - **Generator steps 4–9 (§6.6–§6.11):** blueprint, host planets, producer placement, supply paths (static: inputs and users within the carrier range), other station types, sizes, tech levels, services, start location, structure rules, repairs, and rejection with seed + 1, then a 100-day warm-up run. The 200-day economy check is on hold (owner). The log keeps the seed used, tries, repairs, and rule results.
 - **Tools:** `npm run gen-report -- <seeds>` and `npm run sim-economy -- <days> <seeds>` (with `--csv=<dir>`, `--override=<json>`).
@@ -92,26 +92,44 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 
 ### Known issues
 
-- The chain shock does not show in neighbor sectors (Q-32): carriers bring Iron Ore from other sectors within 3 jumps, so Alloys rise only 0%–9%.
-- The capital test passes on 8 of 20 seeds (Q-33).
-- Machinery stays short: about 9 units a day for the region, median price 1.6–1.8 × base, and 14% comes from the off-map region balance.
+- The economy moves in slow cycles (booms and busts; the owner wants them). In a bust, a Machine Works can stand below 30% output for 87–183 days (3 of 20 seeds).
+- Prices sit above base on average (median Electronics 604–737 cr, Machinery 1,125–1,238 cr, Oxygen 64–66 cr): carriers take their margin on each link, and producers grow only when their output is dearer than base. The owner accepts this level; `capacity.growthPriceFactor` can lower it.
 - `npm audit`: 0 problems.
 
-### Exit checks (carrier model, 2026-10-27)
+### Exit checks (owner definitions, 2026-10-27)
 
 | # | Check | Result | Value |
 |---|---|---|---|
 | 1 | 95 of 100 seeds pass with 2 tries or fewer. | PASS | 98 of 100 (structure rules only; economy check on hold). |
-| 2 | No systemic price clamp (soft check, Q-31). | PASS | 20 of 20 seeds. NOTE: 1 of 240 commodity-seeds at the clamp on more than 20% of market-days. |
+| 2 | No systemic price clamp. | PASS | 20 of 20 seeds. |
 | 3 | No stock below 0. | PASS | 20 of 20 seeds, 1,000 days. Unit test too. |
-| 4 | No producer below 30% output for more than 60 days in a row. | PASS | 20 of 20 seeds. No producer type is below 50% output on any day (8 seeds, 300 days). |
-| 5 | Gradient (Q-34). | FAIL | 19 of 20 seeds (seed 6: raw goods 1.23 in Core, 1.37 in Frontier). |
-| 6 | Each commodity: a route of 1–3 jumps with margin 25% or more on 60% of days. | PASS | 20 of 20 seeds. |
-| 7 | Raw goods: a route of 1–2 jumps with margin 40%–80% on 50% of days. | FAIL | 17 of 20 seeds (Rare Elements 20%–42%, Iron Ore 49%). With no off-map trickle: 10 of 10 (400 days). |
-| 8 | Chain shock: Alloys next door +30%, back within 10% in 60 days. | FAIL | 0 of 20 seeds (rise 0%–9%). See Q-32. |
-| 9 | Capital: output higher for 60 days after 10 Machinery. | FAIL | 8 of 20 seeds. See Q-33. |
+| 4 | No permanent stop (no producer below 30% output for more than 365 days). | PASS | 20 of 20 seeds. |
+| 9 | Capital responds. | PASS | 20 of 20 seeds against a control run: Machinery +7% to +24%, K* −18% to −31%, back within 20% of the control run in 1–105 days. |
 | 10 | Recipe value and wear unit tests pass. | PASS | `tests/econ.test.ts` |
 | 11 | `PROGRESS.md` is updated. | PASS | This file |
+
+Reports (not checks, owner):
+
+| # | Report | Value |
+|---|---|---|
+| 2 | Commodity-seeds at the clamp on more than 20% of market-days | 17 of 240 (mostly Oxygen) |
+| 4 | Busts: producers below 30% output for 61–365 days | 3 of 20 seeds (Machine Works, 87–183 days) |
+| 5 | Gradient (Q-34) | 18 of 20 seeds |
+| 6 | Route of 1–3 jumps with margin 25% or more on 60% of days | 20 of 20 seeds |
+| 7 | Raw-goods route of 1–2 jumps with margin 40%–80% on 50% of days | 17 of 20 seeds |
+| 8 | Chain shock | Alloys next door +0% to +12%, back in 2–6 days |
+| 9 | Player effect of 10 Machinery at a Frontier mine | short of capital (0.5 × K*): 15–59 days of higher output; at K*: 0 days |
+
+### Capacity and prices over time (seed 1, final rule)
+
+Capacity × capital factor (median per producer type) and median price factor:
+
+| Day | Machine Works | Smelter | Ore Mine | Composite Works | Iron Ore price | Oxygen price | Electronics price | Machinery price |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 1.03 | 0.89 | 0.98 | 0.92 | 0.97 | 1.18 | 1.14 | 1.13 |
+| 600 | 0.84 | 0.76 | 0.40 | 1.07 | 0.96 | 2.37 | 2.30 | 1.93 |
+| 1200 | 1.07 | 0.74 | 0.78 | 1.54 | 1.40 | 1.65 | 2.30 | 1.93 |
+| 1500 | 1.28 | 0.84 | 0.76 | 1.84 | 1.29 | 1.29 | 0.97 | 1.86 |
 
 ### Diffusion against carriers (8 seeds, 300 days after 100 warm-up days)
 
@@ -141,21 +159,21 @@ Result: smaller input targets keep fewer markets at the clamp, but producers sta
 
 ### Tool results
 
-`npm test`: 11 test files, 594 tests, all pass.
+`npm test`: 11 test files, 605 tests, all pass. Economy tick: about 3.7 ms a day (44 locations).
 
 `npm run gen-report -- 100`:
 
 ```
-Generator report: seeds 1..100, 31186 ms (312 ms per seed)
+Generator report: seeds 1..100, 45231 ms (452 ms per seed)
 Tries: 1: 77, 2: 21, 3: 2
 Rule failures (all tries): supplyPath 16, supplyRatio 10, producersPlaced 6, twoSectors 7, chainSeparation 1
 Repairs: move electronics_fab 2, add rare_element_mine 19, add smelter 1, start at 9, add ice_mine 18, add ore_mine 8, move smelter 2, remove rare_element_mine 1, add agri_world 1, add machine_works 3, move ore_mine 1
 Stations: industrial_station 813, habitat 266, processing_station 309, military_outpost 155, trade_hub 235, mining_station 553, pirate_haven 35, shipyard_station 3
-Supply/demand ratio (median, min, max): water 1.04 [0.93, 1.29]; hydrogen 1.15 [1.01, 1.37]; iron_ore 1.13 [0.91, 1.43]; silicates 1.16 [1.01, 1.35]; rare_elements 1.09 [0.91, 1.28]; oxygen 1.14 [0.93, 1.34]; alloys 1.11 [0.98, 1.33]; food 1.06 [0.95, 1.33]; composites 1.15 [0.92, 1.58]; electronics 1.08 [0.98, 1.32]; machinery 1.11 [1.00, 1.34]; medicine 1.17 [0.93, 1.64]
+Supply/demand ratio (median, min, max): water 1.00 [0.92, 1.21]; hydrogen 1.10 [0.97, 1.26]; iron_ore 1.10 [0.90, 1.35]; silicates 1.13 [0.98, 1.33]; rare_elements 1.10 [0.90, 1.29]; oxygen 1.08 [0.92, 1.28]; alloys 1.11 [0.99, 1.32]; food 1.04 [0.95, 1.26]; composites 1.08 [0.92, 1.42]; electronics 1.03 [0.96, 1.22]; machinery 1.11 [1.00, 1.31]; medicine 1.10 [0.90, 1.49]
 Check (Section 6.11): 98 of 100 seeds pass with 2 tries or fewer (need 95): PASS
 ```
 
-`npm run sim-economy -- 1000 20`: 1,000 days × 20 seeds in 159 s. Median prices (Frontier / Middle / Core): Iron Ore 10 / 14 / 22, Rare Elements 80 / 109 / 130, Electronics 378 / 369 / 357, Composites 173 / 167 / 162, Machinery 1313 / 1190 / 1352, Medicine 266 / 238 / 234.
+`npm run sim-economy -- 1000 20`: 1,000 days × 20 seeds in 241 s. Median prices (Frontier / Middle / Core): Iron Ore 7 / 12 / 18, Rare Elements 86 / 116 / 141, Electronics 737 / 692 / 604, Composites 361 / 341 / 288, Machinery 1238 / 1129 / 1125, Medicine 463 / 369 / 355, Oxygen 66 / 64 / 66, Food 50 / 49 / 50.
 
 ## Visual design import (2026-10-26)
 
@@ -165,6 +183,61 @@ Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art
 - **Not yet used:** battle art (M4), portraits (M3, Q-29), surrender marker (M5), threat band (M5), heat bar (M4), tier letters (M3).
 - **Open:** Q-29 (portrait slot marks do not match hull slot counts), Q-30 (`◘` is not in JetBrains Mono). Icons and combat effects are still placeholders.
 - **Check:** in Chromium, the canvas is 1000 x 800 and the font loads; screenshots of all screens and all art pages show no errors.
+
+## M3 Trade and ships (2026-10-27)
+
+### What works
+
+- **Ships (§11, §12.2):** all hulls, all modules with tiers (weapons and point defense from Q-09), 18 default loadouts, slot rules, required-module rules, power and heat values, speed and maneuver, shields, armor, durability, fuel per jump. `npm run ship-report` prints all loadouts and the §11.4 rows.
+- **Services (`src/services/`, one file each):** Market (unit-by-unit quotes, limits by credits, free tonnes, and stock; §11.9 loading order), Refuel (local Hydrogen price, removes Hydrogen from stock), Mechanic, Outfitter (tier ≤ tech; Pirate Havens tiers 1–3 at 130%; sell at 60%), Shipyard (trade-in at 60%, blocked with cargo, empty new hull), Wait (1–30 days), debt rule, Food loss (1% a day). A tow fee sells cargo at local prices.
+- **Price information (§9.12):** live prices when docked; a Merchants' Guild gives live prices within 2 jumps, 14-day trend arrows, and chain alerts; other locations show the last known price and its day; else "Unknown". The player knows the locations of visited sectors and of sectors in Guild range.
+- **Routes (`src/actor/paths.ts`, `routes.ts`):** fastest paths across sectors, trip days and fuel with cargo, route values (margin per tonne, profit, full-hold profit, fuel cost, days, profit per day, cargo- or capital-limited), best routes.
+- **Screens:** Location screen with one tab for each service (Market first); Outfitter with portrait, module icons, shop, stat panel (old → new, green and red), red and yellow warnings; Shipyard with price after trade-in; Fleet and cargo; Trade Ledger (price table with tier, distance, and "sold here" filters, trend arrows, information age, route planner, 5 best routes, chain alerts); route view on the sector map (V); debug panel item 9 (flagship stats). Checked in Chromium: no page errors.
+- **Trader bot:** `npm run sim-trader -- [seeds] [first] [days] [--verbose] [--override=json]`.
+
+### What does not work yet
+
+- Fleets of more than one ship (M6): select a flagship, move cargo, sell a ship.
+- Combat (M4), encounters (M5), contracts (M7).
+
+### Known issues
+
+- Q-36: the first hull upgrade day depends on the world. See the exit checks.
+- Q-37: the Light Freighter has an L internal slot (owner review).
+- The bot run takes about 18 s per seed (route search at each dock).
+- Seeds 1 and 2 make the same world as seed 3 (the generator retries with seed + 1). The economy RNG differs, so the bot results differ.
+
+### Exit checks
+
+| # | Check | Result | Value |
+|---|---|---|---|
+| 1 | The trader bot buys a Light Freighter between day 60 and day 120 on 15 of 20 seeds. | FAIL (Q-36) | 11 of 20 in the window; 18 of 20 upgrade by day 130; median day 82. Early: days 36–57 (6 seeds). Late or none: 3 seeds. |
+| 2 | `ship-report` gives the §11.4 values (±1). | PASS | 12 of 12 rows |
+| 3 | All default loadouts are valid. | PASS | 18 of 18 (test and `ship-report`) |
+| 4 | Starting ship range 4–6 jumps. | PASS | 5.00 jumps |
+| 5 | Laden Heavy Freighter about 3× the fuel per jump of an empty Shuttle. | PASS | 18.00 / 6.00 = 3.00 |
+| 6 | `PROGRESS.md` is updated. | PASS | This file |
+
+Monitor (not a gate): Shuttle profit per day in the first 30 days, median 295 cr (20 seeds; §22 target 100–250 on a good raw-goods route). The bot trades raw goods in one sector and small lots of advanced goods; the early limit is mostly cargo, sometimes capital.
+
+### Carrier margin and the first upgrade (20 seeds, 130 days)
+
+The bot found that the M2 carrier margin (25% on all goods) left large gaps on goods of high value between near locations (`DECISIONS.md`, M3).
+
+| Carrier setting | Upgrades by day 130 | Median day | In day 60–120 | Shuttle profit, days 0–30 (median) | M2 checks |
+|---|---|---|---|---|---|
+| minMargin 0.25 (M2) | 20 | 36 | 3 | 585 cr/day | pass (M2) |
+| minMargin 0.15, capital cost 1%/day | 20 | 64 | 11 | 432 cr/day | not run |
+| **minMargin 0.12, capital cost 1%/day (build)** | 18 | 82 | 11 | 295 cr/day | **pass, 20 of 20** |
+| minMargin 0.10, capital cost 1%/day | 15 | 85 | 13 | 273 cr/day | not run |
+| minMargin 0, 14 cr/t handling | 19 | 64 | 12 | 383 cr/day | **fail**: Water and Oxygen at the clamp, biolabs stop |
+
+### Tool results
+
+- `npm test`: 662 tests pass (19 service tests, 8 knowledge and route tests).
+- `npm run sim-economy -- 1000 20` with the M3 carrier values: all 4 pass/fail checks pass (20 of 20). Reports: 9 commodity-seeds of 240 at the clamp on more than 20% of days (mostly Oxygen); busts on 4 of 20 seeds (Machine Works 73–294 days, a biolab 63 days); gradient 18 of 20; routes 20 of 20; raw-goods band 14 of 20; chain shock Alloys +0% to +14%, back in 2–3 days.
+- `npm run ship-report`: all PASS.
+- `npm run sim-trader`: see the exit checks.
 
 <!--
 Template for each milestone:

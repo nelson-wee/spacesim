@@ -1,9 +1,12 @@
 // Travel in a sector and jumps between sectors (Sections 8.2 to 8.4, 8.6).
 import { type Game, passTime } from '../core/game';
 import type { Actor, JumpPoint, Lane, Location, Vec } from '../core/types';
+import type { GameData } from '../data';
+import { checkLoadout } from '../ship/rules';
 import { mapDistance } from '../world/geometry';
 import { fleetMove, fleetTravelStats } from './fleet';
 import { dockFuel, jumpFuel, sectorTripFuel, towFleet } from './fuel';
+import { observe } from './knowledge';
 
 export type Destination = { kind: 'location'; locationId: number } | { kind: 'jumpPoint'; jumpPointId: number };
 
@@ -26,7 +29,7 @@ export interface TripPlan {
 
 export type TripOutcome =
   | { result: 'arrived'; days: number }
-  | { result: 'towed'; days: number; fee: number; locationId: number }
+  | { result: 'towed'; days: number; fee: number; locationId: number; soldValue: number }
   | { result: 'refused'; reason: string };
 
 /** Sector and point of an actor. */
@@ -86,6 +89,15 @@ function refusedPlan(kind: 'sector' | 'jump', name: string, reason: string, acto
   };
 }
 
+/** The first required-module rule (Section 11.2) that a fleet ship breaks, or null. */
+function loadoutBlock(actor: Actor, data: GameData): string | null {
+  for (const ship of actor.fleet) {
+    const error = checkLoadout(ship, data).errors[0];
+    if (error) return `${ship.name}: ${error}`;
+  }
+  return null;
+}
+
 function isAt(actor: Actor, dest: Destination): boolean {
   const p = actor.position;
   return (
@@ -101,6 +113,8 @@ export function planSectorTrip(game: Game, actor: Actor, dest: Destination): Tri
   const there = destinationPlace(game, dest);
   if (there.sectorId !== here.sectorId) return refusedPlan('sector', there.name, 'That is in a different sector.', actor);
   if (isAt(actor, dest)) return refusedPlan('sector', there.name, 'You are already there.', actor);
+  const blocked = loadoutBlock(actor, data);
+  if (blocked) return refusedPlan('sector', there.name, blocked, actor);
   const stats = fleetTravelStats(actor, data);
   const move = fleetMove(stats);
   if (move <= 0) return refusedPlan('sector', there.name, 'A ship in the fleet cannot move (no engine thrust).', actor);
@@ -153,6 +167,8 @@ export function planJump(game: Game, actor: Actor, fromJumpPointId?: number): Tr
   const route = jumpRoute(game, actor, fromJumpPointId);
   if (!route) return refusedPlan('jump', '?', 'You must be at a jump point to jump.', actor);
   const name = game.state.world.sectors[route.to.sectorId]?.name ?? '?';
+  const blocked = loadoutBlock(actor, data);
+  if (blocked) return refusedPlan('jump', name, blocked, actor);
   const stats = fleetTravelStats(actor, data);
   const move = fleetMove(stats);
   if (move <= 0) return refusedPlan('jump', name, 'A ship in the fleet cannot move (no engine thrust).', actor);
@@ -198,6 +214,8 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
   const { data } = game;
   const plan = planSectorTrip(game, actor, dest);
   if (!plan.possible) return { result: 'refused', reason: plan.reason ?? 'Not possible.' };
+  // Keep the last live prices of the location that the fleet leaves.
+  observe(game, actor);
   const here = actorPlace(game, actor);
   const there = destinationPlace(game, dest);
   const stats = fleetTravelStats(actor, data);
@@ -212,12 +230,14 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
       y: here.point.y + (there.point.y - here.point.y) * share,
     };
     actor.position = { kind: 'space', sectorId: here.sectorId, x: stop.x, y: stop.y };
+    observe(game, actor);
     const tow = towFleet(game, actor, here.sectorId, stop);
-    return { result: 'towed', days: plan.days * share, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days: plan.days * share, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
 
   useFuel(actor, travelNeed, 1);
   passTime(game, plan.days);
+  observe(game, actor);
   if (dest.kind === 'jumpPoint') {
     actor.position = { kind: 'jumpPoint', jumpPointId: dest.jumpPointId };
     const jp = game.state.world.jumpPoints[dest.jumpPointId];
@@ -233,9 +253,10 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
   if (dockShare < 1) {
     actor.position = { kind: 'space', sectorId: there.sectorId, x: there.point.x, y: there.point.y };
     const tow = towFleet(game, actor, there.sectorId, there.point);
-    return { result: 'towed', days: plan.days, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days: plan.days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'docked', locationId: dest.locationId };
+  observe(game, actor);
   game.bus.message(`You dock at ${plan.destinationName}.`);
   game.bus.emit({ type: 'arrived', actorId: actor.id, locationId: dest.locationId });
   return { result: 'arrived', days: plan.days };
@@ -256,9 +277,10 @@ export function jump(game: Game, actor: Actor): TripOutcome {
   if (share < 1) {
     const rest = (1 - share) * route.lane.length;
     const tow = towFleet(game, actor, route.to.sectorId, route.to.pos, rest);
-    return { result: 'towed', days, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'jumpPoint', jumpPointId: route.to.id };
+  observe(game, actor);
   game.bus.message(`You jump to ${plan.destinationName}. The trip takes ${days.toFixed(1)} days.`);
   return { result: 'arrived', days };
 }
