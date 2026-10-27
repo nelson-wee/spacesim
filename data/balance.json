@@ -64,8 +64,8 @@
       "medicine": 4
     },
     "surplusShareOfTarget": 0.5,
-    "offMapInputShare": 0.05,
-    "offMapBalance": 0.05,
+    "offMapInputShare": 0,
+    "offMapBalance": 0,
     "balanceWindowDays": 30,
     "balanceStartLow": 0.8,
     "balanceStartHigh": 1.2,

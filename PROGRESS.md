@@ -5,7 +5,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | Milestone | Day | Status | Exit checks |
 |---|---|---|---|
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
-| M2 Economy | 2 | Built; economy model changed to carriers. Exit checks not all pass. | 7 of 11 pass; 4 fail (5: 19/20, 7: 17/20, 8 and 9: Q-32, Q-33). |
+| M2 Economy | 2 | Built; economy model changed to carriers; no off-map supply. Exit checks not all pass. | 8 of 11 pass; 3 fail (5: 18/20, 7: 18/20, 8: Q-32). |
 | M3 Trade and ships | 3 | Not started | — |
 | M4 Combat core | 4 | Not started | — |
 | M5 Threat and encounters | 5 | Not started | — |
@@ -94,22 +94,22 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 
 - The chain shock does not show in neighbor sectors (Q-32): carriers bring Iron Ore from other sectors within 3 jumps, so Alloys rise only 0%–9%.
 - The capital test passes on 8 of 20 seeds (Q-33).
-- Machinery stays short: about 9 units a day for the region, median price 1.6–1.8 × base, and 14% comes from the off-map region balance.
+- Machinery stays short: the region makes 6–11 units a day, the Machine Works run at full output, and the median price is 1.93 × base (1.5 × base even at the Machine Works). Production does not respond to prices, so this does not correct itself.
 - `npm audit`: 0 problems.
 
-### Exit checks (carrier model, 2026-10-27)
+### Exit checks (carrier model, no off-map supply, 2026-10-27)
 
 | # | Check | Result | Value |
 |---|---|---|---|
 | 1 | 95 of 100 seeds pass with 2 tries or fewer. | PASS | 98 of 100 (structure rules only; economy check on hold). |
-| 2 | No systemic price clamp (soft check, Q-31). | PASS | 20 of 20 seeds. NOTE: 1 of 240 commodity-seeds at the clamp on more than 20% of market-days. |
+| 2 | No systemic price clamp (soft check, Q-31). | PASS | 20 of 20 seeds. NOTE: 3 of 240 commodity-seeds at the clamp on more than 20% of market-days. |
 | 3 | No stock below 0. | PASS | 20 of 20 seeds, 1,000 days. Unit test too. |
-| 4 | No producer below 30% output for more than 60 days in a row. | PASS | 20 of 20 seeds. No producer type is below 50% output on any day (8 seeds, 300 days). |
-| 5 | Gradient (Q-34). | FAIL | 19 of 20 seeds (seed 6: raw goods 1.23 in Core, 1.37 in Frontier). |
+| 4 | No producer below 30% output for more than 60 days in a row. | PASS | 20 of 20 seeds. |
+| 5 | Gradient (Q-34). | FAIL | 18 of 20 seeds (seed 6: raw goods 1.24 in Core, 1.37 in Frontier; seed 11: advanced 1.04). |
 | 6 | Each commodity: a route of 1–3 jumps with margin 25% or more on 60% of days. | PASS | 20 of 20 seeds. |
-| 7 | Raw goods: a route of 1–2 jumps with margin 40%–80% on 50% of days. | FAIL | 17 of 20 seeds (Rare Elements 20%–42%, Iron Ore 49%). With no off-map trickle: 10 of 10 (400 days). |
-| 8 | Chain shock: Alloys next door +30%, back within 10% in 60 days. | FAIL | 0 of 20 seeds (rise 0%–9%). See Q-32. |
-| 9 | Capital: output higher for 60 days after 10 Machinery. | FAIL | 8 of 20 seeds. See Q-33. |
+| 7 | Raw goods: a route of 1–2 jumps with margin 40%–80% on 50% of days. | FAIL | 18 of 20 seeds (Iron Ore 28%–35%). |
+| 8 | Chain shock: Alloys next door +30%, back within 10% in 60 days. | FAIL | 0 of 20 seeds (rise 0%–12%). Owner: an acceptable result (Q-32). |
+| 9 | Capital: output higher for 60 days after 10 Machinery. | PASS | 20 of 20 seeds, but only because Machinery is short everywhere (median 1.93 × base). See Q-33. |
 | 10 | Recipe value and wear unit tests pass. | PASS | `tests/econ.test.ts` |
 | 11 | `PROGRESS.md` is updated. | PASS | This file |
 

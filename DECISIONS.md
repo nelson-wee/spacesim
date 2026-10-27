@@ -163,6 +163,10 @@ These decisions replace the brief text where they do not agree.
 
 - 2026-10-27 [§6.10] `generator.economyCheck` false: the generator checks structure only while the economy is tuned (owner). `sim-economy` checks the economy. The generator runs the economy for `warmupDays` (100) after a world passes, so the game starts with warm markets. Reason: owner decision; the generator pass rate no longer moves with economy tuning.
 
+### Off-map supply removed (owner, 2026-10-27)
+
+- 2026-10-27 [§9.8] `offMapInputShare` 0 and `offMapBalance` 0: no input trickle and no region balance. The code stays, so a value above 0 turns them on again. Off-map export (the sink for stock above 2 x target) stays until production responds to prices. Reason: owner wants an economy with no off-map supply; with carriers, the checks pass without it.
+
 ## Cuts
 
 None.
