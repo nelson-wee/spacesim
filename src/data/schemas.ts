@@ -54,6 +54,8 @@ export const balanceSchema = z.object({
     kJump: nonNeg,
     kDock: nonNeg,
     fuelMassExponent: pos,
+    /** Lane length for "fuel per jump" in ship stats and reports (M1 world report: mean lane 18.7). */
+    referenceLaneLength: pos,
   }),
   ship: z.object({ mRef: pos, engineStackFalloff: z.number().min(0).max(1), engineValueShare: prob }),
   fuel: z.object({ fuelPerHydrogen: pos }),
@@ -278,6 +280,8 @@ export const hullsSchema = z.object({
       tech: z.number().int().min(1).max(3).nullable(),
       price: pos.nullable(),
       enemyOnly: z.boolean(),
+      /** Loadout id for NPC ships of this hull and for reports. A bought hull is empty (Q-14). */
+      defaultLoadout: z.string(),
     }),
   ),
 });
@@ -308,6 +312,18 @@ export const moduleValuesSchema = z
     vsHull: nonNeg.optional(),
     armorPierce: nonNeg.optional(),
     heatPerShot: nonNeg.optional(),
+    // Flak (Section 12.2): area side in cells and flat hit chance.
+    area: z.number().int().positive().optional(),
+    flatHitChance: prob.optional(),
+    // Guided weapons (Section 12.4): ammunition and munition values.
+    ammo: z.number().int().positive().optional(),
+    munitionSpeed: pos.optional(),
+    munitionAgility: pos.optional(),
+    munitionLife: z.number().int().positive().optional(),
+    munitionHp: pos.optional(),
+    // Point defense: shots per turn and hit chance of each shot.
+    shotsPerTurn: z.number().int().positive().optional(),
+    hitChance: prob.optional(),
   })
   .strict();
 

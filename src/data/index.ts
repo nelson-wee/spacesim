@@ -196,6 +196,11 @@ export function checkReferences(data: GameData): string[] {
     const sizes = Object.keys(m.sizes);
     if (sizes.length === 0) problems.push(`module ${m.id}: no sizes`);
   }
+  for (const h of data.hulls) {
+    const l = data.loadoutById.get(h.defaultLoadout);
+    if (!l) problems.push(`hull ${h.id}: unknown default loadout ${h.defaultLoadout}`);
+    else if (l.hullId !== h.id) problems.push(`hull ${h.id}: default loadout ${l.id} is for hull ${l.hullId}`);
+  }
   for (const l of data.loadoutById.values()) {
     const hull = data.hullById.get(l.hullId);
     if (!hull) {

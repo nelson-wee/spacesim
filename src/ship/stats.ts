@@ -1,8 +1,8 @@
-// Derived ship stats (Sections 11.3 and 11.4). Calculate them again each time;
-// do not store them (G-12). M3 adds power, heat, shields, and the other stats.
+// Derived ship stats (Sections 10.5, 11.3 to 11.6). Calculate them again each
+// time; do not store them (G-12).
 import type { Ship } from '../core/types';
 import type { GameData } from '../data';
-import { hullDef } from './hull';
+import { hullDef, maxEngineValue } from './hull';
 import { installedModules } from './loadout';
 import { moduleDef, moduleValues } from './modules';
 
@@ -41,6 +41,29 @@ export interface ShipStats extends Motion {
   /** Thrust-weighted average of the installed engines (Section 8.2). */
   engineFuelRate: number;
   thrusterMult: number;
+  /** Hull base power + reactors (Section 11.5). */
+  powerSupply: number;
+  /** Draw of the modules that are ON (engines ON when `allEnginesOn`). */
+  powerDraw: number;
+  /** Draw if all modules are ON (the Outfitter's "combat power if all ON"). */
+  powerDrawAll: number;
+  /** Draw of all engines (the required-module rule, Section 11.2). */
+  enginePowerDraw: number;
+  /** Hull + Heat Sinks; hull + Radiators; heat per turn of modules ON (Section 11.6). */
+  heatCapacity: number;
+  cooling: number;
+  heatPerTurn: number;
+  shieldCapacity: number;
+  shieldRegen: number;
+  /** Hull armor + Armor Plating armor. */
+  armor: number;
+  maxHullHp: number;
+  maxArmorHp: number;
+  maxEngineValue: number;
+  /** hullHP + armorPlatingHP + shieldCapacity + 10 x armor, at full repair (Section 10.5). */
+  durability: number;
+  /** Fuel for one jump on a lane of `travel.referenceLaneLength`, at the current mass. */
+  fuelPerJump: number;
 }
 
 export interface StatsOptions {
@@ -67,19 +90,44 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
   const engineThrusts: number[] = [];
   let fuelRateWeighted = 0;
   let installedThrust = 0;
+  let powerSupply = hull.basePower;
+  let powerDraw = 0;
+  let powerDrawAll = 0;
+  let enginePowerDraw = 0;
+  let heatCapacity = hull.heatCapacity;
+  let cooling = hull.baseCooling;
+  let heatPerTurn = 0;
+  let shieldCapacity = 0;
+  let shieldRegen = 0;
+  let armor = hull.armor;
+  let maxArmorHp = 0;
   for (const m of installedModules(ship)) {
     const v = moduleValues(data, m);
     const category = moduleDef(data, m.moduleId).category;
+    const on = m.on || (options.allEnginesOn === true && category === 'engine');
     moduleMass += v.mass;
     cargoCapacity += v.cargoCapacity ?? 0;
     fuelCapacity += v.fuelCapacity ?? 0;
+    powerSupply += v.powerOutput ?? 0;
+    powerDrawAll += v.power ?? 0;
+    heatCapacity += v.heatCapacity ?? 0;
+    cooling += v.cooling ?? 0;
+    armor += v.armor ?? 0;
+    maxArmorHp += v.armorHp ?? 0;
+    if (on) {
+      powerDraw += v.power ?? 0;
+      heatPerTurn += v.heatPerTurn ?? 0;
+      shieldCapacity += v.shieldCapacity ?? 0;
+      shieldRegen += v.shieldRegen ?? 0;
+    }
     if (category === 'engine') {
       const thrust = v.thrust ?? 0;
       installedThrust += thrust;
+      enginePowerDraw += v.power ?? 0;
       fuelRateWeighted += thrust * (v.fuelRate ?? 1);
-      if (m.on || options.allEnginesOn) engineThrusts.push(thrust);
+      if (on) engineThrusts.push(thrust);
     }
-    if (category === 'thrusters' && m.on) thrusterBonus += v.agilityBonus ?? 0;
+    if (category === 'thrusters' && on) thrusterBonus += v.agilityBonus ?? 0;
   }
   // Each extra engine gives falloff^(n-1) of its thrust. The strongest engine counts first.
   const falloff = data.balance.ship.engineStackFalloff;
@@ -88,6 +136,8 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
   const mass = hull.mass + moduleMass + cMass;
   const thrusterMult = 1 + thrusterBonus;
   const m = ship.engineValue > 0 ? motion(thrust, mass, thrusterMult, data.balance.ship.mRef) : motion(0, mass, 1, 1);
+  const engineFuelRate = installedThrust > 0 ? fuelRateWeighted / installedThrust : 0;
+  const t = data.balance.travel;
   return {
     ...m,
     hullMass: hull.mass,
@@ -98,8 +148,23 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
     fuelCapacity,
     thrust,
     engineCount: engineThrusts.length,
-    engineFuelRate: installedThrust > 0 ? fuelRateWeighted / installedThrust : 0,
+    engineFuelRate,
     thrusterMult,
+    powerSupply,
+    powerDraw,
+    powerDrawAll,
+    enginePowerDraw,
+    heatCapacity,
+    cooling,
+    heatPerTurn,
+    shieldCapacity,
+    shieldRegen,
+    armor,
+    maxHullHp: hull.hp,
+    maxArmorHp,
+    maxEngineValue: maxEngineValue(hull, data),
+    durability: hull.hp + maxArmorHp + shieldCapacity + 10 * armor,
+    fuelPerJump: t.referenceLaneLength * mass ** t.fuelMassExponent * t.kJump * engineFuelRate,
   };
 }
 

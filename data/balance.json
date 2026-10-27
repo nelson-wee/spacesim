@@ -33,7 +33,15 @@
     "stationsMin": 2,
     "stationsMax": 3
   },
-  "travel": { "cruiseFactor": 8, "jumpFactor": 1.5, "kSector": 0.0035, "kJump": 0.038, "kDock": 0.06, "fuelMassExponent": 0.64 },
+  "travel": {
+    "cruiseFactor": 8,
+    "jumpFactor": 1.5,
+    "kSector": 0.0035,
+    "kJump": 0.038,
+    "kDock": 0.06,
+    "fuelMassExponent": 0.64,
+    "referenceLaneLength": 18.7
+  },
   "ship": { "mRef": 10, "engineStackFalloff": 1, "engineValueShare": 0.2 },
   "fuel": { "fuelPerHydrogen": 2 },
   "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },

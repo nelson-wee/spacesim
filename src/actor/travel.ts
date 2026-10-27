@@ -1,6 +1,8 @@
 // Travel in a sector and jumps between sectors (Sections 8.2 to 8.4, 8.6).
 import { type Game, passTime } from '../core/game';
 import type { Actor, JumpPoint, Lane, Location, Vec } from '../core/types';
+import type { GameData } from '../data';
+import { checkLoadout } from '../ship/rules';
 import { mapDistance } from '../world/geometry';
 import { fleetMove, fleetTravelStats } from './fleet';
 import { dockFuel, jumpFuel, sectorTripFuel, towFleet } from './fuel';
@@ -86,6 +88,15 @@ function refusedPlan(kind: 'sector' | 'jump', name: string, reason: string, acto
   };
 }
 
+/** The first required-module rule (Section 11.2) that a fleet ship breaks, or null. */
+function loadoutBlock(actor: Actor, data: GameData): string | null {
+  for (const ship of actor.fleet) {
+    const error = checkLoadout(ship, data).errors[0];
+    if (error) return `${ship.name}: ${error}`;
+  }
+  return null;
+}
+
 function isAt(actor: Actor, dest: Destination): boolean {
   const p = actor.position;
   return (
@@ -101,6 +112,8 @@ export function planSectorTrip(game: Game, actor: Actor, dest: Destination): Tri
   const there = destinationPlace(game, dest);
   if (there.sectorId !== here.sectorId) return refusedPlan('sector', there.name, 'That is in a different sector.', actor);
   if (isAt(actor, dest)) return refusedPlan('sector', there.name, 'You are already there.', actor);
+  const blocked = loadoutBlock(actor, data);
+  if (blocked) return refusedPlan('sector', there.name, blocked, actor);
   const stats = fleetTravelStats(actor, data);
   const move = fleetMove(stats);
   if (move <= 0) return refusedPlan('sector', there.name, 'A ship in the fleet cannot move (no engine thrust).', actor);
@@ -153,6 +166,8 @@ export function planJump(game: Game, actor: Actor, fromJumpPointId?: number): Tr
   const route = jumpRoute(game, actor, fromJumpPointId);
   if (!route) return refusedPlan('jump', '?', 'You must be at a jump point to jump.', actor);
   const name = game.state.world.sectors[route.to.sectorId]?.name ?? '?';
+  const blocked = loadoutBlock(actor, data);
+  if (blocked) return refusedPlan('jump', name, blocked, actor);
   const stats = fleetTravelStats(actor, data);
   const move = fleetMove(stats);
   if (move <= 0) return refusedPlan('jump', name, 'A ship in the fleet cannot move (no engine thrust).', actor);
