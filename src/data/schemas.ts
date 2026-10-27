@@ -104,6 +104,8 @@ export const balanceSchema = z.object({
       costPerTonneJump: nonNeg,
       /** Risk and insurance for each jump, as a share of the buy price (far routes need larger gaps). */
       riskPerJump: nonNeg,
+      /** Cost of the capital in transit, as a share of the buy price per transit day. */
+      capitalCostPerDay: nonNeg,
       /** Share of the open surplus or deficit that carriers move on one day. */
       dailyShare: prob,
       /** Tonnes per day that carriers can move through one sector at security level 4. */
@@ -399,6 +401,8 @@ export const servicesSchema = z.object({
     guildRangeJumps: z.number().int().nonnegative(),
     /** Days for the trend arrow (Section 9.12). */
     trendDays: z.number().int().positive(),
+    /** Chain alerts (Sections 9.4, 14.4): producer output below lowOutputRatio; population stock below deficitDays of use. */
+    alerts: z.object({ lowOutputRatio: prob, deficitDays: nonNeg }),
     /** Most days of one Wait (Section 8.8). */
     waitMaxDays: z.number().int().positive(),
   }),

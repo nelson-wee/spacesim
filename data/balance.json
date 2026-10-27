@@ -84,10 +84,11 @@
     "capacity": { "changeRate": 0.003, "restartCapacity": 0.1, "growthPriceFactor": 1 },
     "carriers": {
       "maxJumps": 3,
-      "minMargin": 0.25,
+      "minMargin": 0.12,
       "costPerTonne": 1,
       "costPerTonneJump": 3,
       "riskPerJump": 0.05,
+      "capitalCostPerDay": 0.01,
       "dailyShare": 0.5,
       "sectorCapacityTonnes": 3000,
       "securityBase": 0.2,

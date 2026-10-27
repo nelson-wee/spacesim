@@ -35,12 +35,14 @@ export function capacityFactor(level: number, ctx: EconContext): number {
 
 /**
  * Transport cost of one unit: mass x (costPerTonne + costPerTonneJump x jumps),
- * plus risk: buy price x riskPerJump x jumps. Mass cost makes raw goods dearer
- * far from their mines; risk makes all goods dearer far from their makers.
+ * plus risk: buy price x riskPerJump x jumps, plus the cost of the capital in
+ * transit: buy price x capitalCostPerDay x transit days. Mass cost makes raw
+ * goods dearer far from their mines; risk and capital cost make all goods
+ * dearer far from their makers.
  */
 export function transportCost(mass: number, jumps: number, buy: number, ctx: EconContext): number {
   const c = ctx.data.balance.economy.carriers;
-  return mass * (c.costPerTonne + c.costPerTonneJump * jumps) + buy * c.riskPerJump * jumps;
+  return mass * (c.costPerTonne + c.costPerTonneJump * jumps) + buy * (c.riskPerJump * jumps + c.capitalCostPerDay * transitDays(jumps, ctx));
 }
 
 /** Days in transit for a route of `jumps` jumps. */

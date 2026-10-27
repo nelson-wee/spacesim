@@ -250,8 +250,10 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
   it('transport cost and transit days grow with jumps', () => {
     const ctx = createEconContext(generateWorld(3, data), data);
     expect(transportCost(1, 2, 0, ctx)).toBeCloseTo(c.costPerTonne + 2 * c.costPerTonneJump);
-    expect(transportCost(0.2, 0, 400, ctx)).toBeCloseTo(0.2 * c.costPerTonne);
-    expect(transportCost(0.2, 2, 400, ctx)).toBeCloseTo(0.2 * (c.costPerTonne + 2 * c.costPerTonneJump) + 400 * 2 * c.riskPerJump);
+    expect(transportCost(0.2, 0, 400, ctx)).toBeCloseTo(0.2 * c.costPerTonne + 400 * c.capitalCostPerDay * transitDays(0, ctx));
+    expect(transportCost(0.2, 2, 400, ctx)).toBeCloseTo(
+      0.2 * (c.costPerTonne + 2 * c.costPerTonneJump) + 400 * (2 * c.riskPerJump + c.capitalCostPerDay * transitDays(2, ctx)),
+    );
     expect(transitDays(3, ctx)).toBe(c.transitDays + 3 * c.transitDaysPerJump);
   });
 
@@ -293,7 +295,7 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
     expect(src.market.water!.stock).toBe(2000);
   });
 
-  it('no route if the margin after transport cost is below minMargin', () => {
+  it('no route if the gap does not pay the transport cost and minMargin', () => {
     const { w, ctx, src, dst } = twoMarkets(3, 1);
     // Both near target: almost no price gap.
     src.market.water!.stock = 1100;

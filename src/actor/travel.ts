@@ -6,6 +6,7 @@ import { checkLoadout } from '../ship/rules';
 import { mapDistance } from '../world/geometry';
 import { fleetMove, fleetTravelStats } from './fleet';
 import { dockFuel, jumpFuel, sectorTripFuel, towFleet } from './fuel';
+import { observe } from './knowledge';
 
 export type Destination = { kind: 'location'; locationId: number } | { kind: 'jumpPoint'; jumpPointId: number };
 
@@ -213,6 +214,8 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
   const { data } = game;
   const plan = planSectorTrip(game, actor, dest);
   if (!plan.possible) return { result: 'refused', reason: plan.reason ?? 'Not possible.' };
+  // Keep the last live prices of the location that the fleet leaves.
+  observe(game, actor);
   const here = actorPlace(game, actor);
   const there = destinationPlace(game, dest);
   const stats = fleetTravelStats(actor, data);
@@ -227,12 +230,14 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
       y: here.point.y + (there.point.y - here.point.y) * share,
     };
     actor.position = { kind: 'space', sectorId: here.sectorId, x: stop.x, y: stop.y };
+    observe(game, actor);
     const tow = towFleet(game, actor, here.sectorId, stop);
     return { result: 'towed', days: plan.days * share, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
 
   useFuel(actor, travelNeed, 1);
   passTime(game, plan.days);
+  observe(game, actor);
   if (dest.kind === 'jumpPoint') {
     actor.position = { kind: 'jumpPoint', jumpPointId: dest.jumpPointId };
     const jp = game.state.world.jumpPoints[dest.jumpPointId];
@@ -251,6 +256,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
     return { result: 'towed', days: plan.days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'docked', locationId: dest.locationId };
+  observe(game, actor);
   game.bus.message(`You dock at ${plan.destinationName}.`);
   game.bus.emit({ type: 'arrived', actorId: actor.id, locationId: dest.locationId });
   return { result: 'arrived', days: plan.days };
@@ -274,6 +280,7 @@ export function jump(game: Game, actor: Actor): TripOutcome {
     return { result: 'towed', days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'jumpPoint', jumpPointId: route.to.id };
+  observe(game, actor);
   game.bus.message(`You jump to ${plan.destinationName}. The trip takes ${days.toFixed(1)} days.`);
   return { result: 'arrived', days };
 }

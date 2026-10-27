@@ -1,0 +1,61 @@
+// Greedy trader bot on many seeds (M3-TOOL-01 to 03, exit check 1).
+// Reports the day of the first hull upgrade on each seed, and profit per day
+// over time. Usage: npm run sim-trader -- [seeds] [firstSeed] [maxDays] [--verbose] [--override=json]
+import { travelStats } from '../src/ship/stats';
+import { knowsLocation } from '../src/actor/knowledge';
+import { createGame } from '../src/core/newGame';
+import { dataWithOverride } from './lib/override';
+import { type BotOptions, botTurn, netWorth, newBotState } from './lib/traderBot';
+
+const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const verbose = process.argv.includes('--verbose');
+const seeds = Number(args[0] ?? 20);
+const firstSeed = Number(args[1] ?? 1);
+const maxDays = Number(args[2] ?? 150);
+const data = dataWithOverride(process.argv);
+const opts: BotOptions = { targetHull: 'light_freighter', targetLoadout: 'light_freighter_trader', reserve: 2000, maxJumps: 3 };
+const WINDOW = 30;
+
+const pad = (v: string | number, n: number) => String(v).padStart(n);
+let inWindow = 0;
+const upgradeDays: number[] = [];
+const windowRates: number[][] = [];
+const started = Date.now();
+console.log(`Trader bot: ${seeds} seeds from ${firstSeed}, up to ${maxDays} days. Target: ${opts.targetHull}, reserve ${opts.reserve} cr.`);
+console.log(`${'seed'.padStart(5)}${pad('upgrade', 9)}${pad('trips', 7)}${pad('credits', 9)}  profit per day in ${WINDOW}-day windows`);
+for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
+  const game = createGame(seed, data);
+  const bot = newBotState();
+  const worth: number[] = [netWorth(game.state.player)];
+  let guard = 0;
+  while (game.state.day < maxDays && guard++ < 5000) {
+    botTurn(game, bot, opts);
+    while (worth.length <= Math.floor(game.state.day)) worth.push(netWorth(game.state.player));
+    if (bot.upgradeDay !== null && game.state.day > Math.max(bot.upgradeDay + WINDOW, 120)) break;
+  }
+  const rates: number[] = [];
+  for (let d = WINDOW; d < worth.length; d += WINDOW) rates.push(((worth[d] as number) - (worth[d - WINDOW] as number)) / WINDOW);
+  windowRates.push(rates);
+  const up = bot.upgradeDay;
+  if (up !== null) upgradeDays.push(up);
+  if (up !== null && up >= 60 && up <= 120) inWindow++;
+  const ship = game.state.player.fleet[0];
+  console.log(
+    `${pad(seed, 5)}${pad(up === null ? '-' : up.toFixed(0), 9)}${pad(bot.trips, 7)}${pad(Math.round(game.state.player.credits), 9)}  ${rates.map((r) => pad(Math.round(r), 5)).join('')}${ship ? `   ${ship.hullId} cargo ${travelStats(ship, data).cargoCapacity} t` : ''}`,
+  );
+  if (verbose) for (const e of bot.events) console.log(`      day ${e.day.toFixed(1)}: ${e.text}`);
+  if (up === null) {
+    const w = game.state.world;
+    const yards = w.locations.filter((l) => l.services.includes('shipyard'));
+    const known = yards.filter((l) => knowsLocation(game.state.player, l));
+    console.log(`      no upgrade: ${yards.length} Shipyards in the region, ${known.length} known (${known.map((l) => l.name).join(', ')})`);
+  }
+}
+const sorted = [...upgradeDays].sort((a, b) => a - b);
+const median = sorted.length ? (sorted[Math.floor(sorted.length / 2)] as number) : NaN;
+const first = windowRates.map((r) => r[0] ?? 0).sort((a, b) => a - b);
+console.log(`\nUpgrade on ${upgradeDays.length}/${seeds} seeds; median day ${Number.isNaN(median) ? '-' : median.toFixed(0)}.`);
+console.log(`Shuttle profit per day, first ${WINDOW} days: median ${Math.round(first[Math.floor(first.length / 2)] ?? 0)} cr (monitor: 100-250 on a good raw-goods route, Section 22).`);
+const need = Math.ceil(seeds * 0.75);
+console.log(`${inWindow >= need ? 'PASS' : 'FAIL'}  Light Freighter bought between day 60 and day 120 on ${inWindow}/${seeds} seeds (need ${need}).`);
+console.log(`Run time ${((Date.now() - started) / 1000).toFixed(1)} s.`);

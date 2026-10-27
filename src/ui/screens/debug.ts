@@ -14,8 +14,9 @@ import { type DamageState, type DrawArtOptions, drawArt } from '../../render/shi
 import { palette, styleColor, techColor } from '../../render/palette';
 import { displayDay } from '../../core/clock';
 import { midPrice } from '../../econ/prices';
+import { travelStats } from '../../ship/stats';
 
-type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices';
+type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship';
 
 const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
 const MODULE_PAGE = 5;
@@ -55,6 +56,7 @@ export class DebugScreen implements Screen {
         ['6', 'Skip N days'],
         ['7', 'Ship art gallery'],
         ['8', 'Show all prices'],
+        ['9', 'Flagship derived stats'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -71,6 +73,21 @@ export class DebugScreen implements Screen {
     if (this.mode === 'prices') {
       const pages = this.renderPrices(t, x + 2, y + 4, h - 8);
       t.text(x + 2, y + h - 2, `Page ${this.pricePage + 1}/${pages}   Left/Right: page   Esc: back`, ui.highlight);
+      return;
+    }
+    if (this.mode === 'ship') {
+      // M3-TOOL-06: all derived stats of the flagship.
+      const ship = game.state.player.fleet[game.state.player.flagshipIndex];
+      if (ship) {
+        t.text(x + 2, y + 4, `${ship.name} (${ship.hullId})`, ui.title);
+        const stats = Object.entries(travelStats(ship, game.data));
+        const perCol = h - 9;
+        stats.forEach(([key, value], i) => {
+          const text = `${key.padEnd(16)} ${typeof value === 'number' ? Number(value.toFixed(3)) : String(value)}`;
+          t.text(x + 2 + Math.floor(i / perCol) * 30, y + 6 + (i % perCol), text, ui.text, undefined, 29);
+        });
+      }
+      t.text(x + 2, y + h - 2, 'Esc: back', ui.highlight);
       return;
     }
     if (this.mode === 'teleport') {
@@ -96,6 +113,10 @@ export class DebugScreen implements Screen {
       if (k.key === 'ArrowRight') this.pricePage = (this.pricePage + 1) % pages;
       else if (k.key === 'ArrowLeft') this.pricePage = (this.pricePage + pages - 1) % pages;
       else if (k.key === 'Escape') this.mode = 'menu';
+      return true;
+    }
+    if (this.mode === 'ship') {
+      if (k.key === 'Escape') this.mode = 'menu';
       return true;
     }
     if (this.mode === 'art') {
@@ -146,6 +167,9 @@ export class DebugScreen implements Screen {
       case '8':
         this.mode = 'prices';
         this.pricePage = 0;
+        return true;
+      case '9':
+        this.mode = 'ship';
         return true;
       case 'F12':
       case '`':

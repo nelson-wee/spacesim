@@ -6,6 +6,7 @@ import { type GameData, hydrogenBasePrice } from '../data';
 import { basePrice, buyPrice, sellPrice } from '../econ/prices';
 import type { ShipStats } from '../ship/stats';
 import { fleetUnits, removeCargo } from './cargo';
+import { observe } from './knowledge';
 import { travelStats } from '../ship/stats';
 import { mapDistance } from '../world/geometry';
 
@@ -137,6 +138,7 @@ export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: 
   }
   const { soldValue } = payFeeWithCargo(game, actor, fee, location);
   actor.position = { kind: 'docked', locationId: location.id };
+  observe(game, actor);
   game.bus.message(
     `Out of fuel. A tug tows your fleet to ${location.name}. Recovery fee: ${Math.round(fee)} cr.`,
     'danger',

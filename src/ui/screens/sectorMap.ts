@@ -9,11 +9,13 @@ import {
   type TripPlan,
   travelInSector,
 } from '../../actor/travel';
+import { knowsLocation, priceView } from '../../actor/knowledge';
 import type { Game } from '../../core/game';
 import type { JumpPoint, Location, Vec } from '../../core/types';
 import type { Term } from '../../render/display';
 import { palette, securityColor, techColor } from '../../render/palette';
 import { report } from '../../services/common';
+import { marketRole } from '../../services/market';
 import { quoteRefuel, refuel } from '../../services/refuel';
 import { ringPoint } from '../../world/geometry';
 import { locationTypeName } from '../../world/location';
@@ -24,7 +26,10 @@ import type { KeyInput } from '../input';
 import { LOG_Y, MAP_H, MAP_W, MAP_X, MAP_Y, PANEL_W, PANEL_X } from '../layout';
 import { drawRecentLog, drawStatusBar, formatCredits } from '../widgets/statusBar';
 import { days, fit, fuelLine } from '../widgets/text';
+import { FleetScreen } from './fleet';
+import { LocationScreen } from './location';
 import { LogScreen } from './log';
+import { TradeLedgerScreen } from './tradeLedger';
 import { RegionMapScreen } from './regionMap';
 
 const LOCATION_KEYS = 'abcdef';
@@ -32,6 +37,8 @@ const JUMP_KEYS = '1234';
 
 export class SectorMapScreen implements Screen {
   private selected: Destination | null = null;
+  /** Route view: the selected commodity, or null. */
+  private routeCommodity: string | null = null;
 
   constructor(private readonly app: App) {}
 
@@ -96,6 +103,8 @@ export class SectorMapScreen implements Screen {
       at({ x: loc.pos.x + 1, y: loc.pos.y }, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
     });
 
+    if (this.routeCommodity) this.renderRouteView(t, this.routeCommodity);
+
     // The player.
     const place = actorPlace(game, game.state.player);
     const p = game.state.player.position;
@@ -103,6 +112,34 @@ export class SectorMapScreen implements Screen {
 
     this.renderPanel(t);
     drawRecentLog(t, game);
+  }
+
+  /**
+   * Route view (Section 17.2): each known location shows its known price of one
+   * commodity, colored by its difference from the average known price. "+"
+   * marks a location that makes it; "-" a location that needs it.
+   */
+  private renderRouteView(t: Term, commodity: string): void {
+    const game = this.game;
+    const { data } = game;
+    const ui = palette(data).ui;
+    const actor = game.state.player;
+    const views = game.state.world.locations
+      .map((l) => priceView(game, actor, l, commodity))
+      .filter((v) => v.source !== 'unknown');
+    const avg = views.length ? views.reduce((s, v) => s + v.mid, 0) / views.length : 0;
+    t.text(MAP_X + 1, MAP_Y, `Route view: ${data.commodityById.get(commodity)?.name ?? commodity}  (V next, Shift+V off)`, ui.bright);
+    for (const loc of this.locations()) {
+      if (!knowsLocation(actor, loc)) continue;
+      const v = priceView(game, actor, loc, commodity);
+      if (v.source === 'unknown' || !loc.market[commodity]) continue;
+      const role = marketRole(loc, commodity, data);
+      const mark = role === 'sells' ? '+' : role === 'buys' ? '-' : ' ';
+      const price = role === 'sells' ? v.buy : v.sell;
+      const diff = avg > 0 ? v.mid / avg - 1 : 0;
+      const color = diff <= -0.15 ? ui.good : diff >= 0.15 ? ui.danger : ui.text;
+      t.text(MAP_X + loc.pos.x + 3, MAP_Y + loc.pos.y, `${mark}${Math.round(price)}`, color);
+    }
   }
 
   private renderPanel(t: Term): void {
@@ -163,7 +200,7 @@ export class SectorMapScreen implements Screen {
       line('or click it on the map.', pal.ui.dim);
     }
 
-    y = Math.max(y + 1, LOG_Y - 7);
+    y = Math.max(y + 1, LOG_Y - 10);
     if (player.position.kind === 'jumpPoint') {
       const jplan = planJump(game, player);
       if (jplan.possible) {
@@ -176,6 +213,9 @@ export class SectorMapScreen implements Screen {
       const q = quoteRefuel(game, player, loc);
       keyLine('R', q.units > 0 ? `Refuel ${q.units.toFixed(1)} for ${formatCredits(q.cost)}` : 'Refuel (tanks are full)');
     }
+    if (player.position.kind === 'docked') keyLine('O', 'Location services');
+    keyLine('I', 'Fleet   T Trade Ledger');
+    keyLine('V', 'Route view');
     keyLine('M', 'Region map');
     keyLine('L', 'Log    ? Help');
   }
@@ -216,7 +256,25 @@ export class SectorMapScreen implements Screen {
           if (out.result === 'refused') game.bus.message(out.reason, 'warning');
           this.selected = null;
         }
+        if (player.position.kind === 'docked') this.app.push(new LocationScreen(this.app, player.position.locationId));
         return true;
+      case 'o':
+        if (player.position.kind === 'docked') this.app.push(new LocationScreen(this.app, player.position.locationId));
+        else game.bus.message('You are not docked.', 'warning');
+        return true;
+      case 'i':
+        this.app.push(new FleetScreen(this.app));
+        return true;
+      case 't':
+        this.app.push(new TradeLedgerScreen(this.app));
+        return true;
+      case 'v': {
+        // Route view (Section 17.2): cycle through the commodities, then off.
+        const ids = game.data.commodities.map((c) => c.id);
+        const i = this.routeCommodity === null ? 0 : ids.indexOf(this.routeCommodity) + 1;
+        this.routeCommodity = k.shift ? null : (ids[i] ?? null);
+        return true;
+      }
       case 'j': {
         if (player.position.kind !== 'jumpPoint') {
           game.bus.message('Go to a jump point first.', 'warning');
@@ -271,6 +329,10 @@ export class SectorMapScreen implements Screen {
       'Enter    Travel to the target (and dock at a location)',
       'J        Jump to the next sector (at a jump point)',
       'R        Refuel all ships (when docked)',
+      'O        Location services (when docked); Enter also opens them',
+      'I        Fleet and cargo',
+      'T        Trade Ledger',
+      'V        Route view: prices of one commodity (Shift+V: off)',
       'M        Region map',
       'L        Log',
       'Esc      Clear the target',
