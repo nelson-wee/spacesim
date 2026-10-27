@@ -190,6 +190,41 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-27 [§6.8, §9.5] Producers value inputs and Machinery at replacement cost (`src/econ/costs.ts`): the cheapest source buy price plus transport cost and risk within the carrier range; the local price if no source has goods. Used by K* and by capacity. Reason: a producer uses its inputs each day, so its own input market is nearly empty and its local input price sits near the high clamp; with local prices, Machine Works and Smelters saw losses while their outputs were dear, and shrank in a spiral.
 - 2026-10-27 [§9.13] Only faults fail (owner): no systemic clamp, no stock below 0, no permanent stop (no producer below 30% output for more than 365 days in a row; was 60 days), and capital responds. The gradient, route margins, raw-goods margins, busts of 61-365 days, and the chain shock are reports. Reason: booms and busts are a feature; the shape of prices changes with the cycle.
 
+## M3 Trade and ships (2026-10-27)
+
+### Ships
+
+- 2026-10-27 [Q-09] Weapon and point defense mass and price by size: S 1 t, 2,000 cr; M 4 t, 6,000 cr; L 10 t, 18,000 cr. Heat per shot from the Q-09 default. Reason: Q-09 default; the §11.4 masses need a 1 t S weapon.
+- 2026-10-27 [§11.1] **For owner review:** Light Freighter internal slots S2 M2 L1 (the brief has S3 M2 L0). Reason: with no L slot, an LF with an M engine and an M fuel tank has no slot for more than 30 t of cargo, so it carries no more than the Shuttle. With S2 M2 L1 the trader loadout fits Engine M, Fuel Tank M and S, Reactor S, and Cargo Rack L (80 t).
+- 2026-10-27 [§11.4] The §11.4 reference rows test the formulas at the masses in the table (`ship-report`), not the masses of the default loadouts. Reason: the brief says the rows test the formulas; the default loadouts have extra modules (for example the Shuttle's shield) and differ by 1–2 t.
+- 2026-10-27 [§12.2] Point defense is size S in all loadouts. Reason: §12.2 gives one size.
+- 2026-10-27 [§11.9] Loading order: the non-flagship ships with the most thrust first, the flagship last; a sale takes cargo from the flagship first. Reason: §11.9 (heavy goods to the ship with the most thrust; keep the flagship free for combat).
+
+### Services
+
+- 2026-10-27 [§7.4] Service rules in `services.json` (`rules`): Mechanic 20 cr per hull point, 25 per engine point, 15 per armor point; Outfitter sell share 0.6 (Q-13); trade-in share 0.6; Pirate Havens sell tiers 1–3 at 130%; Guild range 2 jumps; trend 14 days; Wait 1–30 days. Reason: the brief gives no Mechanic prices; a full Shuttle hull repair costs 800 cr, about 3–5 days of early profit.
+- 2026-10-27 [§17.4] Market roles: "Sells" if the location's producer makes the commodity; else "Buys"; Trade Hubs show "Hub". Reason: §17.4 marks Sells or Buys; a Trade Hub does both.
+- 2026-10-27 [Q-02] Refuel buys Hydrogen unit by unit at the local buy price; part units pay their share of the next unit price. Quotes now take part units (fuel, Food after loss).
+- 2026-10-27 [M3-SVC-15] A tow fee sells cargo at the local sell price, unit by unit, and only the commodities that the location trades. If that is not sufficient, credits go below 0. Reason: a location with no market for a commodity has no local price.
+- 2026-10-27 [Q-14] A new hull comes with full HP and no fuel; it needs a fuel tank before it can refuel. A new Armor Plating comes at full HP; a new Fuel Tank comes empty. Removing a Cargo Rack is blocked while the cargo would not fit. Reason: no module storage, and cargo cannot float.
+- 2026-10-27 [§8.6] In debt, an actor cannot buy hulls or modules. Market buys and Refuel also stop, because they need credits above 0. Each sale adds to credits, so it pays the debt first.
+
+### Price information
+
+- 2026-10-27 [§9.12] Known prices keep the stock and target of each market (not only the price), so the route planner can quote unit by unit. Trend arrows come only from a Merchants' Guild. Reason: §9.12 gives trends to the Guild.
+- 2026-10-27 [§9.12] Knowledge updates on departure, arrival, jumps, tows, and each day of Wait. The Guild information updates when the player docks there. Save version 2 (the actor has `knowledge`).
+- 2026-10-27 [§14.4] Chain alerts: a producer below 60% output (cause: the hard input with the lowest stock against its need, "no" below 5% input, else Machinery, else capacity, else security), and a population whose stock is below 1 day of use. Values in `services.json` (`alerts`).
+
+### Routes and the trader bot
+
+- 2026-10-27 [§17.6] Route values: the planner buys unit by unit while the next unit makes a profit, up to free tonnes, credits (less the fuel cost), and known stock. Trip days and fuel come from the fastest path (sector distance / cruiseFactor + lane length / jumpFactor), with the cargo mass. A route that starts elsewhere adds the trip to its start. Profit per day = (profit − fuel cost) / days. The code is in `src/actor/paths.ts` and `src/actor/routes.ts` (M3-UI-13).
+- 2026-10-27 [M3-TOOL-02] The bot (`tools/lib/traderBot.ts`): sells where the plan says or at a profit; buys a second S engine for the free slot when it keeps 2,000 cr (§11.8); buys the Light Freighter and its trader loadout when it can pay and keep 2,000 cr; refuels; takes the best known route by expected profit per day; explores when it knows no route. Expected profit: on a long trip the margin moves toward the carrier cost of the route (weight 1 − exp(−trip days / carrier transit days)). Reason: without this rule the bot took 1-jump trips to small Machinery markets that carriers filled before it arrived, and lost money.
+- 2026-10-27 [UI] Sector map keys: O opens the Location screen (Enter with no target too), I the fleet screen, T the Trade Ledger, V the route view. Reason: D and F are location keys on the sector map.
+
+### Carriers (economy change found by the trader bot)
+
+- 2026-10-27 [§9.7, §22] Carrier `minMargin` 0.25 → 0.12, and a new capital cost in transit `capitalCostPerDay` 0.01 (share of the buy price per transit day, in `transportCost`). Reason: with a 25% margin on all goods, a gap of 25–30% stayed between near locations for goods of high value (Electronics 2,000 cr/t). The bot earned 25% on its capital in each 0.6-day trip in one sector, and bought the Light Freighter on day 36 (median, 20 seeds; target day 60–120, §22). A per-tonne handling cost was tested and rejected: at 14 cr/t, Water and Oxygen sat at the high clamp on more than 50% of days, and biolabs stopped. With 0.12 and the capital cost, all M2 pass/fail checks pass (20 of 20 seeds) and the median upgrade day is 82.
+
 ## Cuts
 
 None.
