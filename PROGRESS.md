@@ -156,39 +156,6 @@ Check (Section 6.11): 98 of 100 seeds pass with 2 tries or fewer (need 95): PASS
 
 `npm run sim-economy -- 1000 20`: 1,000 days × 20 seeds in 188 s. Median prices (Frontier / Middle / Core): Iron Ore 10 / 14 / 20, Rare Elements 79 / 106 / 125, Electronics 383 / 373 / 361, Composites 216 / 215 / 200, Machinery 761 / 712 / 662, Medicine 296 / 247 / 243, Oxygen 60 / 56 / 57, Food 41 / 41 / 42.
 
-### Input target test (owner request, 2026-10-27; diffusion model, before carriers)
-
-`inputTargetDays` sets the target stock of recipe inputs. Off-map supply 5% in all runs. Generator: 50 seeds (100 for 3 and 10 days); economy: 10 seeds, 400 days.
-
-| Input target | Generator pass (2 tries) | Producers that fail "low output" in generator tests | Commodity-seeds at the clamp > 20% | Routes | Capital |
-|---|---|---|---|---|---|
-| 3 days | 42 of 100 | 182 | 2 of 120 | 8 of 10 | 2 of 10 |
-| 5 days | 32 of 50 | 44 | 7 of 120 | 7 of 10 | 2 of 10 |
-| 7 days | 42 of 50 | 11 | 18 of 120 | 9 of 10 | 3 of 10 |
-| 10 days (kept) | 90 of 100 | 1 | 19 of 120 | 9 of 10 | 5 of 10 |
-| 3 days, flow share 1.0 | 18 of 50 | 107 | 1 of 120 | 8 of 10 | 2 of 10 |
-| 3 days, κ × 2 | 28 of 50 | 55 | 4 of 120 | 8 of 10 | 3 of 10 |
-
-Result: smaller input targets keep fewer markets at the clamp, but producers starve. Flow is proportional to the price gap, and a smaller target gives a lower price for the same stock, so a producer pulls fewer goods (Electronics Fabs and Agri Worlds starve first). The default stays at 10 days. Try a value with `--override='{"balance":{"economy":{"inputTargetDays":3}}}'`.
-
-### Tool results
-
-`npm test`: 11 test files, 594 tests, all pass.
-
-`npm run gen-report -- 100`:
-
-```
-Generator report: seeds 1..100, 31186 ms (312 ms per seed)
-Tries: 1: 77, 2: 21, 3: 2
-Rule failures (all tries): supplyPath 16, supplyRatio 10, producersPlaced 6, twoSectors 7, chainSeparation 1
-Repairs: move electronics_fab 2, add rare_element_mine 19, add smelter 1, start at 9, add ice_mine 18, add ore_mine 8, move smelter 2, remove rare_element_mine 1, add agri_world 1, add machine_works 3, move ore_mine 1
-Stations: industrial_station 813, habitat 266, processing_station 309, military_outpost 155, trade_hub 235, mining_station 553, pirate_haven 35, shipyard_station 3
-Supply/demand ratio (median, min, max): water 1.04 [0.93, 1.29]; hydrogen 1.15 [1.01, 1.37]; iron_ore 1.13 [0.91, 1.43]; silicates 1.16 [1.01, 1.35]; rare_elements 1.09 [0.91, 1.28]; oxygen 1.14 [0.93, 1.34]; alloys 1.11 [0.98, 1.33]; food 1.06 [0.95, 1.33]; composites 1.15 [0.92, 1.58]; electronics 1.08 [0.98, 1.32]; machinery 1.11 [1.00, 1.34]; medicine 1.17 [0.93, 1.64]
-Check (Section 6.11): 98 of 100 seeds pass with 2 tries or fewer (need 95): PASS
-```
-
-`npm run sim-economy -- 1000 20`: 1,000 days × 20 seeds in 159 s. Median prices (Frontier / Middle / Core): Iron Ore 10 / 14 / 22, Rare Elements 80 / 109 / 130, Electronics 378 / 369 / 357, Composites 173 / 167 / 162, Machinery 1313 / 1190 / 1352, Medicine 266 / 238 / 234.
-
 ## Visual design import (2026-10-26)
 
 Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art/style.json`).
