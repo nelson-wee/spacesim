@@ -155,12 +155,21 @@ export function assignDevelopment(
       changed.add(s.i);
     }
   }
+  // Q-07: Rare Elements need producers in 2 sectors, and Rare Element Mines
+  // stand only in Frontier sectors. Change the farthest other sectors to Frontier.
+  const minFrontier = Math.min(data.balance.generator.minFrontierSectors, positions.length - 1);
+  while (levels.filter((l) => l === 'frontier').length < minFrontier) {
+    const s = byDistance.find((c) => levels[c.i] !== 'frontier');
+    if (!s) break;
+    levels[s.i] = 'frontier';
+    changed.add(s.i);
+  }
   if (!levels.includes('middle')) {
     // Do not take the last Frontier sector.
     const frontierCount = levels.filter((l) => l === 'frontier').length;
     const s =
       byDistance.find((c) => !changed.has(c.i) && levels[c.i] !== 'frontier') ??
-      (frontierCount > 1 ? byDistance.find((c) => !changed.has(c.i)) : undefined);
+      (frontierCount > minFrontier ? byDistance.find((c) => !changed.has(c.i)) : undefined);
     if (s) levels[s.i] = 'middle';
   }
   return levels;

@@ -34,6 +34,8 @@ export type SecurityLevel = z.infer<typeof S.securitySchema>['levels'][number];
 export type Hull = z.infer<typeof S.hullsSchema>['hulls'][number];
 export type ModuleDef = z.infer<typeof S.modulesSchema>['modules'][number];
 export type ModuleValues = z.infer<typeof S.moduleValuesSchema>;
+export type ServiceDef = z.infer<typeof S.servicesSchema>['services'][number];
+export type ServiceClause = ServiceDef['where'][number];
 export type Loadout = z.infer<typeof S.loadoutsSchema>['loadouts'][number];
 export type LoadoutSlot = Loadout['internal'][number];
 export type Development = z.infer<typeof S.developmentSchema>;
@@ -85,6 +87,7 @@ export interface GameData {
   modules: z.infer<typeof S.modulesSchema>;
   moduleById: Map<string, ModuleDef>;
   loadoutById: Map<string, Loadout>;
+  services: ServiceDef[];
   art: {
     ships: ShipArt;
     icons: Icons;
@@ -168,6 +171,24 @@ export function checkReferences(data: GameData): string[] {
   }
   for (const u of data.population.use) {
     if (!data.commodityById.has(u.commodity)) problems.push(`population: unknown commodity ${u.commodity}`);
+  }
+  for (const c of Object.keys(b.economy.minTargetStock)) {
+    if (!data.commodityById.has(c)) problems.push(`balance.economy.minTargetStock: unknown commodity ${c}`);
+  }
+  for (const c of Object.keys(b.economy.flowScale)) {
+    if (!data.commodityById.has(c)) problems.push(`balance.economy.flowScale: unknown commodity ${c}`);
+  }
+  for (const c of data.commodities) {
+    if (b.economy.minTargetStock[c.id] === undefined) problems.push(`balance.economy.minTargetStock: no value for ${c.id}`);
+  }
+  for (const [station, uses] of Object.entries(data.population.stationUse)) {
+    if (!data.stationTypeById.has(station)) problems.push(`population.stationUse: unknown station type ${station}`);
+    for (const u of uses) if (!data.commodityById.has(u.commodity)) problems.push(`population.stationUse.${station}: unknown commodity ${u.commodity}`);
+  }
+  for (const svc of data.services) {
+    for (const clause of svc.where) {
+      for (const t of clause.bodyType ?? []) if (!hostIds.has(t)) problems.push(`services.json ${svc.id}: unknown body type ${t}`);
+    }
   }
   for (const m of data.modules.modules) {
     const sizes = Object.keys(m.sizes);
@@ -255,7 +276,6 @@ export function buildGameData(raw: RawData): GameData {
   const hulls = parse('hulls.json', S.hullsSchema, raw.hulls).hulls;
   const modules = parse('modules.json', S.modulesSchema, raw.modules);
   const loadouts = parse('loadouts.json', S.loadoutsSchema, raw.loadouts).loadouts;
-  parse('services.json', S.plannedSchema, raw.services);
   parse('events.json', S.plannedSchema, raw.events);
   parse('encounters.json', S.plannedSchema, raw.encounters);
   parse('templates.json', S.plannedSchema, raw.templates);
@@ -280,6 +300,7 @@ export function buildGameData(raw: RawData): GameData {
     modules,
     moduleById: byId(modules.modules, (m) => m.id, 'modules.json'),
     loadoutById: byId(loadouts, (l) => l.id, 'loadouts.json'),
+    services: parse('services.json', S.servicesSchema, raw.services).services,
     art: {
       ships: parse('art/ships.json', S.artShipsSchema, raw.artShips),
       icons: parse('art/icons.json', S.artIconsSchema, raw.artIcons),

@@ -1,1 +1,19 @@
-{}
+{
+  "services": [
+    { "id": "refuel", "name": "Refuel", "where": [{}] },
+    { "id": "market", "name": "Market", "where": [{}] },
+    { "id": "mechanic", "name": "Mechanic", "where": [{ "kind": "station" }, { "kind": "planet", "minTech": 2 }] },
+    { "id": "outfitter", "name": "Outfitter", "where": [{ "minTech": 2 }, { "bodyType": ["shipyard_station", "pirate_haven"] }] },
+    { "id": "shipyard", "name": "Shipyard", "where": [{ "bodyType": ["shipyard_station"] }, { "bodyType": ["terran"], "minTech": 3 }] },
+    {
+      "id": "merchants_guild",
+      "name": "Merchants' Guild",
+      "where": [{ "bodyType": ["trade_hub"] }, { "kind": "planet", "minTech": 2, "residentPopulation": true }]
+    },
+    {
+      "id": "bounty_guild",
+      "name": "Bounty Guild",
+      "where": [{ "bodyType": ["military_outpost"] }, { "kind": "planet", "minTech": 2, "minBaselineSecurity": 30 }]
+    }
+  ]
+}

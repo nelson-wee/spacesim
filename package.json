@@ -12,7 +12,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "world-report": "tsx tools/world-report.ts",
-    "import-art": "tsx tools/import-art.ts"
+    "import-art": "tsx tools/import-art.ts",
+    "gen-report": "tsx tools/gen-report.ts",
+    "sim-economy": "tsx tools/sim-economy.ts"
   },
   "dependencies": {
     "jetbrains-mono": "1.0.6",

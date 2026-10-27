@@ -71,6 +71,52 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-26 [M1-DBG] Debug panel item 7 shows all ship art: battle art in each state and side, and portraits with slot marks. Reason: a visual check of each art import.
 - 2026-10-26 [M1-SET] `js-yaml` 4.3.2 (development only, for `import-art` and tests). Reason: 4.1.0 has known security problems.
 
+## M2 Economy (2026-10-27)
+
+### Defaults from the open questions
+
+- 2026-10-27 [Q-05] `balance.economy.minTargetStock` per commodity (3 to 20 units). Reason: the default of Q-05.
+- 2026-10-27 [Q-06] Generator ratio = nominal daily output (full inputs, K = K_ref, security multiplier) divided by nominal daily demand. Runtime ratio = 30-day supply divided by 30-day use. Reason: the default of Q-06.
+- 2026-10-27 [Q-07] Generator step 2 changes the farthest non-core sectors to Frontier until there are `minFrontierSectors` (2). Reason: the default of Q-07; a retry cannot fix it.
+- 2026-10-27 [Q-22] The Bounty Guild rule uses the security baseline at generation. Reason: the default of Q-22.
+
+### Population and recipes
+
+- 2026-10-27 [§9.4] `population.useScale` 0.12 multiplies all population use. Reason: with the brief values, 44 bodies need about 109 producers.
+- 2026-10-27 [§9.4] Who uses what: medicine only resident populations (0.15); electronics and composites only resident populations in Core sectors (0.3); Hydrogen 0.5 for all (crew too). Crew (stations and airless planets) use food, water, oxygen, and Hydrogen. Reason: crews of mining stations do not buy consumer goods; Hydrogen gives each location a use for Refuel.
+- 2026-10-27 [§9.4] Station use (`population.stationUse`): Shipyard Stations use Alloys, Composites, Electronics, and Machinery; Pirate Havens use food, medicine, and oxygen. Reason: these stations have no recipe, but the brief says that they buy these goods.
+- 2026-10-27 [§9.5] `machineryWear` 0.004 (brief 0.0025). Reason: with 0.0025, Machinery demand is too small to keep two Machine Works busy. The wear rule (§9.5) still passes for each producer.
+- 2026-10-27 [§9.1] `batchesPerSize`: ore, silicate, and rare element mines 3 (brief 5); Machine Works 0.25 (brief 2). Reason: the minimum of 2 producers per type gives too much supply at size 1 with the brief values.
+
+### Generator (steps 4 to 9)
+
+- 2026-10-27 [§6.8] Sizing band 1.0 to 1.35 (`ratioLow`, `ratioHigh`); accept band 0.9 to 1.35 (`ratioAcceptLow`, `ratioAcceptHigh`). Brief: 0.9 to 1.1. Reason: with integer sizes 1 to 3 and at least 2 producers, one size step changes a ratio by 30% to 50%, so 0.9 to 1.1 is often not possible.
+- 2026-10-27 [§6.8] The size loop undoes a step that moves an accepted ratio out of the accept band, or that makes a ratio too low. Reason: two producers at sizes {2, 1} give 1.40 and {1, 1} give 0.93; without the undo the loop goes back and forth and stops at 1.40.
+- 2026-10-27 [§6.10] Floor exemption: a ratio above the accept band passes when the main makers of the commodity are at the minimum size and at the minimum count. Reason: the minimum producer count wins over the ratio; by-products and off-map export remove the rest.
+- 2026-10-27 [§6.7] `sectorMap.stationsMin` 2 (brief 1). Reason: each Middle and Core sector needs a slot for a relay Trade Hub.
+- 2026-10-27 [§6.7] Producer placement keeps the last free station slot of a Middle or Core sector for a Trade Hub (score −20), and avoids Frontier sectors that touch no Middle or Core sector (score −6). Reason: goods leave such sectors only through other Frontier sectors, which cannot have Trade Hubs.
+- 2026-10-27 [§6.7] Host planets: a producer that can stand only on planets (Gas Skimmer, Agri World) gets enough host planets. If the blueprint needs more, the generator changes "donor" planets (no resident population, and each producer they can host can also use a station) to the host type. Reason: Gas Giants are rare; 26 of the first 100 seeds failed on "no body for Gas Skimmer".
+- 2026-10-27 [§6.10] New rule "supply path": each producer must reach a maker of each input, and a user of each output, through a chain of relay sectors. Reason: background flow moves goods only one lane a day; without a chain a producer starves for ever.
+- 2026-10-27 [§6.10] A relay sector has a Trade Hub, a maker or user of the commodity, or a location with a relay commodity. The generator adds a Trade Hub in a free slot or a Habitat, else a relay commodity at a location with fewer than `maxCommodities` (8). A relay commodity has the target `relayTargetDays` (10) × the daily flow of the paths through it. Reason: full sectors blocked many paths; a relay passes on only its stock above half target, so it needs a stock of some days.
+- 2026-10-27 [§6.10] New rule "commodity count": each location (not a Trade Hub) trades `minCommodities` to `maxCommodities` (4 to 8) commodities. Reason: Q-03.
+- 2026-10-27 [§6.11] Repairs: supply path (add a maker near the location, move the cut-off producer, or move a station producer out of a full Middle or Core sector so that a Trade Hub can go there); gradient (add a maker of the dearest advanced good in a Core sector); producer count (place the missing producer, free a Habitat if necessary). Reason: each repair acts on the failed rule; repairs that add random producers did not help.
+- 2026-10-27 [§6.10] The producer count rule checks the world after each repair, not only the first try. Reason: a repair hid a missing producer, and a world with one Gas Skimmer passed.
+- 2026-10-27 [§6.11] The world keeps the market state of its validation run (200 days). Reason: a warm start; prices on day 1 are not all at base.
+
+### Economy tick
+
+- 2026-10-27 [§9.7] `flowTwoLanes` 0: no background flow between sectors two lanes apart (brief: "farther 0"). Tested 0.1 and 0.25: the chain shock did not improve and the route check got worse. Reason: keep the brief.
+- 2026-10-27 [§9.7] `flowScale` per commodity (water and Hydrogen 0.4, oxygen 0.6, food and medicine 0.5, others 1). Reason: cheap bulk goods otherwise flatten all price differences, and no route has a margin.
+- 2026-10-27 [§9.2] Trade Hub target: 3 days of region use (`tradeHubTargetDays`). Reason: larger hubs carry more goods but hide each shock (the chain shock check).
+- 2026-10-27 [§9.8] Off-map export: each day, 50% (`exportShare`) of the stock above 2 × target (`exportStockRatio`) leaves the region. Reason: the brief has no sink for a small surplus, so stock grows for ever at producers.
+- 2026-10-27 [§9.13] Clamp check: a market-day counts when the raw price factor is at or outside the clamp (0.3 or 3.0). The limit is 20% of all market-days of the commodity, for each seed. Reason: "for more than 20% of days" has no unit.
+- 2026-10-27 [§9.13] Chain shock test: stop the ore mines of the sector with the most ore output for 30 days; measure the Alloys price at locations in neighbor sectors. Capital test: set K = K_ref and machinery stock 0 at a Frontier mine, add 10 Machinery, compare with a run without it; skip the first day. Reason: the brief does not give the test setup.
+
+### Tools
+
+- 2026-10-27 [M2-TOOL] `gen-report` and `sim-economy` take `--override=<json>`: a deep merge into the data, for tuning sweeps without file changes. Reason: faster tuning.
+- 2026-10-27 [M2-TOOL-08] Debug panel item 8 "Show all prices": mid price of each commodity at each location, colored by the price against base. Reason: §4.3.
+
 ## Cuts
 
 None.

@@ -13,8 +13,8 @@
     { "id": "processing_station", "name": "Processing Station", "development": ["middle", "core"] },
     { "id": "industrial_station", "name": "Industrial Station", "development": ["middle", "core"] },
     { "id": "habitat", "name": "Habitat", "development": ["frontier", "middle", "core"] },
-    { "id": "trade_hub", "name": "Trade Hub", "development": ["middle", "core"] },
-    { "id": "shipyard_station", "name": "Shipyard Station", "development": ["frontier", "middle", "core"] },
+    { "id": "trade_hub", "name": "Trade Hub", "development": ["middle", "core"], "techBonus": 1, "tradesAll": true },
+    { "id": "shipyard_station", "name": "Shipyard Station", "development": ["frontier", "middle", "core"], "techBonus": 1 },
     { "id": "military_outpost", "name": "Military Outpost", "development": ["frontier", "middle", "core"], "minBaselineSecurity": 50 },
     { "id": "pirate_haven", "name": "Pirate Haven", "development": ["frontier", "middle", "core"], "maxBaselineSecurity": 30 }
   ],

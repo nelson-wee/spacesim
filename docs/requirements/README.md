@@ -188,6 +188,18 @@ New items from the design (no brief text): portraits (Outfitter, Shipyard, Fleet
 | Q-29 | **Portrait slots.** Each portrait has 3 to 9 slot marks (`slot_count`). The hulls have more slots (hardpoints + internal): Shuttle 3 marks for 7 slots, Frigate 5 for 12, Battleship 9 for 16. The design does not say what a mark shows. | Ask the designer. Until then: the Outfitter lists all slots as text, and the portrait shows the marks only as decoration. | M3 |
 | Q-30 | **Missing glyph.** The art uses `◘` (reactor role) in 7 hulls. JetBrains Mono 2.242 does not contain `◘` (U+25D8), so the browser draws it from a fallback font. | Keep `◘` and the fallback for now. Ask the designer to change the glyph, or to accept the fallback. | M3, M4 |
 
+### 8.4 Economy checks (M2 results, 2026-10-27)
+
+The M2 build does not pass all §9.13 checks. Some checks pull against each other: the raw-goods margin band needs large stocks at cheap mines, but the chain shock needs small stocks. Trade Hubs and relays carry goods along a chain, but they also hide a shock. These items need an owner decision before more tuning.
+
+| ID | Problem | Proposed default | Milestone |
+|---|---|---|---|
+| Q-31 | **Price clamp.** A producer uses its inputs each day, so at day end it keeps about 1 day of input. Its target is 10 days (20 on planets). Then the price is at the 3.0 clamp, also when the producer gets enough input to work. 13 of 20 seeds fail check 2. | Give recipe inputs a smaller target (for example 3 days, `inputTargetDays` in `balance.json`). Keep 10 days for outputs and population use. | M2 |
+| Q-32 | **Chain shock.** Stopping the ore mines of one sector raises Alloys prices next door by 0%–3% (one seed: 17%). The off-map trickle (15% of inputs), other ore sectors, and relay stocks feed the Smelters. The 30% rise does not happen. | Measure at the Smelters that get ore from the stopped sector, not at all locations next door, and stop the ore for 30 days. Or lower `offMapInputShare` to 0.05. | M2 |
+| Q-33 | **Capital test.** On 7 of 20 seeds the extra output lasts 8–40 days, not 60. The control run also installs Machinery when it gets some, so the two runs come together. | Compare with a control run that gets no Machinery for the full test, or change the check to 30 days. | M2 |
+| Q-34 | **Gradient for advanced goods.** Frontier markets trade only Machinery (and Medicine) from the advanced goods, so the Frontier median is the Machinery price. Core consumers of Electronics are often at the clamp (Q-31). 3 of 20 seeds fail. | Compare each advanced commodity separately, only where both Core and Frontier trade it, and use the median of the results. | M2 |
+| Q-35 | **Generator margin.** 95 of 100 seeds (1–100) pass with 2 tries or fewer, but only 186 of 200 (1–200). Most failures are the gradient rule (Q-34) and "producers in 2 sectors" when no body is free. | Accept the result for M2. After Q-31 and Q-34, measure again. | M2 |
+
 ## 9. Risks
 
 | Risk | Effect | Action |
@@ -210,3 +222,4 @@ These items need the repository owner. Claude Code cannot do them.
 3. **Open questions:** read Section 8. Change a proposed default if you do not agree with it. If you do not change a default, the build uses it.
 4. **Visual design:** ship art (`ships.yaml`) and style (`style.json`) are in `data/art/`. Still to come from Claude Design: icons (map glyphs), combat effects, and the visual brief (`space-sim-visual-brief.md`, `Ship Art.dc.html`). Answer Q-29 and Q-30 with the designer.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.
+6. **Economy checks (M2):** decide Q-31 to Q-35. M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.

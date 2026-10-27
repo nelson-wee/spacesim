@@ -59,6 +59,69 @@ export const balanceSchema = z.object({
   fuel: z.object({ fuelPerHydrogen: pos }),
   recovery: z.object({ base: nonNeg, perDistance: nonNeg, fullTankShare: prob, fuelShareAfterTow: prob }),
   fleet: z.object({ maxFleetSize: z.number().int().min(1) }),
+  economy: z.object({
+    priceExponent: pos,
+    priceClampMin: pos,
+    priceClampMax: pos,
+    spread: prob,
+    targetDays: pos,
+    planetTargetMult: pos,
+    tradeHubTargetDays: pos,
+    relayTargetDays: nonNeg,
+    minCommodities: z.number().int().positive(),
+    maxCommodities: z.number().int().positive(),
+    minTargetStock: z.record(z.string(), nonNeg),
+    flowSameSector: nonNeg,
+    /** Multiplies κ for each commodity (goods with many trade partners need a lower κ per pair). */
+    flowScale: z.record(z.string(), nonNeg),
+    flowOneLane: nonNeg,
+    /** κ for sectors two lanes apart. The brief says 0 ("farther"); an owner decision can change it. */
+    flowTwoLanes: nonNeg,
+    flowSecurityBase: nonNeg,
+    flowSecurityPerLevel: nonNeg,
+    surplusShareOfTarget: nonNeg,
+    flowDeficitShare: nonNeg,
+    offMapInputShare: prob,
+    offMapBalance: prob,
+    /** Stock above this multiple of target leaves the region (off-map export, DECISIONS.md). */
+    exportStockRatio: pos,
+    exportShare: prob,
+    balanceWindowDays: z.number().int().positive(),
+    balanceStartLow: pos,
+    balanceStartHigh: pos,
+    balanceStopLow: pos,
+    balanceStopHigh: pos,
+    noiseShare: prob,
+    historyDays: z.number().int().positive(),
+  }),
+  generator: z.object({
+    maxTries: z.number().int().positive(),
+    maxRepairs: z.number().int().min(0),
+    sizePasses: z.number().int().positive(),
+    sizeMin: z.number().int().min(1),
+    sizeMax: z.number().int().min(1),
+    /** Sizes step aims for supply/demand in ratioLow..ratioHigh. */
+    ratioLow: pos,
+    ratioHigh: pos,
+    /** Validation accepts supply/demand in ratioAcceptLow..ratioAcceptHigh. */
+    ratioAcceptLow: pos,
+    ratioAcceptHigh: pos,
+    minProducersPerType: z.number().int().min(0),
+    averageSize: pos,
+    minFrontierSectors: z.number().int().min(0),
+    blueprintPasses: z.number().int().positive(),
+    validationDays: z.number().int().positive(),
+    lowOutputShare: prob,
+    lowOutputDays: z.number().int().positive(),
+    fill: z.object({
+      minTradeHubs: z.number().int().min(0),
+      militaryOutposts: z.number().int().min(0),
+      pirateHavens: z.number().int().min(0),
+      minShipyards: z.number().int().min(0),
+      habitatWeight: nonNeg,
+      tradeHubWeight: nonNeg,
+    }),
+  }),
   start: z.object({ credits: z.number(), loadoutId: z.string(), shipName: z.string() }),
 });
 
@@ -100,9 +163,13 @@ export const producerTypesSchema = z.object({
   ),
 });
 
+const stationUseSchema = z.array(z.object({ commodity: z.string(), perSizePerDay: nonNeg }));
 export const populationSchema = z.object({
+  /** Multiplies all population use. Tunes demand to the number of bodies (DECISIONS.md). */
+  useScale: pos,
+  stationUse: z.record(z.string(), stationUseSchema),
   use: z.array(
-    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'noAtmosphere', 'core']) }),
+    z.object({ commodity: z.string(), perUnitPerDay: nonNeg, who: z.enum(['all', 'resident', 'noAtmosphere', 'coreResident']) }),
   ),
   unitsPerSize: z.object({ terran: nonNeg, ocean: nonNeg, habitat: nonNeg, crew: nonNeg }),
 });
@@ -124,6 +191,8 @@ export const bodyTypesSchema = z.object({
       development: z.array(developmentSchema).min(1),
       minBaselineSecurity: nonNeg.optional(),
       maxBaselineSecurity: nonNeg.optional(),
+      techBonus: z.number().int().min(0).optional(),
+      tradesAll: z.boolean().optional(),
     }),
   ),
   stars: z.array(z.object({ id: z.string(), weight: pos })).min(1),
@@ -258,7 +327,21 @@ export const loadoutsSchema = z.object({
   ),
 });
 
-// Filled in later milestones (M2: services; M5: encounters, templates, battleMaps; M7: events, contracts).
+// A location gets a service if it matches one clause of `where`. All conditions of a clause must match.
+const serviceClauseSchema = z
+  .object({
+    kind: z.enum(['planet', 'station']).optional(),
+    bodyType: z.array(z.string()).optional(),
+    minTech: z.number().int().min(1).max(3).optional(),
+    residentPopulation: z.boolean().optional(),
+    minBaselineSecurity: nonNeg.optional(),
+  })
+  .strict();
+export const servicesSchema = z.object({
+  services: z.array(z.object({ id: z.string(), name: z.string(), where: z.array(serviceClauseSchema).min(1) })),
+});
+
+// Filled in later milestones (M5: encounters, templates, battleMaps; M7: events, contracts).
 export const plannedSchema = z.object({}).strict();
 
 const glyph = z.string().length(1);

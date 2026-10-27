@@ -7,7 +7,8 @@ import type { Location, Ship } from '../src/core/types';
 import { gameData, hydrogenBasePrice } from '../src/data';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { travelStats } from '../src/ship/stats';
-import { generateWorld } from '../src/world/generator';
+import { Rng } from '../src/core/rng';
+import { buildTopology } from '../src/world/topology';
 import { mapDistance } from '../src/world/geometry';
 
 const data = gameData();
@@ -119,7 +120,11 @@ describe('jumps (Section 8.3)', () => {
   });
 
   it('the starting ship does 4 to 6 jumps on a full tank, on lanes of average length (M1-TRV-11)', () => {
-    const lengths = Array.from({ length: 100 }, (_, i) => generateWorld(i + 1, data).lanes.map((l) => l.length)).flat();
+    // Lane lengths come from generator step 1 only (topology).
+    const lengths = Array.from({ length: 100 }, (_, i) => {
+      const t = buildTopology(Rng.fromSeed(i + 1, 'world'), data);
+      return t.lanes.map(([a, b]) => mapDistance(t.positions[a]!, t.positions[b]!, aspect));
+    }).flat();
     const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
     const s = travelStats(createShipFromLoadout(data, 'start_shuttle', 'x', 'x'), data);
     const perJump = mean * massFactor(s.mass, data) * t.kJump * s.engineFuelRate;

@@ -44,6 +44,32 @@ export interface JumpPoint {
 export interface MarketEntry {
   stock: number;
   target: number;
+  /** Mid price of the last days, oldest first (Section 9.12 trend arrows). */
+  history: number[];
+}
+
+/** The last production day of a producer (Section 9.3). */
+export interface ProductionState {
+  /** Output batches / nominal batches (batchesPerSize x size). */
+  outputRatio: number;
+  inputFactor: number;
+  capitalFactor: number;
+}
+
+/** Region supply and demand of one commodity, for the off-map balance (Section 9.8, Q-06). */
+export interface RegionCommodityStats {
+  /** Daily supply (production and off-map additions) of the last days. */
+  supply: number[];
+  /** Daily wanted use (population, inputs, machinery install, off-map removals) of the last days. */
+  demand: number[];
+  /** Days in a row with the ratio outside the start limits. */
+  outOfRangeDays: number;
+  balancing: 'add' | 'remove' | null;
+}
+
+export interface EconomyState {
+  days: number;
+  region: Record<string, RegionCommodityStats>;
 }
 
 export interface Location {
@@ -60,9 +86,16 @@ export interface Location {
   techLevel: number;
   gravity: number;
   producer: string | null;
+  /** Last production day, for producers. */
+  production: ProductionState | null;
   population: number;
   installedMachinery: number;
   market: Record<string, MarketEntry>;
+  /**
+   * Commodities traded only to pass goods on to the next sector, with the daily
+   * amount that the paths through it carry (DECISIONS.md, M2 relays).
+   */
+  relays: Record<string, number>;
   services: string[];
 }
 
@@ -73,7 +106,17 @@ export interface World {
   locations: Location[];
   coreSectorId: number;
   startLocationId: number;
-  generator: { seedUsed: number; tries: number; topologyResamples: number };
+  economy: EconomyState;
+  generator: GeneratorLog;
+}
+
+export interface GeneratorLog {
+  seedUsed: number;
+  tries: number;
+  repairs: number;
+  topologyResamples: number;
+  /** Rule results of the last validation (rule id -> pass). */
+  rules: Record<string, boolean>;
 }
 
 export interface InstalledModule {

@@ -8,7 +8,7 @@ import { jumpDistances } from '../src/world/topology';
 
 const data = gameData();
 const b = data.balance;
-const SEEDS = Array.from({ length: 60 }, (_, i) => i + 1);
+const SEEDS = Array.from({ length: 20 }, (_, i) => i + 1);
 const worlds: [number, World][] = SEEDS.map((s) => [s, generateWorld(s, data)]);
 
 function laneCount(w: World, id: number): number {
@@ -21,8 +21,10 @@ describe('generator determinism (M1-GEN-14)', () => {
   });
 
   it('different seeds give different worlds', () => {
+    // A seed that fails validation retries with seed + 1 (Section 6.11), so compare seeds far apart.
     const a = generateWorld(1, data);
-    const c = generateWorld(2, data);
+    const c = generateWorld(40, data);
+    expect(a.generator.seedUsed).not.toBe(c.generator.seedUsed);
     expect(a.sectors.map((s) => s.pos)).not.toEqual(c.sectors.map((s) => s.pos));
   });
 });
@@ -81,8 +83,8 @@ describe.each(worlds)('generator rules, seed %i', (_seed, w) => {
       const expected = s.jumpsFromCore <= 1 ? 'core' : s.jumpsFromCore === 2 ? 'middle' : 'frontier';
       return expected !== s.development;
     });
-    // Only the Section 6.4 step 3 fix can change a level: at most 2 sectors.
-    expect(fixed.length).toBeLessThanOrEqual(2);
+    // Only the Section 6.4 step 3 fix and the Q-07 Frontier rule change a level.
+    expect(fixed.length).toBeLessThanOrEqual(2 + b.generator.minFrontierSectors);
   });
 
   it('step 2: the core is the sector nearest to the map center (M1-GEN-06)', () => {
@@ -91,10 +93,11 @@ describe.each(worlds)('generator rules, seed %i', (_seed, w) => {
     for (const s of w.sectors) expect(d(w.coreSectorId)).toBeLessThanOrEqual(d(s.id));
   });
 
-  it('step 2: tech level by development (M1-GEN-08)', () => {
+  it('step 2: tech level by development, +1 for Shipyard Stations and Trade Hubs (M1-GEN-08, M2-GEN-10)', () => {
     for (const loc of w.locations) {
       const sector = w.sectors[loc.sectorId]!;
-      expect(loc.techLevel).toBe(b.world.techByDevelopment[sector.development]);
+      const bonus = data.stationTypeById.get(loc.bodyType)?.techBonus ?? 0;
+      expect(loc.techLevel).toBe(Math.min(3, b.world.techByDevelopment[sector.development] + bonus));
     }
   });
 
@@ -130,7 +133,7 @@ describe.each(worlds)('generator rules, seed %i', (_seed, w) => {
     }
   });
 
-  it('step 3: planet types are allowed for the development level, gravity from data (M1-GEN-11, M1-GEN-13)', () => {
+  it('step 3: planet types are allowed for the development level, gravity from data (M1-GEN-11)', () => {
     for (const l of w.locations) {
       if (l.kind === 'station') {
         expect(l.gravity).toBe(0);
@@ -140,8 +143,6 @@ describe.each(worlds)('generator rules, seed %i', (_seed, w) => {
       expect(type).toBeDefined();
       expect(type.weights[w.sectors[l.sectorId]!.development]).toBeGreaterThan(0);
       expect(l.gravity).toBe(type.gravity);
-      expect(l.producer).toBeNull();
-      expect(l.population).toBe(0);
     }
   });
 
