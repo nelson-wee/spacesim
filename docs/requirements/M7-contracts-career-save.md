@@ -59,7 +59,7 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M7-CAR-01 | The career ends at day 730, at "Retire" at any location, or when the last ship is destroyed. | §16 | T |
+| M7-CAR-01 | The career ends at day 730, at "Retire" at any location, or when the last ship is destroyed. Keep 730 as one value in `balance.json`: after the MVP the owner wants no career limit (README, Section 11). | §16 | T |
 | M7-CAR-02 | **Score** = credits + 60% of hull and module value of all fleet ships + cargo value at local prices. If the last ship is destroyed, the score uses only credits. | §16 | T |
 | M7-CAR-03 | **Titles:** Drifter (< 20,000), Hauler (20,000–99,999), Merchant Captain (100,000–499,999), Sector Magnate (500,000+). Notoriety 50+ at the end replaces it with Dread Pirate. | §16 | T |
 | M7-CAR-04 | **Second titles:** Pirate Hunter (10+ named bounties). Warden of [sector] (a sector raised from Lawless or Low to High or Secure). | §16 | T |

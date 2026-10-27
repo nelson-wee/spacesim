@@ -5,7 +5,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | Milestone | Day | Status | Exit checks |
 |---|---|---|---|
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
-| M2 Economy | 2 | Built; economy model changed to carriers; no off-map supply. Exit checks not all pass. | 8 of 11 pass; 3 fail (5: 18/20, 7: 18/20, 8: Q-32). |
+| M2 Economy | 2 | Built; carriers, no off-map supply, capital target K*. Exit checks not all pass. | 8 of 10 pass; 2 fail (5: 19/20, 7: 18/20). Check 8 is a report (owner). |
 | M3 Trade and ships | 3 | Not started | — |
 | M4 Combat core | 4 | Not started | — |
 | M5 Threat and encounters | 5 | Not started | — |
@@ -78,7 +78,7 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 ### What works
 
 - **Data:** economy, generator, population, recipe, and service values in `/data`, with schemas and link checks. Q-05, Q-06, Q-07, and Q-22 use their defaults (`DECISIONS.md`).
-- **Economy tick (§9):** population and station use, production (input factor, capital factor, security), Machinery install and wear, background carriers (routes of up to 3 jumps, margin after cost and risk, break-even fill, transit days, capacity by security), off-map input trickle, off-map export, region balance, noise, price history. Prices with clamp, spread, and unit-by-unit quotes. The tick runs once each game day (about 3 ms for 44 locations).
+- **Economy tick (§9):** population and station use, production (input factor, capital factor, security), Machinery install toward the capital target K* (marginal gain = cost of capital) and wear, background carriers (routes of up to 3 jumps, margin after cost and risk, break-even fill, transit days, capacity by security), off-map input trickle, off-map export, region balance, noise, price history. Prices with clamp, spread, and unit-by-unit quotes. The tick runs once each game day (about 3 ms for 44 locations).
 - **Volumes:** `volumeScale` 8. The largest markets hold Electronics 96 t, Composites 144 t, Medicine 215 t, and raw goods 1,400–7,000 t. A 30 t hold of Electronics costs 1.16 × base on average.
 - **Generator steps 4–9 (§6.6–§6.11):** blueprint, host planets, producer placement, supply paths (static: inputs and users within the carrier range), other station types, sizes, tech levels, services, start location, structure rules, repairs, and rejection with seed + 1, then a 100-day warm-up run. The 200-day economy check is on hold (owner). The log keeps the seed used, tries, repairs, and rule results.
 - **Tools:** `npm run gen-report -- <seeds>` and `npm run sim-economy -- <days> <seeds>` (with `--csv=<dir>`, `--override=<json>`).
@@ -92,24 +92,23 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 
 ### Known issues
 
-- The chain shock does not show in neighbor sectors (Q-32): carriers bring Iron Ore from other sectors within 3 jumps, so Alloys rise only 0%–9%.
-- The capital test passes on 8 of 20 seeds (Q-33).
-- Machinery stays short: the region makes 6–11 units a day, the Machine Works run at full output, and the median price is 1.93 × base (1.5 × base even at the Machine Works). Production does not respond to prices, so this does not correct itself.
+- Oxygen and Food cost more than before K* (median Oxygen 56–60 cr, Food 41 cr). With K*, producers of cheap goods hold less capital and make less; Oxygen is a by-product of the Electrolysis Plant. `recipes.capital.requiredReturn` sets the general capital level. The owner accepts such in-system effects as trade chances.
+- Through K, output can change only between 0.6 and 1.2 × nominal. Off-map export still removes stock above 2 × target (Iron Ore, Silicates, Hydrogen).
 - `npm audit`: 0 problems.
 
-### Exit checks (carrier model, no off-map supply, 2026-10-27)
+### Exit checks (carriers, no off-map supply, K*, 2026-10-27)
 
 | # | Check | Result | Value |
 |---|---|---|---|
 | 1 | 95 of 100 seeds pass with 2 tries or fewer. | PASS | 98 of 100 (structure rules only; economy check on hold). |
-| 2 | No systemic price clamp (soft check, Q-31). | PASS | 20 of 20 seeds. NOTE: 3 of 240 commodity-seeds at the clamp on more than 20% of market-days. |
+| 2 | No systemic price clamp (soft check, Q-31). | PASS | 20 of 20 seeds. NOTE: 3 of 240 commodity-seeds at the clamp on more than 20% of market-days (Oxygen). |
 | 3 | No stock below 0. | PASS | 20 of 20 seeds, 1,000 days. Unit test too. |
 | 4 | No producer below 30% output for more than 60 days in a row. | PASS | 20 of 20 seeds. |
-| 5 | Gradient (Q-34). | FAIL | 18 of 20 seeds (seed 6: raw goods 1.24 in Core, 1.37 in Frontier; seed 11: advanced 1.04). |
+| 5 | Gradient (Q-34). | FAIL | 19 of 20 seeds (seed 6: raw goods 1.21 in Core, 1.37 in Frontier). |
 | 6 | Each commodity: a route of 1–3 jumps with margin 25% or more on 60% of days. | PASS | 20 of 20 seeds. |
-| 7 | Raw goods: a route of 1–2 jumps with margin 40%–80% on 50% of days. | FAIL | 18 of 20 seeds (Iron Ore 28%–35%). |
-| 8 | Chain shock: Alloys next door +30%, back within 10% in 60 days. | FAIL | 0 of 20 seeds (rise 0%–12%). Owner: an acceptable result (Q-32). |
-| 9 | Capital: output higher for 60 days after 10 Machinery. | PASS | 20 of 20 seeds, but only because Machinery is short everywhere (median 1.93 × base). See Q-33. |
+| 7 | Raw goods: a route of 1–2 jumps with margin 40%–80% on 50% of days. | FAIL | 18 of 20 seeds (Rare Elements 33%–34%). |
+| 8 | Chain shock (report only, owner Q-32). | REPORT | Alloys next door +1% to +8%, back in about 2 days: carriers bring Iron Ore from other sectors. |
+| 9 | Capital responds (owner Q-33). | PASS | 20 of 20 seeds: Machine Works stop 60 days; Machinery +20% to +39%, K* −16% to −25%, price back within 20% in 18–49 days. Report: 10 Machinery to a Frontier mine gives 6–118 days of higher output at 0.5 × K*, 7–50 days at K*. |
 | 10 | Recipe value and wear unit tests pass. | PASS | `tests/econ.test.ts` |
 | 11 | `PROGRESS.md` is updated. | PASS | This file |
 
@@ -123,6 +122,39 @@ The starting ship range is 5.0 jumps (§8.7 target: 4–6).
 | Population market-days at the high clamp | 7% | 1% |
 | Producer types below 50% output on some days | 7 of 12 | 0 of 12 |
 | Commodity-seeds at the clamp > 20% (1,000 days, 20 seeds) | 49 of 240 | 1 of 240 |
+
+### Input target test (owner request, 2026-10-27; diffusion model, before carriers)
+
+`inputTargetDays` sets the target stock of recipe inputs. Off-map supply 5% in all runs. Generator: 50 seeds (100 for 3 and 10 days); economy: 10 seeds, 400 days.
+
+| Input target | Generator pass (2 tries) | Producers that fail "low output" in generator tests | Commodity-seeds at the clamp > 20% | Routes | Capital |
+|---|---|---|---|---|---|
+| 3 days | 42 of 100 | 182 | 2 of 120 | 8 of 10 | 2 of 10 |
+| 5 days | 32 of 50 | 44 | 7 of 120 | 7 of 10 | 2 of 10 |
+| 7 days | 42 of 50 | 11 | 18 of 120 | 9 of 10 | 3 of 10 |
+| 10 days (kept) | 90 of 100 | 1 | 19 of 120 | 9 of 10 | 5 of 10 |
+| 3 days, flow share 1.0 | 18 of 50 | 107 | 1 of 120 | 8 of 10 | 2 of 10 |
+| 3 days, κ × 2 | 28 of 50 | 55 | 4 of 120 | 8 of 10 | 3 of 10 |
+
+Result: smaller input targets keep fewer markets at the clamp, but producers starve. Flow is proportional to the price gap, and a smaller target gives a lower price for the same stock, so a producer pulls fewer goods (Electronics Fabs and Agri Worlds starve first). The default stays at 10 days. Try a value with `--override='{"balance":{"economy":{"inputTargetDays":3}}}'`.
+
+### Tool results
+
+`npm test`: 11 test files, 600 tests, all pass.
+
+`npm run gen-report -- 100`:
+
+```
+Generator report: seeds 1..100, 32080 ms (321 ms per seed)
+Tries: 1: 77, 2: 21, 3: 2
+Rule failures (all tries): supplyPath 16, supplyRatio 10, producersPlaced 6, twoSectors 7, chainSeparation 1
+Repairs: move electronics_fab 2, add rare_element_mine 19, add smelter 1, start at 9, add ice_mine 18, add ore_mine 8, move smelter 2, remove rare_element_mine 1, add agri_world 1, add machine_works 3, move ore_mine 1
+Stations: industrial_station 813, habitat 266, processing_station 309, military_outpost 155, trade_hub 235, mining_station 553, pirate_haven 35, shipyard_station 3
+Supply/demand ratio (median, min, max): water 1.04 [0.93, 1.29]; hydrogen 1.15 [1.01, 1.37]; iron_ore 1.13 [0.91, 1.43]; silicates 1.16 [1.01, 1.35]; rare_elements 1.09 [0.91, 1.28]; oxygen 1.14 [0.93, 1.34]; alloys 1.11 [0.98, 1.33]; food 1.06 [0.95, 1.33]; composites 1.15 [0.92, 1.58]; electronics 1.08 [0.98, 1.32]; machinery 1.11 [1.00, 1.34]; medicine 1.17 [0.93, 1.64]
+Check (Section 6.11): 98 of 100 seeds pass with 2 tries or fewer (need 95): PASS
+```
+
+`npm run sim-economy -- 1000 20`: 1,000 days × 20 seeds in 188 s. Median prices (Frontier / Middle / Core): Iron Ore 10 / 14 / 20, Rare Elements 79 / 106 / 125, Electronics 383 / 373 / 361, Composites 216 / 215 / 200, Machinery 761 / 712 / 662, Medicine 296 / 247 / 243, Oxygen 60 / 56 / 57, Food 41 / 41 / 42.
 
 ### Input target test (owner request, 2026-10-27; diffusion model, before carriers)
 

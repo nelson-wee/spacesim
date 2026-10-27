@@ -165,7 +165,12 @@ export const commoditiesSchema = z.object({
 
 const qtySchema = z.object({ commodity: z.string(), qty: pos });
 export const recipesSchema = z.object({
-  capital: z.object({ machineryWear: prob, installRatePerDay: prob, maxInstallRatio: pos }),
+  capital: z.object({
+    machineryWear: prob,
+    installRatePerDay: prob,
+    /** Daily return that installed Machinery must earn, above its wear (sets K*, DECISIONS.md). */
+    requiredReturn: nonNeg,
+  }),
   recipes: z.array(
     z.object({
       producer: z.string(),

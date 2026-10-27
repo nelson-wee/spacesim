@@ -167,6 +167,15 @@ These decisions replace the brief text where they do not agree.
 
 - 2026-10-27 [§9.8] `offMapInputShare` 0 and `offMapBalance` 0: no input trickle and no region balance. The code stays, so a value above 0 turns them on again. Off-map export (the sink for stock above 2 x target) stays until production responds to prices. Reason: owner wants an economy with no off-map supply; with carriers, the checks pass without it.
 
+### Capital as a price signal (owner, 2026-10-27)
+
+- 2026-10-27 [§9.5] Producers install Machinery up to a target K*, not to 1.5 x K_ref. K* is where the daily gain of one more unit of K (`batches x valueAdded x 0.6 x K_ref / (K + K_ref)^2`, value added at local prices) equals its daily cost (`machineryPrice x (wear + requiredReturn)`). `recipes.capital.requiredReturn` 0.0088 a day: an Ore Mine at base prices then targets 1.5 x K_ref, the brief's value. Reason: owner wants capital formation to follow prices inside the existing capital rule. With the fixed target, Machinery cost 1.9-2.0 x base for ever; with K*, about 0.9-1.0 x base, and producers with cheap outputs hold less capital (they make less).
+- 2026-10-27 [§9.5] No upper limit on K (the brief's 1.5 x K_ref is removed, owner). Reason: diminishing returns already limit K*; `capitalFactor` stays below 1.2. The install rate (10% of K_ref a day) stays: it sets how fast capital changes.
+- 2026-10-27 [§9.5] Output can change only between 0.6 and 1.2 x nominal through K. A larger imbalance stays as a price gap (a trade chance). Off-map export still removes stock above 2 x target. Reason: the brief's capital formula; a size change by the same profit test is possible later.
+- 2026-10-27 [§9.13] Chain shock: report only, not a check (owner, Q-32). Reason: swings and boom/bust cycles are a feature.
+- 2026-10-27 [§9.13] Capital check replaced (owner, Q-33): "capital responds" (stop all Machine Works 60 days; Machinery price up, total K* down, price back within 20% in 180 days after the restart). The player effect (10 Machinery to a Frontier mine at 0.5 x K* and at K*) is a report. Reason: with K*, Machinery that a mine does not need is not installed, so the old test measured only how short Machinery was.
+- 2026-10-27 [§16] After the MVP, the owner wants no career limit (day 730). Keep the day-730 end as one value. See `docs/requirements/README.md`, Section 11.
+
 ## Cuts
 
 None.

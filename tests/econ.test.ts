@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import type { Location, MarketEntry } from '../src/core/types';
 import { gameData } from '../src/data';
-import { capitalFactor, installAndWear, kRef, nominalBatches } from '../src/econ/capital';
+import { capitalFactor, capitalTarget, installAndWear, installWant, kRef, nominalBatches } from '../src/econ/capital';
 import { createEconContext } from '../src/econ/context';
 import { economyDay } from '../src/econ/economy';
 import { capacityFactor, runCarriers, transitDays, transportCost } from '../src/econ/carriers';
@@ -106,17 +106,77 @@ describe('installed machinery (Section 9.5)', () => {
     },
   );
 
-  it('installs up to 10% of K_ref a day, until K = 1.5 K_ref, then wears', () => {
+  it('installs up to 10% of K_ref a day, until K = K*, then wears', () => {
     const loc = producer('ore_mine');
     const r = recipeOf(data, 'ore_mine');
     const ref = kRef(loc, r);
-    loc.market.machinery!.stock = 100;
+    loc.market.machinery!.stock = 1e6;
+    loc.market.machinery!.target = 1e6;
     const installed = installAndWear(loc, r, data);
     expect(installed).toBeCloseTo(0.1 * ref);
     expect(loc.installedMachinery).toBeCloseTo(1.1 * ref * (1 - data.recipes.capital.machineryWear));
-    for (let i = 0; i < 50; i++) installAndWear(loc, r, data);
-    expect(loc.installedMachinery).toBeLessThanOrEqual(1.5 * ref);
-    expect(loc.installedMachinery).toBeGreaterThan(1.45 * ref);
+    const target = capitalTarget(loc, r, data);
+    for (let i = 0; i < 200; i++) installAndWear(loc, r, data);
+    expect(loc.installedMachinery).toBeLessThanOrEqual(target);
+    expect(loc.installedMachinery).toBeGreaterThan(0.98 * target);
+  });
+});
+
+describe('capital target K* (DECISIONS.md, M2: marginal gain = cost of capital)', () => {
+  /** An Ore Mine with all markets at their targets (prices at base). */
+  const atBase = () => {
+    const loc = producer('ore_mine');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    return { loc, r: recipeOf(data, 'ore_mine') };
+  };
+
+  it('an Ore Mine at base prices targets 1.5 x K_ref (the value of brief Section 9.5)', () => {
+    const { loc, r } = atBase();
+    expect(capitalTarget(loc, r, data) / kRef(loc, r)).toBeCloseTo(1.5, 1);
+  });
+
+  it('at K*, the gain of one more unit of K equals its daily cost', () => {
+    const { loc, r } = atBase();
+    const ref = kRef(loc, r);
+    const k = capitalTarget(loc, r, data);
+    const value = 4 * 15; // 4 Iron Ore at base price, no hard inputs
+    const gain = nominalBatches(loc, r) * value * (0.6 * ref) / (k + ref) ** 2;
+    const cost = 750 * (data.recipes.capital.machineryWear + data.recipes.capital.requiredReturn);
+    expect(gain).toBeCloseTo(cost);
+  });
+
+  it('K* rises when the output is dearer, and falls when Machinery is dearer', () => {
+    const { loc, r } = atBase();
+    const k0 = capitalTarget(loc, r, data);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target / 2; // ore dearer
+    const kOre = capitalTarget(loc, r, data);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target;
+    loc.market.machinery!.stock = loc.market.machinery!.target / 2; // Machinery dearer
+    const kMach = capitalTarget(loc, r, data);
+    expect(kOre).toBeGreaterThan(k0);
+    expect(kMach).toBeLessThan(k0);
+  });
+
+  it('no limit at 1.5 x K_ref: very dear output and cheap Machinery give a larger K*', () => {
+    const { loc, r } = atBase();
+    loc.market.iron_ore!.stock = 1; // price at the high clamp
+    loc.market.machinery!.stock = loc.market.machinery!.target * 10; // cheap Machinery
+    expect(capitalTarget(loc, r, data)).toBeGreaterThan(1.5 * kRef(loc, r));
+  });
+
+  it('a producer above K* installs nothing; K wears down toward K*', () => {
+    const { loc, r } = atBase();
+    loc.installedMachinery = 3 * capitalTarget(loc, r, data);
+    expect(installWant(loc, r, data)).toBe(0);
+  });
+
+  it('no value added (inputs dearer than outputs) gives K* = 0', () => {
+    const loc = producer('smelter');
+    const r = recipeOf(data, 'smelter');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    loc.market.iron_ore!.stock = 1; // ore at the high clamp
+    loc.market.alloys!.stock = loc.market.alloys!.target * 100; // alloys at the low clamp
+    expect(capitalTarget(loc, r, data)).toBe(0);
   });
 });
 

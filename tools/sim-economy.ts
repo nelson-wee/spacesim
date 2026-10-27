@@ -4,13 +4,14 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Rng } from '../src/core/rng';
-import type { Location, World } from '../src/core/types';
+import type { Location, MarketEntry, World } from '../src/core/types';
 import type { GameData } from '../src/data';
 import { dataWithOverride } from './lib/override';
 import { createEconContext } from '../src/econ/context';
 import { type EconomyDayOptions, economyDay } from '../src/econ/economy';
 import { priceGradient } from '../src/econ/gradient';
 import { basePrice, midPrice } from '../src/econ/prices';
+import { capitalTarget } from '../src/econ/capital';
 import { recipeOf } from '../src/econ/recipes';
 import { DayReport } from '../src/econ/report';
 import { generateWorld } from '../src/world/generator';
@@ -123,16 +124,18 @@ function chainShock(world: World, seed: number): { rise: number; recoverDays: nu
   return { rise: peak / normal - 1, recoverDays, sector: world.sectors[sid]?.name ?? '?' };
 }
 
-/** Capital: deliver 10 Machinery to a Frontier mine with K = K_ref; compare output with a control run. */
-function capitalTest(world: World, seed: number): { higherDays: number; mine: string } | null {
+/**
+ * Player effect of capital (report only): deliver 10 Machinery to a Frontier mine
+ * and compare its output with a control run. Two cases: the mine is short of
+ * capital (K = 0.5 x K*), and the mine is at K*. Only the first should gain.
+ */
+function capitalEffect(world: World, seed: number, share: number): { higherDays: number; mine: string } | null {
   const mine = world.locations.find((l) => l.producer?.endsWith('_mine') && world.sectors[l.sectorId]?.development === 'frontier');
   if (!mine) return null;
   const warm = runner(world, seed + 9000);
   warm.run(100);
   const recipe = recipeOf(data, mine.producer as string);
-  const kref = recipe.machineryPerBatch * recipe.batchesPerSize * mine.size;
-  // "K = K_ref": the mine has no spare Machinery (it would install it at once).
-  mine.installedMachinery = kref;
+  mine.installedMachinery = share * capitalTarget(mine, recipe, data);
   if (mine.market.machinery) mine.market.machinery.stock = 0;
   const control = clone(world);
   const rngA = Rng.fromSeed(seed, 'capital');
@@ -156,11 +159,49 @@ function capitalTest(world: World, seed: number): { higherDays: number; mine: st
   return { higherDays, mine: `${mine.name} (${mine.producer})` };
 }
 
+/**
+ * Capital responds (DECISIONS.md, M2): stop all Machine Works for 60 days. While
+ * Machinery is dear, the producers' capital target K* falls. After the restart,
+ * the median Machinery price comes back to within 20% of its earlier level.
+ */
+function capitalResponse(world: World, seed: number): { priceRise: number; targetChange: number; recoverDays: number } | null {
+  if (!world.locations.some((l) => l.producer === 'machine_works')) return null;
+  const r = runner(world, seed + 8000);
+  const producers = world.locations.filter((l) => l.producer);
+  const machineryPrice = () => median(world.locations.filter((l) => l.market.machinery).map((l) => midPrice(l.market.machinery as MarketEntry, basePrice(data, 'machinery'), data)));
+  const targets = () => producers.reduce((s, l) => s + capitalTarget(l, recipeOf(data, l.producer as string), data), 0);
+  r.run(100);
+  let p0 = 0;
+  let t0 = 0;
+  for (let i = 0; i < 30; i++) {
+    r.run(1);
+    p0 += machineryPrice() / 30;
+    t0 += targets() / 30;
+  }
+  const stop: EconomyDayOptions = { eventMult: (l) => (l.producer === 'machine_works' ? 0 : 1) };
+  r.run(30, undefined, stop);
+  let p1 = 0;
+  let t1 = 0;
+  for (let i = 0; i < 30; i++) {
+    r.run(1, undefined, stop);
+    p1 += machineryPrice() / 30;
+    t1 += targets() / 30;
+  }
+  let recoverDays = -1;
+  for (let i = 1; i <= 360 && recoverDays < 0; i++) {
+    r.run(1);
+    if (Math.abs(machineryPrice() / p0 - 1) <= 0.2) recoverDays = i;
+  }
+  return { priceRise: p1 / p0 - 1, targetChange: t1 / t0 - 1, recoverDays };
+}
+
 interface SeedResult {
   seed: number;
   stats: EconStats;
   shock: ReturnType<typeof chainShock>;
-  capital: ReturnType<typeof capitalTest>;
+  capitalShort: ReturnType<typeof capitalEffect>;
+  capitalFull: ReturnType<typeof capitalEffect>;
+  capitalResponse: ReturnType<typeof capitalResponse>;
 }
 
 function runSeed(seed: number): SeedResult {
@@ -178,7 +219,14 @@ function runSeed(seed: number): SeedResult {
     mkdirSync(csvDir, { recursive: true });
     writeFileSync(join(csvDir, `economy-seed-${seed}.csv`), `${csv.join('\n')}\n`);
   }
-  return { seed, stats, shock: chainShock(generateWorld(seed, data), seed), capital: capitalTest(generateWorld(seed, data), seed) };
+  return {
+    seed,
+    stats,
+    shock: chainShock(generateWorld(seed, data), seed),
+    capitalShort: capitalEffect(generateWorld(seed, data), seed, 0.5),
+    capitalFull: capitalEffect(generateWorld(seed, data), seed, 1),
+    capitalResponse: capitalResponse(generateWorld(seed, data), seed),
+  };
 }
 
 function check(name: string, passCount: number, total: number, detail = ''): boolean {
@@ -270,19 +318,34 @@ function report(results: SeedResult[], d: GameData): void {
     return ok;
   }).length;
   check('Raw goods: a 1-2 jump route with margin 40%-80% on >= 50% of days', bandPass, n, bandFails.slice(0, 8).join(', '));
-  const shockPass = results.filter((r) => r.shock && r.shock.rise >= 0.3 && r.shock.recoverDays >= 0 && r.shock.recoverDays <= 60).length;
-  check(
-    'Chain shock: Alloys next door rise >= 30%, back within 10% in 60 days',
-    shockPass,
-    n,
-    results.map((r) => (r.shock ? `s${r.seed} +${(r.shock.rise * 100).toFixed(0)}% ${r.shock.recoverDays}d` : `s${r.seed} n/a`)).slice(0, 8).join(', '),
+  // Chain shock (owner, Q-32): a report, not a check. Swings are a feature; the size is the trade chance.
+  console.log(
+    `NOTE  Chain shock (report): Iron Ore stops in one sector for 30 days; Alloys next door: ${results
+      .map((r) => (r.shock ? `s${r.seed} +${(r.shock.rise * 100).toFixed(0)}% ${r.shock.recoverDays}d` : `s${r.seed} n/a`))
+      .slice(0, 10)
+      .join(', ')}`,
   );
-  const capPass = results.filter((r) => r.capital && r.capital.higherDays >= 60).length;
+  const responsePass = results.filter(
+    (r) => r.capitalResponse && r.capitalResponse.priceRise > 0 && r.capitalResponse.targetChange < 0 && r.capitalResponse.recoverDays >= 0 && r.capitalResponse.recoverDays <= 180,
+  ).length;
   check(
-    'Capital: 10 Machinery to a Frontier mine keeps output higher for >= 60 days',
-    capPass,
+    'Capital responds: Machine Works stop 60 days; Machinery dearer, K* lower, price back within 20% in 180 days',
+    responsePass,
     n,
-    results.map((r) => (r.capital ? `s${r.seed} ${r.capital.higherDays}d` : `s${r.seed} n/a`)).slice(0, 8).join(', '),
+    results
+      .map((r) =>
+        r.capitalResponse
+          ? `s${r.seed} price +${(r.capitalResponse.priceRise * 100).toFixed(0)}% K* ${(r.capitalResponse.targetChange * 100).toFixed(0)}% ${r.capitalResponse.recoverDays}d`
+          : `s${r.seed} n/a`,
+      )
+      .slice(0, 6)
+      .join(', '),
+  );
+  console.log(
+    `NOTE  Capital effect (report): 10 Machinery to a Frontier mine, days of higher output; short of capital (K = 0.5 K*) / at K*: ${results
+      .map((r) => `s${r.seed} ${r.capitalShort?.higherDays ?? 'n/a'}/${r.capitalFull?.higherDays ?? 'n/a'}`)
+      .slice(0, 10)
+      .join(', ')}`,
   );
 }
 
