@@ -9,6 +9,7 @@ import type { GameData } from '../src/data';
 import { dataWithOverride } from './lib/override';
 import { createEconContext } from '../src/econ/context';
 import { type EconomyDayOptions, economyDay } from '../src/econ/economy';
+import { priceGradient } from '../src/econ/gradient';
 import { basePrice, midPrice } from '../src/econ/prices';
 import { recipeOf } from '../src/econ/recipes';
 import { DayReport } from '../src/econ/report';
@@ -24,6 +25,9 @@ const firstSeed = Number(args[2] ?? 1);
 const csvDir = flag('csv');
 const quiet = process.argv.includes('--quiet');
 const WARMUP = 50;
+/** Clamp check (DECISIONS.md, M2): report above CLAMP_NOTE, fail above CLAMP_SYSTEMIC. */
+const CLAMP_NOTE = 0.2;
+const CLAMP_SYSTEMIC = 0.5;
 
 interface Runner {
   world: World;
@@ -204,21 +208,27 @@ function report(results: SeedResult[], d: GameData): void {
 
   console.log('\nChecks (Section 9.13):');
   const n = results.length;
-  // Clamp: per commodity, share of market-days at the price clamp (Q: DECISIONS.md).
+  // Clamp (soft check, DECISIONS.md): price gaps are good for trade. A commodity at the clamp on
+  // more than CLAMP_NOTE of its market-days is only reported; more than CLAMP_SYSTEMIC is a
+  // systemic problem (most markets of the commodity are empty or full) and fails.
+  const clampNotes: string[] = [];
   const clampFails: string[] = [];
   const clampPass = results.filter((r) => {
     let ok = true;
     for (const c of d.commodities) {
-      const share = (r.stats.clampDays.get(c.id) ?? 0) / Math.max(1, r.stats.marketDays.get(c.id) ?? 0);
-      if (share > 0.2) {
+      const days = Math.max(1, r.stats.marketDays.get(c.id) ?? 0);
+      const share = (r.stats.clampDays.get(c.id) ?? 0) / days;
+      const low = (r.stats.clampLow.get(c.id) ?? 0) / days;
+      const text = `s${r.seed}:${c.id} ${(share * 100).toFixed(0)}% (low ${(low * 100).toFixed(0)}%)`;
+      if (share > CLAMP_SYSTEMIC) {
         ok = false;
-        const low = (r.stats.clampLow.get(c.id) ?? 0) / Math.max(1, r.stats.marketDays.get(c.id) ?? 0);
-        clampFails.push(`s${r.seed}:${c.id} ${(share * 100).toFixed(0)}% (low ${(low * 100).toFixed(0)}%)`);
-      }
+        clampFails.push(text);
+      } else if (share > CLAMP_NOTE) clampNotes.push(text);
     }
     return ok;
   }).length;
-  check('No commodity at the price clamp on more than 20% of market-days', clampPass, n, clampFails.slice(0, 8).join(', '));
+  check(`No systemic clamp: no commodity at the price clamp on more than ${CLAMP_SYSTEMIC * 100}% of market-days`, clampPass, n, clampFails.slice(0, 8).join(', '));
+  console.log(`NOTE  At the clamp on more than ${CLAMP_NOTE * 100}% of market-days: ${clampNotes.length} commodity-seeds of ${n * d.commodities.length}${clampNotes.length ? ` (${clampNotes.slice(0, 8).join(', ')})` : ''}`);
   check('No stock below 0', results.filter((r) => r.stats.negativeStock === 0).length, n);
   const lowFails: string[] = [];
   const lowPass = results.filter((r) => {
@@ -229,12 +239,11 @@ function report(results: SeedResult[], d: GameData): void {
   check('No producer below 30% output for more than 60 days in a row', lowPass, n, lowFails.slice(0, 6).join(', '));
   const gradFails: string[] = [];
   const gradPass = results.filter((r) => {
-    const m = (k: string) => median(r.stats.tierDev.get(k) ?? []);
-    const ok = m('raw:core') > m('raw:frontier') && m('advanced:core') < m('advanced:frontier');
-    if (!ok) gradFails.push(`s${r.seed}: raw ${m('raw:core').toFixed(2)}/${m('raw:frontier').toFixed(2)}, adv ${m('advanced:core').toFixed(2)}/${m('advanced:frontier').toFixed(2)}`);
-    return ok;
+    const g = priceGradient(r.stats.factors, d);
+    if (!g.pass) gradFails.push(`s${r.seed}: ${g.problems.join(', ')}`);
+    return g.pass;
   }).length;
-  check('Gradient: raw costs more in Core, advanced costs less in Core', gradPass, n, gradFails.slice(0, 4).join('; '));
+  check('Gradient: raw costs more in Core; advanced costs less in Core, per commodity (Q-34)', gradPass, n, gradFails.slice(0, 4).join('; '));
   const routeFails: string[] = [];
   const routePass = results.filter((r) => {
     let ok = true;

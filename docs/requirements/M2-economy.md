@@ -40,7 +40,7 @@
 |---|---|---|---|
 | M2-LOC-01 | Each `Location` has all fields of §7.1: `kind`, `bodyType`, `producer`, `population`, `size`, `techLevel`, `gravity`, `installedMachinery`, `market`, `services`. | §7.1 | T |
 | M2-LOC-02 | A location trades a commodity if its producer makes or uses it (hard or soft input), or its population uses it. All locations trade Hydrogen (Refuel). | §9.2, Q-03 | T |
-| M2-LOC-03 | Each location trades 4 to 8 commodities. Trade Hubs trade all 12. | §9.2, Q-03 | T |
+| M2-LOC-03 | A location trades what its producer makes or uses, what its population uses, Hydrogen, and its relay commodities. No limit on the count (Q-03). Trade Hubs trade all 12. | §9.2, Q-03 | T |
 | M2-LOC-04 | `target` = 10 days of the location's daily use or output for that commodity. Planets: target × 2. Trade Hubs: a large target for all commodities (value in `balance.json`). Commodities with no local use or output: `minTargetStock` (Q-05). | §9.2, §7.2 | T |
 | M2-LOC-05 | Shipyard Stations buy Alloys, Composites, Electronics, and Machinery. Pirate Havens buy Food, Medicine, and Oxygen. Military Outposts have crew population. | §7.2 | T |
 | M2-LOC-06 | At generation, `stock = target` and `K = K_ref` for each producer. | §9.5 | T |
@@ -102,10 +102,10 @@
 | # | Check | Source | Verify |
 |---|---|---|---|
 | 1 | At least 95 of 100 seeds pass with 2 tries or fewer. | §6.11 | S (`gen-report.ts`) |
-| 2 | No commodity is at the price clamp (0.3 or 3.0) for more than 20% of days. | §9.13 | S |
+| 2 | No systemic price clamp: no commodity is at the price clamp (0.3 or 3.0) on more than 50% of its market-days. Shares above 20% are reported only (owner, Q-31: price gaps are good for trade). | §9.13, Q-31 | S |
 | 3 | No stock is below 0. | §9.13 | S, T |
 | 4 | No producer is below 30% output for more than 60 days in a row. | §9.13 | S |
-| 5 | Gradient: raw goods cost more in Core than in Frontier. Advanced goods cost less in Core. | §9.13 | S |
+| 5 | Gradient: raw goods cost more in Core than in Frontier. Advanced goods cost less in Core, compared per commodity where both trade it (Q-34). | §9.13, Q-34 | S |
 | 6 | Each commodity has at least one route (1–3 jumps) with a margin of 25% or more, on at least 60% of days. | §9.13 | S |
 | 7 | Raw goods have routes of 1–2 jumps with margins of 40%–80%, on at least 50% of days. | §9.13 | S |
 | 8 | Chain shock: Alloys prices in neighbor sectors rise 30% or more, and return to within 10% of normal within 60 days after the stop ends. | §9.13 | S |
@@ -126,7 +126,7 @@ Build this only if all exit checks pass early on Day 2. If not, it is the first 
 
 ## 8. Open questions for this milestone
 
-Q-03 (commodities per location, decided: 4 to 8), Q-05 (minimum target), Q-06 (supply/demand ratio), Q-07 (Frontier count), Q-22 (Bounty Guild security). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
+Q-03 (commodities per location, decided: no limit), Q-05 (minimum target), Q-06 (supply/demand ratio), Q-07 (Frontier count), Q-22 (Bounty Guild security). See [README.md](README.md#8-open-questions-conflicts-and-gaps-in-the-brief).
 
 ## 9. Not in this milestone
 

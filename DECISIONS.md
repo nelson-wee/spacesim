@@ -117,6 +117,24 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-27 [M2-TOOL] `gen-report` and `sim-economy` take `--override=<json>`: a deep merge into the data, for tuning sweeps without file changes. Reason: faster tuning.
 - 2026-10-27 [M2-TOOL-08] Debug panel item 8 "Show all prices": mid price of each commodity at each location, colored by the price against base. Reason: §4.3.
 
+## Owner decisions on M2 and design update (2026-10-27)
+
+- 2026-10-27 [Q-03] No limit on the number of commodities per location (owner). The `commodityCount` rule and `minCommodities`/`maxCommodities` are gone; a relay commodity can go to any location in the sector. Reason: there are only 12 commodities; a long list is a UI matter (M3).
+- 2026-10-27 [Q-31] The clamp check is soft (owner: price gaps are good for trade). `sim-economy` reports each commodity at the clamp on more than 20% of its market-days as a NOTE, and fails only on a systemic problem: more than 50% of the market-days of one commodity in one seed. Reason: at 50% most markets of the commodity are empty or full, which is a fault, not a trade chance.
+- 2026-10-27 [Q-34] Gradient for advanced goods: for each advanced commodity that Core and Frontier markets both trade, divide the Core median price factor by the Frontier median; the median of these ratios must be below 1. If no advanced commodity is in both, the advanced part passes. The raw part is unchanged. Used by world validation and by `sim-economy` (`src/econ/gradient.ts`). Reason: owner accepted the proposal.
+- 2026-10-27 [Q-35] Generator margin: accept the M2 result; measure again after the Q-31 and Q-34 changes (owner).
+- 2026-10-27 [§9.8] `offMapInputShare` 0.05 (was 0.15). Reason: owner wants the economy to work without off-map supply; 0.05 is the first step.
+- 2026-10-27 [Q-31] New value `inputTargetDays` (target stock of recipe inputs, hard and Machinery wear), default 10, the same as `targetDays`. Tested 3, 5, and 7 days (`PROGRESS.md`): fewer markets at the clamp, but producers starve and the generator passes 18–42 of 50. Reason: flow follows the price gap; a smaller target lowers the price of a short market, so it pulls fewer goods.
+- 2026-10-27 [Q-34] The gradient repair adds, in a Core sector, a maker of the advanced commodity with the highest Core/Frontier price ratio (only commodities that both trade), else of the dearest advanced commodity in the Core. Reason: repair the rule as Q-34 now measures it.
+
+### Art (Claude Design, 2026-10-27)
+
+- 2026-10-27 [G-20] New `style.json` (18 more colors for weapons and effects), new `modules.json` (module icons), new `effects.yaml` (combat effects v0.1). `ships.yaml` did not change. Reason: the designer's new files.
+- 2026-10-27 [G-20] `npm run import-art` also converts `effects.yaml` to `effects.json`; a test checks that they match. `modules.json` loads as is. Reason: the same rule as `ships.yaml` (YAML is the source; the game loads JSON).
+- 2026-10-27 [G-20] Checks: each game module has an icon; icon glyphs are 2 cells; families and colors exist; the colors that `modules.json` (`family_colors`) and `effects.yaml` (`colors`) repeat must equal `style.json`; effect frames use only known line sets, patterns, and colors. Icons for modules that are not in `data/modules.json` yet (M3 weapons) are allowed. Reason: catch errors in a new design file at load time.
+- 2026-10-27 [M4-UI-04] Combat effects follow `effects.json` (frames, times scaled to path length, queue with stagger and 1.2 s budget), not the §18.4 table. Reason: brief §18 (Claude Design gives the final effects).
+- 2026-10-27 [M1-DBG] Debug panel item 7, last page: module icons with family mark, size, tier, and the four module states. Reason: a visual check of the import.
+
 ## Cuts
 
 None.

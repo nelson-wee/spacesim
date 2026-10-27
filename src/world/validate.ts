@@ -6,6 +6,7 @@ import type { GameData } from '../data';
 import { createEconContext } from '../econ/context';
 import { economyDay } from '../econ/economy';
 import { tradesAll } from '../econ/markets';
+import { type GradientResult, priceGradient } from '../econ/gradient';
 import { basePrice, midPrice } from '../econ/prices';
 import { recipeOf } from '../econ/recipes';
 import { supplyAtFloor, supplyRatios } from './assign';
@@ -101,19 +102,6 @@ export function validateRules(world: World, data: GameData, unplaced: string[], 
 
   results.push(rule('supplyPath', pathMissing));
 
-  // Q-03: each location trades 4 to 8 commodities; Trade Hubs trade all.
-  results.push(
-    rule(
-      'commodityCount',
-      world.locations
-        .filter((l) => !tradesAll(l, data))
-        .filter((l) => {
-          const n = Object.keys(l.market).length;
-          return n < data.balance.economy.minCommodities || n > data.balance.economy.maxCommodities;
-        })
-        .map((l) => `${l.name} ${Object.keys(l.market).length}`),
-    ),
-  );
   return results;
 }
 
@@ -121,14 +109,7 @@ export interface EconomyCheck {
   results: RuleResult[];
   /** Longest run of low-output days for each producer location id. */
   lowStreaks: Map<number, number>;
-  medians: { rawCore: number; rawFrontier: number; advancedCore: number; advancedFrontier: number };
-}
-
-function median(values: number[]): number {
-  if (values.length === 0) return NaN;
-  const s = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? (s[mid] as number) : ((s[mid - 1] as number) + (s[mid] as number)) / 2;
+  gradient: GradientResult;
 }
 
 /**
@@ -142,7 +123,8 @@ export function validateEconomy(world: World, data: GameData, seed: number): Eco
   const rng = Rng.fromSeed(seed, 'validation');
   const streak = new Map<number, number>();
   const longest = new Map<number, number>();
-  const samples = { rawCore: [] as number[], rawFrontier: [] as number[], advancedCore: [] as number[], advancedFrontier: [] as number[] };
+  // Price factors (price / base) of raw and advanced goods, keyed `${commodity}:${development}`.
+  const samples = new Map<string, number[]>();
   const warmup = Math.floor(g.validationDays / 4);
   for (let day = 0; day < g.validationDays; day++) {
     economyDay(ctx, world.economy, rng);
@@ -159,25 +141,16 @@ export function validateEconomy(world: World, data: GameData, seed: number): Eco
       for (const [c, entry] of Object.entries(loc.market)) {
         const tier = data.commodityById.get(c)?.tier;
         if (tier !== 'raw' && tier !== 'advanced') continue;
-        const factor = midPrice(entry, basePrice(data, c), data) / basePrice(data, c);
-        const key = `${tier}${dev === 'core' ? 'Core' : 'Frontier'}` as keyof typeof samples;
-        samples[key].push(factor);
+        const key = `${c}:${dev}`;
+        let list = samples.get(key);
+        if (!list) samples.set(key, (list = []));
+        list.push(midPrice(entry, basePrice(data, c), data) / basePrice(data, c));
       }
     }
   }
-  const medians = {
-    rawCore: median(samples.rawCore),
-    rawFrontier: median(samples.rawFrontier),
-    advancedCore: median(samples.advancedCore),
-    advancedFrontier: median(samples.advancedFrontier),
-  };
   const low = [...longest]
     .filter(([, n]) => n >= g.lowOutputDays)
     .map(([id, n]) => `${world.locations[id]?.name} (${world.locations[id]?.producer}) ${n} days`);
-  const gradient: string[] = [];
-  if (!(medians.rawCore > medians.rawFrontier)) gradient.push(`raw core ${medians.rawCore.toFixed(2)} <= frontier ${medians.rawFrontier.toFixed(2)}`);
-  if (!(medians.advancedCore < medians.advancedFrontier)) {
-    gradient.push(`advanced core ${medians.advancedCore.toFixed(2)} >= frontier ${medians.advancedFrontier.toFixed(2)}`);
-  }
-  return { results: [rule('lowOutput', low), rule('gradient', gradient)], lowStreaks: longest, medians };
+  const gradient = priceGradient(samples, data);
+  return { results: [rule('lowOutput', low), rule('gradient', gradient.problems)], lowStreaks: longest, gradient };
 }

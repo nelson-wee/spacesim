@@ -65,11 +65,10 @@ export const balanceSchema = z.object({
     priceClampMax: pos,
     spread: prob,
     targetDays: pos,
+    inputTargetDays: pos,
     planetTargetMult: pos,
     tradeHubTargetDays: pos,
     relayTargetDays: nonNeg,
-    minCommodities: z.number().int().positive(),
-    maxCommodities: z.number().int().positive(),
     minTargetStock: z.record(z.string(), nonNeg),
     flowSameSector: nonNeg,
     /** Multiplies κ for each commodity (goods with many trade partners need a lower κ per pair). */
@@ -422,4 +421,47 @@ export const artStyleSchema = z.object({
     titlePrefix: z.string(),
   }),
 });
-export const artEffectsSchema = z.object({ source: z.string(), effects: z.object({}).strict() });
+/** data/art/effects.json: generated from data/art/effects.yaml by tools/import-art.ts. M4 plays the frames. */
+export const artEffectsSchema = z.object({
+  source: z.string(),
+  lineSets: z.record(z.string(), z.array(z.string()).length(4)),
+  patterns: z.record(z.string(), z.array(z.array(z.union([z.number(), z.string()])))),
+  travel: z.string(),
+  queue: z.object({
+    staggerMs: nonNeg,
+    staggerMs5Plus: nonNeg,
+    budgetMs: pos,
+    scaleIfOver: z.boolean(),
+    minFrameMs: nonNeg,
+    skipKey: z.string(),
+  }),
+  colors: z.record(z.string(), color),
+  effects: z.record(
+    z.string(),
+    z.object({
+      totalMsAt18Cells: nonNeg,
+      frames: z.array(z.record(z.string(), z.unknown())).min(1),
+      persist: z.record(z.string(), z.unknown()).optional(),
+      loop: z.boolean().optional(),
+      static: z.boolean().optional(),
+    }),
+  ),
+});
+/** data/art/modules.json: Claude Design module icons (mark + 2 glyphs, then size and tier). */
+export const artModulesSchema = z.object({
+  icon: z.object({ width: z.number().int().positive(), height: z.number().int().positive(), layout: z.string(), suffix: z.string() }),
+  states: z.record(z.string(), z.object({ glyph, fg: z.string(), icon_fg: z.string().optional() })),
+  family_colors: z.record(z.string(), color),
+  families: z.record(z.string(), z.object({ mark: glyph, fg: z.string() })),
+  modules: z.array(
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      short: z.string(),
+      family: z.string(),
+      glyph: z.string(),
+      fg: z.string(),
+      default_size: z.enum(['S', 'M', 'L']),
+    }),
+  ),
+});

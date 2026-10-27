@@ -6,6 +6,7 @@ import { capitalFactor, installAndWear, kRef, nominalBatches } from '../src/econ
 import { createEconContext } from '../src/econ/context';
 import { economyDay } from '../src/econ/economy';
 import { pairFlow, securityFactor } from '../src/econ/flow';
+import { priceGradient } from '../src/econ/gradient';
 import { inputTrickle, offMapExport, regionBalance } from '../src/econ/offmap';
 import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice } from '../src/econ/prices';
 import { produce, recipeOf } from '../src/econ/recipes';
@@ -236,5 +237,40 @@ describe('economy runs (Section 9.6)', () => {
   it('each market keeps its recent prices for trend arrows', () => {
     const w = generateWorld(13, data);
     for (const l of w.locations) for (const m of Object.values(l.market)) expect(m.history.length).toBe(e.historyDays);
+  });
+});
+
+describe('price gradient (Section 9.13, Q-34)', () => {
+  const samples = (entries: [string, number[]][]) => new Map(entries);
+
+  it('compares each advanced commodity only where Core and Frontier both trade it', () => {
+    const g = priceGradient(
+      samples([
+        ['iron_ore:core', [1.2]],
+        ['iron_ore:frontier', [0.9]],
+        ['machinery:core', [1.0]],
+        ['machinery:frontier', [1.5]],
+        // Electronics only in the Core: not compared, so its high price does not count.
+        ['electronics:core', [3.0, 3.0, 3.0]],
+      ]),
+      data,
+    );
+    expect(g.advancedCompared).toEqual(['machinery']);
+    expect(g.advancedRatio).toBeCloseTo(1 / 1.5);
+    expect(g.pass).toBe(true);
+  });
+
+  it('fails when raw goods are cheaper in the Core or advanced goods dearer', () => {
+    const g = priceGradient(
+      samples([
+        ['water:core', [0.8]],
+        ['water:frontier', [1.0]],
+        ['machinery:core', [2.0]],
+        ['machinery:frontier', [1.0]],
+      ]),
+      data,
+    );
+    expect(g.pass).toBe(false);
+    expect(g.problems).toHaveLength(2);
   });
 });

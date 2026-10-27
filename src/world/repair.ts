@@ -256,9 +256,9 @@ export function repairWorld(world: World, failed: RuleResult[], rng: Rng, data: 
     }
   }
   if (ids.has('gradient')) {
-    // Advanced goods cost too much in the Core: add a maker in the Core of the dearest one.
-    // The world keeps the market state of the validation run.
-    const dear = dearestInCore(world, data, 'advanced');
+    // Advanced goods cost too much in the Core: add a maker in the Core of the advanced good with
+    // the highest Core/Frontier price ratio (Q-34). The world keeps the market state of the validation run.
+    const dear = worstAdvancedRatio(world, data) ?? dearestInCore(world, data, 'advanced');
     const maker = dear ? mainMaker(data, dear) : null;
     if (maker) {
       const done = addProducer(world, maker, rng, data, (l) => (world.sectors[l.sectorId]?.development === 'core' ? 5 : 0));
@@ -267,6 +267,32 @@ export function repairWorld(world: World, failed: RuleResult[], rng: Rng, data: 
   }
   if (ids.has('supplyRatio')) return repairRatio(world, rng, data);
   return null;
+}
+
+/** Median price factor (price / base) of a commodity at markets in sectors of one development level. */
+function medianFactor(world: World, data: GameData, commodity: string, dev: string): number | null {
+  const base = data.commodityById.get(commodity)?.basePrice ?? 1;
+  const factors = world.locations
+    .filter((l) => world.sectors[l.sectorId]?.development === dev && l.market[commodity])
+    .map((l) => midPrice(l.market[commodity] as MarketEntry, base, data) / base)
+    .sort((a, b) => a - b);
+  return factors.length > 0 ? (factors[Math.floor(factors.length / 2)] as number) : null;
+}
+
+/** The advanced commodity, traded in Core and Frontier, with the highest Core/Frontier price ratio. */
+function worstAdvancedRatio(world: World, data: GameData): string | null {
+  let pick: string | null = null;
+  let top = -Infinity;
+  for (const c of data.commodities.filter((x) => x.tier === 'advanced')) {
+    const core = medianFactor(world, data, c.id, 'core');
+    const frontier = medianFactor(world, data, c.id, 'frontier');
+    if (core === null || frontier === null) continue;
+    if (core / frontier > top) {
+      top = core / frontier;
+      pick = c.id;
+    }
+  }
+  return pick;
 }
 
 /** The commodity of a tier with the highest median price factor in Core sectors. */

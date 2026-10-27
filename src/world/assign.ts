@@ -250,13 +250,12 @@ export function sectorJumps(world: World): number[][] {
  * commodities), a maker or user of the commodity, or a location that trades
  * it as a relay commodity. The search goes only through sectors that have a
  * relay or can get one: a Trade Hub (Middle or Core, with a free station slot
- * or a Habitat), else a relay commodity at a location with fewer than the
- * maximum commodities. Adds the relays that the paths need. Returns the paths
+ * or a Habitat), else a relay commodity at a location in the sector. Adds the
+ * relays that the paths need. Returns the paths
  * that are still missing ("commodity@location").
  */
 export function ensureSupplyPaths(world: World, data: GameData): string[] {
   const hubType = stationType(data, 'trade_hub');
-  const max = data.balance.economy.maxCommodities;
   const missing: string[] = [];
   const populationGoods = new Set(data.population.use.map((u) => u.commodity));
   for (const l of world.locations) l.relays = {};
@@ -268,12 +267,11 @@ export function ensureSupplyPaths(world: World, data: GameData): string[] {
       (recipeOf(data, l.producer).inputs.some((i) => i.commodity === c) || recipeOf(data, l.producer).softInput === c)) ||
     (data.population.stationUse[l.bodyType] ?? []).some((u) => u.commodity === c);
   const locsOf = (sid: number) => (world.sectors[sid] as Sector).locationIds.map((id) => world.locations[id] as Location);
-  /** Locations that can take one more commodity as a relay, fewest commodities first. */
+  /** Locations that can take a relay commodity, fewest commodities first (a short market list). */
   const relayHosts = (sid: number) =>
     locsOf(sid)
       .filter((l) => l.bodyType !== SLOT && l.bodyType !== 'trade_hub')
       .map((l) => ({ l, n: tradedCommodities(l, world, data).length }))
-      .filter((x) => x.n < max)
       .sort((a, b) => a.n - b.n || a.l.id - b.l.id)
       .map((x) => x.l);
 

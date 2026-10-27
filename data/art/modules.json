@@ -1,0 +1,219 @@
+{
+  "icon": {
+    "width": 3,
+    "height": 1,
+    "layout": "mark + glyph(2)",
+    "suffix": "size(S|M|L, hi) + tier(1|2|3, tech{n})"
+  },
+  "states": {
+    "on": {
+      "glyph": "■",
+      "fg": "hi"
+    },
+    "off": {
+      "glyph": "·",
+      "fg": "dim",
+      "icon_fg": "dim"
+    },
+    "cannot_fire": {
+      "glyph": "!",
+      "fg": "over"
+    },
+    "no_ammo": {
+      "glyph": "0",
+      "fg": "bad"
+    }
+  },
+  "family_colors": {
+    "laser": "#F59ED6",
+    "ballistic": "#EBAE7A",
+    "guided": "#C0A6FF",
+    "defense": "#7FD6B8"
+  },
+  "families": {
+    "internal": {
+      "mark": "·",
+      "fg": "dim"
+    },
+    "laser": {
+      "mark": "≈",
+      "fg": "laser"
+    },
+    "ballistic": {
+      "mark": "•",
+      "fg": "ballistic"
+    },
+    "guided": {
+      "mark": "»",
+      "fg": "guided"
+    },
+    "defense": {
+      "mark": "♦",
+      "fg": "defense"
+    }
+  },
+  "modules": [
+    {
+      "id": "engine",
+      "name": "Engine",
+      "short": "Engine",
+      "family": "internal",
+      "glyph": "▐≡",
+      "fg": "engine",
+      "default_size": "M"
+    },
+    {
+      "id": "reactor",
+      "name": "Reactor",
+      "short": "Reactor",
+      "family": "internal",
+      "glyph": "◘◘",
+      "fg": "reactor",
+      "default_size": "M"
+    },
+    {
+      "id": "shield_generator",
+      "name": "Shield Generator",
+      "short": "Shield Gen",
+      "family": "internal",
+      "glyph": "()",
+      "fg": "shield",
+      "default_size": "S"
+    },
+    {
+      "id": "cargo_rack",
+      "name": "Cargo Rack",
+      "short": "Cargo Rack",
+      "family": "internal",
+      "glyph": "▒▒",
+      "fg": "neutralBright",
+      "default_size": "M"
+    },
+    {
+      "id": "fuel_tank",
+      "name": "Fuel Tank",
+      "short": "Fuel Tank",
+      "family": "internal",
+      "glyph": "○○",
+      "fg": "neutralBright",
+      "default_size": "S"
+    },
+    {
+      "id": "armor_plating",
+      "name": "Armor Plating",
+      "short": "Armor",
+      "family": "internal",
+      "glyph": "▓▓",
+      "fg": "neutralBright",
+      "default_size": "M"
+    },
+    {
+      "id": "heat_sink",
+      "name": "Heat Sink",
+      "short": "Heat Sink",
+      "family": "internal",
+      "glyph": "▄▄",
+      "fg": "neutralBright",
+      "default_size": "S"
+    },
+    {
+      "id": "radiator",
+      "name": "Radiator",
+      "short": "Radiator",
+      "family": "internal",
+      "glyph": "╫╫",
+      "fg": "neutralBright",
+      "default_size": "S"
+    },
+    {
+      "id": "maneuvering_thrusters",
+      "name": "Maneuvering Thrusters",
+      "short": "Thrusters",
+      "family": "internal",
+      "glyph": "<>",
+      "fg": "engine",
+      "default_size": "S"
+    },
+    {
+      "id": "pulse_laser",
+      "name": "Pulse Laser",
+      "short": "Pulse Lsr",
+      "family": "laser",
+      "glyph": "·─",
+      "fg": "laser",
+      "default_size": "S"
+    },
+    {
+      "id": "beam_laser",
+      "name": "Beam Laser",
+      "short": "Beam Laser",
+      "family": "laser",
+      "glyph": "══",
+      "fg": "laser",
+      "default_size": "M"
+    },
+    {
+      "id": "autocannon",
+      "name": "Autocannon",
+      "short": "Autocannon",
+      "family": "ballistic",
+      "glyph": "::",
+      "fg": "ballistic",
+      "default_size": "S"
+    },
+    {
+      "id": "mass_driver",
+      "name": "Mass Driver",
+      "short": "Mass Drv",
+      "family": "ballistic",
+      "glyph": "■-",
+      "fg": "ballistic",
+      "default_size": "M"
+    },
+    {
+      "id": "heavy_cannon",
+      "name": "Heavy Cannon",
+      "short": "Hvy Cannon",
+      "family": "ballistic",
+      "glyph": "█═",
+      "fg": "ballistic",
+      "default_size": "L"
+    },
+    {
+      "id": "flak_cannon",
+      "name": "Flak Cannon",
+      "short": "Flak",
+      "family": "ballistic",
+      "glyph": "**",
+      "fg": "ballistic",
+      "default_size": "M"
+    },
+    {
+      "id": "missile_rack",
+      "name": "Missile Rack",
+      "short": "Missiles",
+      "family": "guided",
+      "glyph": "►►",
+      "fg": "guided",
+      "default_size": "S"
+    },
+    {
+      "id": "torpedo_tube",
+      "name": "Torpedo Tube",
+      "short": "Torpedo",
+      "family": "guided",
+      "glyph": "▓►",
+      "fg": "guided",
+      "default_size": "L"
+    },
+    {
+      "id": "point_defense",
+      "name": "Point Defense",
+      "short": "Point Def",
+      "family": "defense",
+      "glyph": "┼┼",
+      "fg": "defense",
+      "default_size": "S"
+    }
+  ]
+}

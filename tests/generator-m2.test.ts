@@ -134,14 +134,9 @@ describe.each(worlds)('world rules, seed %i', (_seed, w) => {
     expect(hasService(start, 'merchants_guild')).toBe(true);
   });
 
-  it('markets: 4 to 8 commodities (Trade Hubs all 12), Hydrogen everywhere (Q-03)', () => {
+  it('markets: Trade Hubs trade all 12 commodities, Hydrogen everywhere (Q-03)', () => {
     for (const l of w.locations) {
-      const n = Object.keys(l.market).length;
-      if (tradesAll(l, data)) expect(n).toBe(12);
-      else {
-        expect(n, l.name).toBeGreaterThanOrEqual(data.balance.economy.minCommodities);
-        expect(n, l.name).toBeLessThanOrEqual(data.balance.economy.maxCommodities);
-      }
+      if (tradesAll(l, data)) expect(Object.keys(l.market).length).toBe(12);
       expect(l.market.hydrogen).toBeDefined();
     }
   });
@@ -159,12 +154,8 @@ describe.each(worlds)('world rules, seed %i', (_seed, w) => {
     for (const l of w.locations) {
       for (const [c, daily] of Object.entries(l.relays)) {
         const m = l.market[c];
-        if (!m) {
-          // Only a full market leaves out a relay commodity.
-          expect(Object.keys(l.market).length).toBe(data.balance.economy.maxCommodities);
-          continue;
-        }
-        expect(m.target).toBeGreaterThanOrEqual(daily * data.balance.economy.relayTargetDays - 1e-9);
+        expect(m, `${l.name} ${c}`).toBeDefined();
+        expect(m!.target).toBeGreaterThanOrEqual(daily * data.balance.economy.relayTargetDays - 1e-9);
       }
     }
   });

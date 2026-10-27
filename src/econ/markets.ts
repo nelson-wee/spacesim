@@ -11,24 +11,26 @@ export function tradesAll(loc: Location, data: GameData): boolean {
 }
 
 /**
- * Nominal daily amount of each commodity that a location uses or makes:
- * population and station use, recipe inputs and outputs at nominal batches,
- * and Machinery wear (Section 9.2: target = 10 days of daily use or output).
+ * Nominal daily amount of each commodity that a location uses or makes, in
+ * two parts: recipe inputs (hard inputs and Machinery wear), and the rest
+ * (population and station use, recipe outputs). Section 9.2: target = days x
+ * daily amount; inputs use fewer days (DECISIONS.md, M2).
  */
-export function nominalFlows(loc: Location, world: World, data: GameData): Map<string, number> {
-  const flows = new Map<string, number>();
-  const add = (c: string, q: number) => flows.set(c, (flows.get(c) ?? 0) + q);
+export function nominalFlowParts(loc: Location, world: World, data: GameData): { inputs: Map<string, number>; other: Map<string, number> } {
+  const inputs = new Map<string, number>();
+  const other = new Map<string, number>();
+  const add = (m: Map<string, number>, c: string, q: number) => m.set(c, (m.get(c) ?? 0) + q);
   const sector = world.sectors[loc.sectorId];
   if (!sector) throw new Error(`Location ${loc.id} has no sector`);
-  for (const u of dailyUse(loc, sector, data)) add(u.commodity, u.amount);
+  for (const u of dailyUse(loc, sector, data)) add(other, u.commodity, u.amount);
   if (loc.producer) {
     const r = recipeOf(data, loc.producer);
     const batches = nominalBatches(loc, r);
-    for (const i of r.inputs) add(i.commodity, i.qty * batches);
-    for (const o of r.outputs) add(o.commodity, o.qty * batches);
-    add(r.softInput, data.recipes.capital.machineryWear * kRef(loc, r));
+    for (const i of r.inputs) add(inputs, i.commodity, i.qty * batches);
+    for (const o of r.outputs) add(other, o.commodity, o.qty * batches);
+    add(inputs, r.softInput, data.recipes.capital.machineryWear * kRef(loc, r));
   }
-  return flows;
+  return { inputs, other };
 }
 
 /**
@@ -38,10 +40,10 @@ export function nominalFlows(loc: Location, world: World, data: GameData): Map<s
  */
 export function tradedCommodities(loc: Location, world: World, data: GameData): string[] {
   if (tradesAll(loc, data)) return data.commodities.map((c) => c.id);
-  const traded = new Set(nominalFlows(loc, world, data).keys());
+  const { inputs, other } = nominalFlowParts(loc, world, data);
+  const traded = new Set([...inputs.keys(), ...other.keys()]);
   traded.add('hydrogen');
-  // Relay commodities only up to the maximum count (a later change can add own goods).
-  for (const c of Object.keys(loc.relays).sort()) if (!traded.has(c) && traded.size < data.balance.economy.maxCommodities) traded.add(c);
+  for (const c of Object.keys(loc.relays)) traded.add(c);
   return data.commodities.map((c) => c.id).filter((id) => traded.has(id));
 }
 
@@ -65,12 +67,12 @@ export function initMarkets(world: World, data: GameData): void {
   const e = data.balance.economy;
   const region = regionDailyUse(world, data);
   for (const loc of world.locations) {
-    const flows = nominalFlows(loc, world, data);
+    const { inputs, other } = nominalFlowParts(loc, world, data);
     const hub = tradesAll(loc, data);
     const mult = loc.kind === 'planet' ? e.planetTargetMult : 1;
     loc.market = {};
     for (const c of tradedCommodities(loc, world, data)) {
-      const own = (flows.get(c) ?? 0) * e.targetDays * mult;
+      const own = ((inputs.get(c) ?? 0) * e.inputTargetDays + (other.get(c) ?? 0) * e.targetDays) * mult;
       const hubTarget = hub ? (region.get(c) ?? 0) * e.tradeHubTargetDays : 0;
       // A relay passes on its stock above half target, so it needs a stock of some days of the flow.
       const relayTarget = (loc.relays[c] ?? 0) * e.relayTargetDays;

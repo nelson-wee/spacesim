@@ -2,7 +2,7 @@
 
 **Goal:** The player docks, trades, refuels, and repairs. The player plans routes with the Trade Ledger and live prices from Merchants' Guilds. The player changes the ship loadout at the Outfitter and buys a new hull at the Shipyard. A headless trader bot earns a Light Freighter in 60 to 120 days.
 
-**Brief sections:** §7.3, §7.4, §8.6 (debt), §8.8 (Wait), §9.1 (fuel, Food loss), §9.12, §11.1–11.8, §12.2 (weapon data), §17.1 (4–8), §17.2 (route view), §17.3, §17.4, §17.6.
+**Brief sections:** §7.3, §7.4, §8.6 (debt), §8.8 (Wait), §9.1 (fuel, Food loss), §9.12, §11.1–11.8, §12.2 (weapon data), §17.1 (no commodity limit, Q-03), §17.2 (route view), §17.3, §17.4, §17.6.
 
 **Depends on:** M1 (travel, ship stats part 1), M2 (markets, prices, trade quotes, services in the world).
 
@@ -62,8 +62,8 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M3-UI-01 | **Market tab.** Show only the commodities this location trades. Mark each one Sells or Buys. Group by tier, with the tier letter and color from `style.json` (`tiers`). Show price per unit and per tonne. Show the best known sell price and where it is. | §17.4, §18 | M |
-| M3-UI-02 | **Outfitter.** Slot list on the left, module shop on the right, stat panel at the bottom. The selected ship's portrait (`ships.yaml`) shows above the slot list. Slot marks follow Q-29. | §17.1, §17.3, §18, Q-29 | M |
+| M3-UI-01 | **Market tab.** Show only the commodities this location trades. Mark each one Sells or Buys. Group by tier, with the tier letter and color from `style.json` (`tiers`). Show price per unit and per tonne. Show the best known sell price and where it is. A location can trade up to 12 commodities (no limit, Q-03): the list must fit or scroll. | §17.4, §18 | M |
+| M3-UI-02 | **Outfitter.** Slot list on the left, module shop on the right, stat panel at the bottom. The selected ship's portrait (`ships.yaml`) shows above the slot list. Slot marks follow Q-29. Each module shows its icon from `data/art/modules.json`: family mark, two glyphs, size letter (`hi`), tier digit (tech color). | §17.1, §17.3, §18, Q-29 | M |
 | M3-UI-03 | **Stat panel.** When the player selects a module, show old → new for: mass, TWR, move, maneuver, power (draw/supply), heat per turn and cooling, fuel per jump, cargo. Green for better, red for worse. | §17.3 | M |
 | M3-UI-04 | **Outfitter warnings.** Red warning when the loadout fails a required-module rule. Yellow warning "Combat power if all ON: X/Y — switch modules OFF in combat" when total draw > supply. | §11.2, §17.3 | M |
 | M3-UI-05 | **Shipyard.** Hulls for sale with base values and price after trade-in. | §17.1 | M |

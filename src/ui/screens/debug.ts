@@ -11,13 +11,14 @@ import { HEIGHT, WIDTH } from '../../render/display';
 import type { App, Screen } from '../app';
 import { DigitInput, type KeyInput } from '../input';
 import { type DamageState, type DrawArtOptions, drawArt } from '../../render/shipArt';
-import { palette } from '../../render/palette';
+import { palette, styleColor, techColor } from '../../render/palette';
 import { displayDay } from '../../core/clock';
 import { midPrice } from '../../econ/prices';
 
 type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices';
 
-const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical'];
+const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
+const MODULE_PAGE = 5;
 /** Ships on each battle art page. */
 const BATTLE_PAGE_SPLIT = 6;
 
@@ -204,6 +205,10 @@ export class DebugScreen implements Screen {
     const data = this.game.data;
     const ui = palette(data).ui;
     const ships = Object.entries(data.art.ships.ships);
+    if (this.artPage === MODULE_PAGE) {
+      this.renderModuleIcons(t, x0, y0);
+      return;
+    }
     if (this.artPage <= 1) {
       const cols: [string, DrawArtOptions][] = [
         ['player', { side: 'player' }],
@@ -242,6 +247,38 @@ export class DebugScreen implements Screen {
           }),
         );
       }
+    });
+  }
+
+  /**
+   * Module icons from data/art/modules.json: family mark, two glyphs, size,
+   * and tier (M3 uses them in the Outfitter), and the four module states.
+   */
+  private renderModuleIcons(t: Term, x0: number, y0: number): void {
+    const data = this.game.data;
+    const ui = palette(data).ui;
+    const art = data.art.modules;
+    const color = (name: string) => styleColor(data.art.style, name);
+    t.text(x0, y0, 'Icon: mark + glyph(2) + size + tier.  Tier 1/2/3 in tech colors.', ui.dim);
+    art.modules.forEach((m, i) => {
+      const x = x0 + Math.floor(i / 12) * 44;
+      const y = y0 + 2 + (i % 12);
+      const family = art.families[m.family];
+      t.text(x, y, family?.mark ?? ' ', color(family?.fg ?? 'dim'));
+      t.text(x + 1, y, m.glyph, color(m.fg));
+      t.text(x + 3, y, m.default_size, ui.bright);
+      t.text(x + 4, y, String((i % 3) + 1), techColor(data, (i % 3) + 1));
+      t.text(x + 6, y, m.short, ui.text, undefined, 12);
+      t.text(x + 19, y, m.id, ui.dim, undefined, 24);
+    });
+    const sy = y0 + 15;
+    t.text(x0, sy, 'States (Pulse Laser):', ui.dim);
+    const laser = art.modules.find((m) => m.id === 'pulse_laser');
+    Object.entries(art.states).forEach(([name, s], i) => {
+      const x = x0 + i * 20;
+      t.text(x, sy + 1, s.glyph, color(s.fg));
+      if (laser) t.text(x + 2, sy + 1, laser.glyph, color(s.icon_fg ?? laser.fg));
+      t.text(x + 5, sy + 1, name, ui.text);
     });
   }
 

@@ -5,12 +5,7 @@ import { basePrice, buyPrice, midPrice, rawPriceFactor, sellPrice } from '../../
 import type { DayReport } from '../../src/econ/report';
 import { sectorJumps } from '../../src/world/assign';
 
-export function median(values: number[]): number {
-  if (values.length === 0) return NaN;
-  const s = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(s.length / 2);
-  return s.length % 2 ? (s[mid] as number) : ((s[mid - 1] as number) + (s[mid] as number)) / 2;
-}
+export { median } from '../../src/econ/gradient';
 
 /** Best route margin (sellPrice_B - buyPrice_A) / buyPrice_A between sectors minJumps..maxJumps apart. */
 export function bestMargin(
@@ -54,8 +49,8 @@ export class EconStats {
   /** Longest low-output run of each producer. */
   readonly lowStreak = new Map<number, number>();
   readonly longestLow = new Map<number, number>();
-  /** price / base samples: key `${tier}:${development}`. */
-  readonly tierDev = new Map<string, number[]>();
+  /** price / base samples: key `${commodity}:${development}` (gradient check, Q-34). */
+  readonly factors = new Map<string, number[]>();
   /** Price samples per commodity and development level. */
   readonly prices = new Map<string, number[]>();
   /** Days with a route of 1-3 jumps and margin >= 25%, per commodity. */
@@ -93,8 +88,7 @@ export class EconStats {
         if (raw <= e.priceClampMin) this.clampLow.set(c, (this.clampLow.get(c) ?? 0) + 1);
         const base = basePrice(data, c);
         const price = midPrice(entry, base, data);
-        const tier = data.commodityById.get(c)?.tier ?? 'raw';
-        push(this.tierDev, `${tier}:${dev}`, price / base);
+        push(this.factors, `${c}:${dev}`, price / base);
         // Every 5th day is enough for the price report.
         if (this.days % 5 === 0) push(this.prices, `${c}:${dev}`, price);
       }
