@@ -100,6 +100,8 @@ export interface Location {
   production: ProductionState | null;
   population: number;
   installedMachinery: number;
+  /** Production capacity: multiplies the batches; grows and shrinks with profit (DECISIONS.md, M2). Starts at 1. */
+  capacity: number;
   market: Record<string, MarketEntry>;
   services: string[];
 }

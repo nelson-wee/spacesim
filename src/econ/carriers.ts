@@ -21,7 +21,8 @@ interface Candidate {
   profitPerTonne: number;
   /**
    * Stock at the sink where the route stops paying: there the sell price is
-   * buy x (1 + minMargin) + transport cost. At most exportStockRatio x target.
+   * buy x (1 + minMargin) + transport cost. The minimum margin keeps this price
+   * above the low clamp, so the stock is finite.
    */
   fillTo: number;
 }
@@ -124,7 +125,7 @@ export function runCarriers(ctx: EconContext, economy: EconomyState, sectorLevel
           jumps,
           mass: commodity.massPerUnit,
           profitPerTonne: gain / commodity.massPerUnit,
-          fillTo: Math.min(stockAtPriceFactor(dstEntry.target, breakEven, data), e.exportStockRatio * dstEntry.target),
+          fillTo: stockAtPriceFactor(dstEntry.target, breakEven, data),
         });
       }
     }

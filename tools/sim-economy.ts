@@ -54,7 +54,7 @@ function clone(world: World): World {
   return JSON.parse(JSON.stringify(world)) as World;
 }
 
-const CSV_HEADER = 'day,location,sector,development,commodity,stock,target,price,produced,consumed,flowIn,flowOut,offMap,installedMachinery';
+const CSV_HEADER = 'day,location,sector,development,commodity,stock,target,price,produced,consumed,flowIn,flowOut,offMap,installedMachinery,capacity';
 
 function csvRows(world: World, day: number, r: DayReport): string[] {
   const rows: string[] = [];
@@ -78,6 +78,7 @@ function csvRows(world: World, day: number, r: DayReport): string[] {
           (row?.flowOut ?? 0).toFixed(3),
           (row?.offMap ?? 0).toFixed(3),
           loc.installedMachinery.toFixed(3),
+          loc.capacity.toFixed(4),
         ].join(','),
       );
     }
@@ -162,37 +163,38 @@ function capitalEffect(world: World, seed: number, share: number): { higherDays:
 /**
  * Capital responds (DECISIONS.md, M2): stop all Machine Works for 60 days. While
  * Machinery is dear, the producers' capital target K* falls. After the restart,
- * the median Machinery price comes back to within 20% of its earlier level.
+ * the median Machinery price comes back to within 20% of a control run with no
+ * stop (prices move in cycles, so the control run is the reference).
  */
 function capitalResponse(world: World, seed: number): { priceRise: number; targetChange: number; recoverDays: number } | null {
   if (!world.locations.some((l) => l.producer === 'machine_works')) return null;
-  const r = runner(world, seed + 8000);
-  const producers = world.locations.filter((l) => l.producer);
-  const machineryPrice = () => median(world.locations.filter((l) => l.market.machinery).map((l) => midPrice(l.market.machinery as MarketEntry, basePrice(data, 'machinery'), data)));
-  const targets = () => producers.reduce((s, l) => s + capitalTarget(l, recipeOf(data, l.producer as string), data), 0);
-  r.run(100);
-  let p0 = 0;
-  let t0 = 0;
-  for (let i = 0; i < 30; i++) {
-    r.run(1);
-    p0 += machineryPrice() / 30;
-    t0 += targets() / 30;
-  }
+  const warm = runner(world, seed + 8000);
+  warm.run(100);
+  const control = clone(world);
+  const a = runner(world, seed, Rng.fromSeed(seed, 'capitalResponse'));
+  const b = runner(control, seed, Rng.fromSeed(seed, 'capitalResponse'));
+  const machineryPrice = (w: World) =>
+    median(w.locations.filter((l) => l.market.machinery).map((l) => midPrice(l.market.machinery as MarketEntry, basePrice(data, 'machinery'), data)));
+  const targets = (w: World) =>
+    w.locations.filter((l) => l.producer).reduce((s, l) => s + capitalTarget(l, recipeOf(data, l.producer as string), data), 0);
   const stop: EconomyDayOptions = { eventMult: (l) => (l.producer === 'machine_works' ? 0 : 1) };
-  r.run(30, undefined, stop);
-  let p1 = 0;
-  let t1 = 0;
+  a.run(30, undefined, stop);
+  b.run(30);
+  let rise = 0;
+  let change = 0;
   for (let i = 0; i < 30; i++) {
-    r.run(1, undefined, stop);
-    p1 += machineryPrice() / 30;
-    t1 += targets() / 30;
+    a.run(1, undefined, stop);
+    b.run(1);
+    rise += (machineryPrice(world) / machineryPrice(control) - 1) / 30;
+    change += (targets(world) / targets(control) - 1) / 30;
   }
   let recoverDays = -1;
-  for (let i = 1; i <= 360 && recoverDays < 0; i++) {
-    r.run(1);
-    if (Math.abs(machineryPrice() / p0 - 1) <= 0.2) recoverDays = i;
+  for (let i = 1; i <= 180 && recoverDays < 0; i++) {
+    a.run(1);
+    b.run(1);
+    if (Math.abs(machineryPrice(world) / machineryPrice(control) - 1) <= 0.2) recoverDays = i;
   }
-  return { priceRise: p1 / p0 - 1, targetChange: t1 / t0 - 1, recoverDays };
+  return { priceRise: rise, targetChange: change, recoverDays };
 }
 
 interface SeedResult {
@@ -329,7 +331,7 @@ function report(results: SeedResult[], d: GameData): void {
     (r) => r.capitalResponse && r.capitalResponse.priceRise > 0 && r.capitalResponse.targetChange < 0 && r.capitalResponse.recoverDays >= 0 && r.capitalResponse.recoverDays <= 180,
   ).length;
   check(
-    'Capital responds: Machine Works stop 60 days; Machinery dearer, K* lower, price back within 20% in 180 days',
+    'Capital responds: Machine Works stop 60 days; Machinery dearer, K* lower, price within 20% of a control run in 180 days',
     responsePass,
     n,
     results

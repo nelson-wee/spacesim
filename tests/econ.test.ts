@@ -7,7 +7,8 @@ import { createEconContext } from '../src/econ/context';
 import { economyDay } from '../src/econ/economy';
 import { capacityFactor, runCarriers, transitDays, transportCost } from '../src/econ/carriers';
 import { priceGradient } from '../src/econ/gradient';
-import { inputTrickle, offMapExport, regionBalance } from '../src/econ/offmap';
+import { inputTrickle, regionBalance } from '../src/econ/offmap';
+import { capacitySignal, updateCapacity } from '../src/econ/capacity';
 import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice, stockAtPriceFactor } from '../src/econ/prices';
 import { produce, recipeOf } from '../src/econ/recipes';
 import { generateWorld } from '../src/world/generator';
@@ -34,6 +35,7 @@ function producer(id: string, size = 2): Location {
     production: null,
     population: 0,
     installedMachinery: 0,
+    capacity: 1,
     market: {},
     services: [],
   };
@@ -276,8 +278,8 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
     const { w, ctx, src } = twoMarkets(3, 1);
     for (let i = 0; i < 5; i++) runCarriers(ctx, w.economy, levels(w));
     const sent = 2000 - src.market.water!.stock;
-    // Never more than the export limit of the sink (exportStockRatio x target).
-    expect(sent).toBeLessThanOrEqual(e.exportStockRatio * 1000 + 1e-6);
+    // Never more than the source's surplus above half target.
+    expect(sent).toBeLessThanOrEqual(2000 - e.surplusShareOfTarget * 1000 + 1e-6);
     expect(sent).toBeLessThan(1000);
   });
 
@@ -332,14 +334,56 @@ describe('off-map rules (Section 9.8)', () => {
     expect(econ.region.water.balancing).toBeNull();
   });
 
-  it('off-map export removes a share of stock above the export limit (DECISIONS.md)', () => {
-    const w = generateWorld(5, data);
-    const ctx = createEconContext(w, data);
-    const loc = w.locations.find((l) => l.market.water)!;
-    const m = loc.market.water!;
-    m.stock = m.target * (e.exportStockRatio + 1);
-    offMapExport(ctx);
-    expect(m.stock).toBeCloseTo(m.target * (e.exportStockRatio + 1 - e.exportShare));
+});
+
+describe('production capacity (DECISIONS.md, M2)', () => {
+  const cap = e.capacity;
+  /** An Ore Mine with all markets at their targets (prices at base). */
+  const atBase = () => {
+    const loc = producer('ore_mine');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    return loc;
+  };
+
+  it('no change at base prices (the economy was sized at base prices)', () => {
+    const loc = atBase();
+    expect(capacitySignal(loc, data)).toBeCloseTo(0);
+    updateCapacity([loc], data);
+    expect(loc.capacity).toBeCloseTo(1);
+  });
+
+  it('grows when the output is dear, shrinks when it is cheap', () => {
+    const dear = atBase();
+    dear.market.iron_ore!.stock = dear.market.iron_ore!.target / 3;
+    updateCapacity([dear], data);
+    expect(dear.capacity).toBeGreaterThan(1);
+    const cheap = atBase();
+    cheap.market.iron_ore!.stock = cheap.market.iron_ore!.target * 5;
+    updateCapacity([cheap], data);
+    expect(cheap.capacity).toBeLessThan(1);
+  });
+
+  it('no upper limit, and nothing below 0; a closed producer can grow again', () => {
+    const loc = atBase();
+    loc.market.iron_ore!.stock = 1; // output at the high clamp
+    for (let i = 0; i < 2000; i++) updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThan(3);
+    loc.market.iron_ore!.stock = 1e9; // output at the low clamp
+    for (let i = 0; i < 20000; i++) updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThanOrEqual(0);
+    expect(loc.capacity).toBeLessThan(0.01);
+    loc.market.iron_ore!.stock = 1;
+    updateCapacity([loc], data);
+    expect(loc.capacity).toBeGreaterThanOrEqual(cap.changeRate * cap.restartCapacity * 0.99);
+  });
+
+  it('batches and K_ref follow capacity', () => {
+    const loc = atBase();
+    const r = recipeOf(data, 'ore_mine');
+    const b = nominalBatches(loc, r);
+    loc.capacity = 2;
+    expect(nominalBatches(loc, r)).toBeCloseTo(2 * b);
+    expect(kRef(loc, r)).toBeCloseTo(2 * b * r.machineryPerBatch);
   });
 });
 

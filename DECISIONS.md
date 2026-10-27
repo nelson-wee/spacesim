@@ -165,16 +165,24 @@ These decisions replace the brief text where they do not agree.
 
 ### Off-map supply removed (owner, 2026-10-27)
 
-- 2026-10-27 [§9.8] `offMapInputShare` 0 and `offMapBalance` 0: no input trickle and no region balance. The code stays, so a value above 0 turns them on again. Off-map export (the sink for stock above 2 x target) stays until production responds to prices. Reason: owner wants an economy with no off-map supply; with carriers, the checks pass without it.
+- 2026-10-27 [§9.8] `offMapInputShare` 0 and `offMapBalance` 0: no input trickle and no region balance. The code stays, so a value above 0 turns them on again. Off-map export stayed until production responded to prices (removed later on 2026-10-27). Reason: owner wants an economy with no off-map supply; with carriers, the checks pass without it.
 
 ### Capital as a price signal (owner, 2026-10-27)
 
 - 2026-10-27 [§9.5] Producers install Machinery up to a target K*, not to 1.5 x K_ref. K* is where the daily gain of one more unit of K (`batches x valueAdded x 0.6 x K_ref / (K + K_ref)^2`, value added at local prices) equals its daily cost (`machineryPrice x (wear + requiredReturn)`). `recipes.capital.requiredReturn` 0.0088 a day: an Ore Mine at base prices then targets 1.5 x K_ref, the brief's value. Reason: owner wants capital formation to follow prices inside the existing capital rule. With the fixed target, Machinery cost 1.9-2.0 x base for ever; with K*, about 0.9-1.0 x base, and producers with cheap outputs hold less capital (they make less).
 - 2026-10-27 [§9.5] No upper limit on K (the brief's 1.5 x K_ref is removed, owner). Reason: diminishing returns already limit K*; `capitalFactor` stays below 1.2. The install rate (10% of K_ref a day) stays: it sets how fast capital changes.
-- 2026-10-27 [§9.5] Output can change only between 0.6 and 1.2 x nominal through K. A larger imbalance stays as a price gap (a trade chance). Off-map export still removes stock above 2 x target. Reason: the brief's capital formula; a size change by the same profit test is possible later.
+- 2026-10-27 [§9.5] Output can change only between 0.6 and 1.2 x nominal through K. (Replaced 2026-10-27: capacity now follows the output price, with no limit.)
 - 2026-10-27 [§9.13] Chain shock: report only, not a check (owner, Q-32). Reason: swings and boom/bust cycles are a feature.
 - 2026-10-27 [§9.13] Capital check replaced (owner, Q-33): "capital responds" (stop all Machine Works 60 days; Machinery price up, total K* down, price back within 20% in 180 days after the restart). The player effect (10 Machinery to a Frontier mine at 0.5 x K* and at K*) is a report. Reason: with K*, Machinery that a mine does not need is not installed, so the old test measured only how short Machinery was.
 - 2026-10-27 [§16] After the MVP, the owner wants no career limit (day 730). Keep the day-730 end as one value. See `docs/requirements/README.md`, Section 11.
+
+### Closed economy: no export, capacity follows output price (owner, 2026-10-27)
+
+- 2026-10-27 [§9.8] Off-map export removed (owner). No goods leave or enter the region: the off-map rules are all 0 or removed. Carriers fill a sink to its break-even stock with no other cap; the minimum margin keeps the break-even price above the low clamp. Reason: the economy corrects itself with prices.
+- 2026-10-27 [§6.8, §9.3] Production capacity (`Location.capacity`, start 1, no upper or lower limit) multiplies the batches. Each day it changes by `capacity.changeRate` (0.3%) x clamp(output price factor at the producer - 1, -1, 1). Growth is also multiplied by the input factor of the last production day, so a producer that is short of inputs does not grow. Growth uses at least `restartCapacity` (0.1) as its base, so a producer that shrank to almost nothing can grow again. The generator sizes (1 to 3) are only the start values. Reason: owner: "shrink and grow according to prices of their output".
+- 2026-10-27 [§6.8] First try, rejected: capacity by profit at local prices against profit at base prices. Every link pays the carrier margin, so processors buy above base and sell below base even in balance; Machine Works, Smelters, and Composite Works shrank to almost 0 in 1,500 days.
+- 2026-10-27 [§9.2] Targets update each day: input and population targets follow capacity; output targets keep the size at generation (capacity 1). Reason: if a producer's own capacity changed its output target, a smaller producer would see a lower price for the same stock and shrink more (and a larger one grow more).
+- 2026-10-27 [§9.13] "Capital responds" compares the stopped run with a control run (same world and random numbers, no stop): the Machinery price must be within 20% of the control run within 180 days. Reason: prices now move in cycles, so the level before the stop is not a fixed reference.
 
 ## Cuts
 
