@@ -36,6 +36,7 @@ export type Hull = z.infer<typeof S.hullsSchema>['hulls'][number];
 export type ModuleDef = z.infer<typeof S.modulesSchema>['modules'][number];
 export type ModuleValues = z.infer<typeof S.moduleValuesSchema>;
 export type ServiceDef = z.infer<typeof S.servicesSchema>['services'][number];
+export type ServiceRules = z.infer<typeof S.servicesSchema>['rules'];
 export type ServiceClause = ServiceDef['where'][number];
 export type Loadout = z.infer<typeof S.loadoutsSchema>['loadouts'][number];
 export type LoadoutSlot = Loadout['internal'][number];
@@ -91,6 +92,7 @@ export interface GameData {
   moduleById: Map<string, ModuleDef>;
   loadoutById: Map<string, Loadout>;
   services: ServiceDef[];
+  serviceRules: ServiceRules;
   art: {
     ships: ShipArt;
     icons: Icons;
@@ -187,6 +189,7 @@ export function checkReferences(data: GameData): string[] {
     if (!data.stationTypeById.has(station)) problems.push(`population.stationUse: unknown station type ${station}`);
     for (const u of uses) if (!data.commodityById.has(u.commodity)) problems.push(`population.stationUse.${station}: unknown commodity ${u.commodity}`);
   }
+  if (!hostIds.has(data.serviceRules.pirateHaven.bodyType)) problems.push('services.json rules: unknown Pirate Haven body type');
   for (const svc of data.services) {
     for (const clause of svc.where) {
       for (const t of clause.bodyType ?? []) if (!hostIds.has(t)) problems.push(`services.json ${svc.id}: unknown body type ${t}`);
@@ -352,6 +355,7 @@ export function buildGameData(raw: RawData): GameData {
   const hulls = parse('hulls.json', S.hullsSchema, raw.hulls).hulls;
   const modules = parse('modules.json', S.modulesSchema, raw.modules);
   const loadouts = parse('loadouts.json', S.loadoutsSchema, raw.loadouts).loadouts;
+  const services = parse('services.json', S.servicesSchema, raw.services);
   parse('events.json', S.plannedSchema, raw.events);
   parse('encounters.json', S.plannedSchema, raw.encounters);
   parse('templates.json', S.plannedSchema, raw.templates);
@@ -389,7 +393,8 @@ export function buildGameData(raw: RawData): GameData {
     modules,
     moduleById: byId(modules.modules, (m) => m.id, 'modules.json'),
     loadoutById: byId(loadouts, (l) => l.id, 'loadouts.json'),
-    services: parse('services.json', S.servicesSchema, raw.services).services,
+    services: services.services,
+    serviceRules: services.rules,
     art: {
       ships: parse('art/ships.json', S.artShipsSchema, raw.artShips),
       icons: parse('art/icons.json', S.artIconsSchema, raw.artIcons),

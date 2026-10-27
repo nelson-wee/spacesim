@@ -3,7 +3,9 @@
 import type { Game } from '../core/game';
 import type { Actor, Location, Ship, Vec } from '../core/types';
 import { type GameData, hydrogenBasePrice } from '../data';
+import { basePrice, buyPrice, sellPrice } from '../econ/prices';
 import type { ShipStats } from '../ship/stats';
+import { fleetUnits, removeCargo } from './cargo';
 import { travelStats } from '../ship/stats';
 import { mapDistance } from '../world/geometry';
 
@@ -27,12 +29,14 @@ export function dockFuel(gravity: number, stats: ShipStats, data: GameData): num
 }
 
 /**
- * Price of one fuel unit at a location. One Hydrogen unit gives
- * `fuelPerHydrogen` fuel units (Q-02). M1 uses the Hydrogen base price;
- * M3 uses the local Hydrogen buy price.
+ * Price of one fuel unit at a location: the local Hydrogen buy price /
+ * `fuelPerHydrogen` (Q-02). With no location, or no Hydrogen market, the
+ * Hydrogen base price.
  */
-export function fuelUnitPrice(data: GameData, _location?: Location): number {
-  return hydrogenBasePrice(data) / data.balance.fuel.fuelPerHydrogen;
+export function fuelUnitPrice(data: GameData, location?: Location): number {
+  const entry = location?.market.hydrogen;
+  const hydrogen = entry ? buyPrice(entry, hydrogenBasePrice(data), data) : hydrogenBasePrice(data);
+  return hydrogen / data.balance.fuel.fuelPerHydrogen;
 }
 
 export function fullTankPrice(ship: Ship, data: GameData, location?: Location): number {
@@ -69,33 +73,37 @@ export function nearestLocation(game: Game, sectorId: number, point: Vec): { loc
   return { location: best, distance: bestDist };
 }
 
-/** M1 sell price of cargo for the tow fee: the base price. M2 uses the local sell price. */
-function cargoSellPrice(game: Game, commodityId: string, _location: Location): number {
-  return game.data.commodityById.get(commodityId)?.basePrice ?? 0;
-}
-
 /**
  * Pays a fee. If the credits are not sufficient, the location buys cargo at
- * its sell price. If that is not sufficient, the credits go below 0 (Section 8.6).
+ * its local sell price, unit by unit (M3-SVC-15). It buys only the goods that
+ * it trades. If that is not sufficient, the credits go below 0 (Section 8.6).
  */
 export function payFeeWithCargo(game: Game, actor: Actor, fee: number, location: Location): { soldValue: number } {
+  const { data } = game;
   let soldValue = 0;
   if (actor.credits >= fee) {
     actor.credits -= fee;
     return { soldValue };
   }
   let shortfall = fee - Math.max(0, actor.credits);
-  for (const ship of actor.fleet) {
-    for (const [commodityId, lot] of Object.entries(ship.cargo)) {
-      if (shortfall <= 0) break;
-      const price = cargoSellPrice(game, commodityId, location);
-      if (price <= 0 || lot.units <= 0) continue;
-      const units = Math.min(lot.units, Math.ceil(shortfall / price));
-      lot.units -= units;
-      if (lot.units <= 0) delete ship.cargo[commodityId];
-      soldValue += units * price;
-      shortfall -= units * price;
+  const commodities = new Set(actor.fleet.flatMap((ship) => Object.keys(ship.cargo)));
+  for (const commodity of commodities) {
+    const entry = location.market[commodity];
+    if (shortfall <= 0 || !entry) continue;
+    const base = basePrice(data, commodity);
+    // Sell whole units until the fee is paid, or all units if that is not sufficient.
+    const held = fleetUnits(actor, commodity);
+    let units = 0;
+    let value = 0;
+    while (units < held - 1e-9 && value < shortfall) {
+      const step = Math.min(1, held - units);
+      value += step * sellPrice({ ...entry, stock: entry.stock + units }, base, data);
+      units += step;
     }
+    removeCargo(actor, commodity, units);
+    entry.stock += units;
+    soldValue += value;
+    shortfall -= value;
   }
   actor.credits = actor.credits + soldValue - fee;
   return { soldValue };

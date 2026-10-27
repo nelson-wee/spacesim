@@ -28,7 +28,7 @@ export interface TripPlan {
 
 export type TripOutcome =
   | { result: 'arrived'; days: number }
-  | { result: 'towed'; days: number; fee: number; locationId: number }
+  | { result: 'towed'; days: number; fee: number; locationId: number; soldValue: number }
   | { result: 'refused'; reason: string };
 
 /** Sector and point of an actor. */
@@ -228,7 +228,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
     };
     actor.position = { kind: 'space', sectorId: here.sectorId, x: stop.x, y: stop.y };
     const tow = towFleet(game, actor, here.sectorId, stop);
-    return { result: 'towed', days: plan.days * share, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days: plan.days * share, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
 
   useFuel(actor, travelNeed, 1);
@@ -248,7 +248,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
   if (dockShare < 1) {
     actor.position = { kind: 'space', sectorId: there.sectorId, x: there.point.x, y: there.point.y };
     const tow = towFleet(game, actor, there.sectorId, there.point);
-    return { result: 'towed', days: plan.days, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days: plan.days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'docked', locationId: dest.locationId };
   game.bus.message(`You dock at ${plan.destinationName}.`);
@@ -271,7 +271,7 @@ export function jump(game: Game, actor: Actor): TripOutcome {
   if (share < 1) {
     const rest = (1 - share) * route.lane.length;
     const tow = towFleet(game, actor, route.to.sectorId, route.to.pos, rest);
-    return { result: 'towed', days, fee: tow.fee, locationId: tow.location.id };
+    return { result: 'towed', days, fee: tow.fee, locationId: tow.location.id, soldValue: tow.soldValue };
   }
   actor.position = { kind: 'jumpPoint', jumpPointId: route.to.id };
   game.bus.message(`You jump to ${plan.destinationName}. The trip takes ${days.toFixed(1)} days.`);

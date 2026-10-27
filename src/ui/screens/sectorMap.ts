@@ -13,7 +13,8 @@ import type { Game } from '../../core/game';
 import type { JumpPoint, Location, Vec } from '../../core/types';
 import type { Term } from '../../render/display';
 import { palette, securityColor, techColor } from '../../render/palette';
-import { quoteRefuel, refuelFleet } from '../../services/refuel';
+import { report } from '../../services/common';
+import { quoteRefuel, refuel } from '../../services/refuel';
 import { ringPoint } from '../../world/geometry';
 import { locationTypeName } from '../../world/location';
 import { securityLevelInfo } from '../../world/security';
@@ -227,7 +228,9 @@ export class SectorMapScreen implements Screen {
         return true;
       }
       case 'r':
-        refuelFleet(game, player);
+        if (player.position.kind === 'docked') {
+          report(game, refuel(game, player, game.state.world.locations[player.position.locationId] as Location));
+        } else game.bus.message('You can refuel only at a location.', 'warning');
         return true;
       case 'm':
         this.app.push(new RegionMapScreen(this.app));

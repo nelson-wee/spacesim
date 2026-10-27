@@ -5,6 +5,7 @@ import type { Game } from '../src/core/game';
 import { createGame } from '../src/core/newGame';
 import type { Location, Ship } from '../src/core/types';
 import { gameData, hydrogenBasePrice } from '../src/data';
+import { sellPrice } from '../src/econ/prices';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { travelStats } from '../src/ship/stats';
 import { Rng } from '../src/core/rng';
@@ -189,18 +190,41 @@ describe('out of fuel and tow (Section 8.6)', () => {
     expect(recoveryFee(s, 12, data)).toBeCloseTo(r.base + r.perDistance * 12 + r.fullTankShare * tank);
   });
 
-  it('cargo pays the fee when credits are not sufficient', () => {
+  it('cargo pays the fee at the local sell price, unit by unit (M3-SVC-15)', () => {
     const { game, player, sector } = setup();
     player.credits = 0;
-    ship(game).cargo.iron_ore = { units: 25, unitCost: 15 };
+    // All locations trade Hydrogen; Iron Ore only where it is used or made.
+    ship(game).cargo.hydrogen = { units: 25, unitCost: 25 };
     ship(game).fuel = 0;
     const out = travelInSector(game, player, { kind: 'jumpPoint', jumpPointId: sector.jumpPointIds[0]! });
     expect(out.result).toBe('towed');
     if (out.result !== 'towed') return;
-    const price = data.commodityById.get('iron_ore')!.basePrice;
-    const sold = Math.min(25, Math.ceil(out.fee / price));
-    expect(ship(game).cargo.iron_ore?.units ?? 0).toBe(25 - sold);
-    expect(player.credits).toBeCloseTo(sold * price - out.fee);
+    const loc = game.state.world.locations[out.locationId]!;
+    const entry = loc.market.hydrogen!;
+    const stockAfter = entry.stock;
+    const left = ship(game).cargo.hydrogen?.units ?? 0;
+    const sold = 25 - left;
+    const base = data.commodityById.get('hydrogen')!.basePrice;
+    let value = 0;
+    for (let i = 0; i < sold; i++) value += sellPrice({ ...entry, stock: stockAfter - sold + i }, base, data);
+    expect(sold).toBeGreaterThan(0);
+    expect(out.soldValue).toBeCloseTo(value);
+    expect(player.credits).toBeCloseTo(value - out.fee);
+    // Selling one unit less would not pay the fee (unless all units are sold).
+    if (left > 0) expect(value - sellPrice({ ...entry, stock: stockAfter - 1 }, base, data)).toBeLessThan(out.fee);
+  });
+
+  it('the location does not buy cargo that it does not trade', () => {
+    const { game, player, sector } = setup();
+    player.credits = 0;
+    ship(game).cargo.medicine = { units: 1, unitCost: 100 };
+    ship(game).fuel = 0;
+    const out = travelInSector(game, player, { kind: 'jumpPoint', jumpPointId: sector.jumpPointIds[0]! });
+    if (out.result !== 'towed') return;
+    const loc = game.state.world.locations[out.locationId]!;
+    if (loc.market.medicine) return;
+    expect(ship(game).cargo.medicine?.units).toBe(1);
+    expect(player.credits).toBeCloseTo(-out.fee);
   });
 
   it('credits go below 0 when credits and cargo are not sufficient (debt)', () => {
@@ -228,7 +252,7 @@ describe('out of fuel and tow (Section 8.6)', () => {
     expect(player.position).toEqual({ kind: 'docked', locationId: loc.id });
     expect(credits - player.credits).toBeCloseTo(out.fee);
     // One fee: the trip did not start, so the distance is from the start location to the nearest location (itself).
-    expect(out.fee).toBeCloseTo(recoveryFee(ship(game, 0), 0, data));
+    expect(out.fee).toBeCloseTo(recoveryFee(ship(game, 0), 0, data, loc));
   });
 
   it('fuel that runs out in a lane tows the fleet to the destination sector (Q-12)', () => {
@@ -243,6 +267,6 @@ describe('out of fuel and tow (Section 8.6)', () => {
     const loc = game.state.world.locations[out.locationId]!;
     expect(loc.sectorId).toBe(route.to.sectorId);
     const near = mapDistance(route.to.pos, loc.pos, aspect);
-    expect(out.fee).toBeCloseTo(recoveryFee(ship(game), near + route.lane.length / 2, data));
+    expect(out.fee).toBeCloseTo(recoveryFee(ship(game), near + route.lane.length / 2, data, loc));
   });
 });

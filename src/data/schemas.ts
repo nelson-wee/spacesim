@@ -386,6 +386,22 @@ const serviceClauseSchema = z
   })
   .strict();
 export const servicesSchema = z.object({
+  rules: z.object({
+    /** Mechanic price per repaired point (Section 7.4). */
+    mechanic: z.object({ hullPerPoint: nonNeg, armorPerPoint: nonNeg, enginePerPoint: nonNeg }),
+    /** Outfitter sell price as a share of the module price (Q-13). */
+    moduleSellShare: prob,
+    /** Shipyard trade-in share of hull and module prices (Section 11.1). */
+    tradeInShare: prob,
+    /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3). */
+    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos }),
+    /** Merchants' Guild live-price range (Section 9.12). */
+    guildRangeJumps: z.number().int().nonnegative(),
+    /** Days for the trend arrow (Section 9.12). */
+    trendDays: z.number().int().positive(),
+    /** Most days of one Wait (Section 8.8). */
+    waitMaxDays: z.number().int().positive(),
+  }),
   services: z.array(z.object({ id: z.string(), name: z.string(), where: z.array(serviceClauseSchema).min(1) })),
 });
 
