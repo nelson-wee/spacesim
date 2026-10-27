@@ -26,23 +26,12 @@ function localPrice(loc: Location, commodity: string, data: GameData): number {
   return entry ? midPrice(entry, base, data) : base;
 }
 
-/** Value added of one batch at local prices (or at base prices): outputs minus hard inputs. */
-export function valueAdded(loc: Location, recipe: Recipe, data: GameData, atBase = false): number {
-  const price = (c: string) => (atBase ? basePrice(data, c) : localPrice(loc, c, data));
+/** Value added of one batch at local prices: outputs minus hard inputs. */
+export function valueAdded(loc: Location, recipe: Recipe, data: GameData): number {
   let value = 0;
-  for (const o of recipe.outputs) value += o.qty * price(o.commodity);
-  for (const i of recipe.inputs) value -= i.qty * price(i.commodity);
+  for (const o of recipe.outputs) value += o.qty * localPrice(loc, o.commodity, data);
+  for (const i of recipe.inputs) value -= i.qty * localPrice(loc, i.commodity, data);
   return value;
-}
-
-/**
- * Profit of one batch: value added minus the cost of the capital that the batch
- * needs (machineryPerBatch x machineryPrice x (wear + requiredReturn)).
- */
-export function batchProfit(loc: Location, recipe: Recipe, data: GameData, atBase = false): number {
-  const c = data.recipes.capital;
-  const machinery = atBase ? basePrice(data, recipe.softInput) : localPrice(loc, recipe.softInput, data);
-  return valueAdded(loc, recipe, data, atBase) - recipe.machineryPerBatch * machinery * (c.machineryWear + c.requiredReturn);
 }
 
 /**
