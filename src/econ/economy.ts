@@ -8,6 +8,7 @@ import { type EconContext, refreshNeeds } from './context';
 import { runCarriers } from './carriers';
 import { emptyRegionStats, inputTrickle, regionBalance } from './offmap';
 import { updateCapacity } from './capacity';
+import { createReplacementPricer } from './costs';
 import { refreshTargets } from './markets';
 import { basePrice, midPrice } from './prices';
 import { produce, recipeOf } from './recipes';
@@ -83,16 +84,17 @@ export function economyDay(
     report?.outputRatio.set(loc.id, result.outputRatio);
   }
 
-  // 3. Machinery install and wear.
+  // 3. Machinery install and wear. Producers value inputs and Machinery at replacement cost.
+  const inputPrice = createReplacementPricer(ctx);
   for (const loc of ctx.producers) {
     const recipe = recipeOf(data, loc.producer as string);
-    addTo(demand, recipe.softInput, installWant(loc, recipe, data));
-    const installed = installAndWear(loc, recipe, data);
+    addTo(demand, recipe.softInput, installWant(loc, recipe, data, inputPrice));
+    const installed = installAndWear(loc, recipe, data, inputPrice);
     report?.add(loc.id, recipe.softInput, 'consumed', installed);
   }
 
   // 3b. Capacity follows profit (DECISIONS.md, M2); targets and needs follow capacity.
-  updateCapacity(ctx.producers, data);
+  updateCapacity(ctx.producers, data, inputPrice);
   refreshTargets(world, data);
   refreshNeeds(ctx);
 

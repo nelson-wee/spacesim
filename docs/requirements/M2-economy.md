@@ -51,7 +51,7 @@
 |---|---|---|---|
 | M2-ECON-01 | The daily tick runs in this order: population use, production, Machinery install and wear, capacity change and target update, background carriers (arrivals, then new shipments), off-map supply and demand, noise (±3% of target), `stock = max(stock, 0)`, events update (stub until M7). | §9.6 | T |
 | M2-ECON-02 | **Population.** Each population unit uses the amounts in `population.json` per day. Oxygen only for stations and planets without atmosphere. Electronics and Composites mainly for Core resident populations; all populations and crews in Middle and Frontier sectors use small amounts of Electronics, Composites, and Machinery (owner, 2026-10-27; post-MVP this demand goes to station building, upgrades, and research). Multiply by the sector economy multiplier. | §9.4, §10.2 | T |
-| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size × capacity × volumeScale`. **Capacity** (start 1, no limits) changes each day by `changeRate × clamp(outputPriceFactor − 1, −1, 1)`; growth × inputFactor; growth base at least `restartCapacity` (owner, 2026-10-27). | §9.3, DECISIONS.md | T |
+| M2-ECON-03 | **Production.** `output = batches × inputFactor × capitalFactor × securityMult × eventMult`. `batches = batchesPerSize × size × capacity × volumeScale`. **Capacity** (start 1, no limits) changes each day by `changeRate × clamp(min(outputPriceFactor / growthPriceFactor − 1, outputValue / unitCost − 1), −1, 1)`, inputs and Machinery at replacement cost; growth × inputFactor; growth base at least `restartCapacity` (owner, 2026-10-27). | §9.3, DECISIONS.md | T |
 | M2-ECON-04 | `inputFactor` = minimum over hard inputs of `stock / required`, maximum 1.0. A producer with no hard inputs has `inputFactor` = 1.0. If a hard input has 0 stock, output is 0. | §9.3 | T |
 | M2-ECON-05 | The producer removes the inputs that it uses from stock and adds its outputs to stock. | §9.3 | T |
 | M2-ECON-06 | **Capital.** `K_ref = machineryPerBatch × batches`. `capitalFactor = 0.6 + 0.6 × K / (K + K_ref)`. | §9.5 | T |
@@ -104,10 +104,10 @@
 | 1 | At least 95 of 100 seeds pass with 2 tries or fewer. | §6.11 | S (`gen-report.ts`) |
 | 2 | No systemic price clamp: no commodity is at the price clamp (0.3 or 3.0) on more than 50% of its market-days. Shares above 20% are reported only (owner, Q-31: price gaps are good for trade). | §9.13, Q-31 | S |
 | 3 | No stock is below 0. | §9.13 | S, T |
-| 4 | No producer is below 30% output for more than 60 days in a row. | §9.13 | S |
-| 5 | Gradient: raw goods cost more in Core than in Frontier. Advanced goods cost less in Core, compared per commodity where both trade it (Q-34). | §9.13, Q-34 | S |
-| 6 | Each commodity has at least one route (1–3 jumps) with a margin of 25% or more, on at least 60% of days. | §9.13 | S |
-| 7 | Raw goods have routes of 1–2 jumps with margins of 40%–80%, on at least 50% of days. | §9.13 | S |
+| 4 | No permanent stop: no producer is below 30% output for more than 365 days in a row. Shorter busts are reported (owner, 2026-10-27). | §9.13, DECISIONS.md | S |
+| 5 | Report: gradient (raw goods dearer in Core; advanced goods cheaper in Core, per commodity, Q-34). Not a check (owner, 2026-10-27). | §9.13 | S |
+| 6 | Report: each commodity has a route (1–3 jumps) with a margin of 25% or more on 60% of days. Not a check (owner, 2026-10-27). | §9.13 | S |
+| 7 | Report: raw goods have routes of 1–2 jumps with margins of 40%–80% on 50% of days. Not a check (owner, 2026-10-27). | §9.13 | S |
 | 8 | Chain shock: report only (owner, Q-32). Swings and boom/bust cycles are a feature. | §9.13, Q-32 | S |
 | 9 | Capital responds: when Machine Works stop for 60 days, Machinery is dearer and K* falls; after the restart, the Machinery price is within 20% of a control run (no stop) in 180 days (owner, Q-33). | §9.13, Q-33 | S |
 | 10 | Recipe value and wear unit tests pass. | §19 | T |

@@ -73,7 +73,7 @@
     "balanceStopHigh": 1.1,
     "noiseShare": 0.03,
     "historyDays": 30,
-    "capacity": { "changeRate": 0.003, "restartCapacity": 0.1 },
+    "capacity": { "changeRate": 0.003, "restartCapacity": 0.1, "growthPriceFactor": 1 },
     "carriers": {
       "maxJumps": 3,
       "minMargin": 0.25,

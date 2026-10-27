@@ -8,7 +8,7 @@ import { economyDay } from '../src/econ/economy';
 import { capacityFactor, runCarriers, transitDays, transportCost } from '../src/econ/carriers';
 import { priceGradient } from '../src/econ/gradient';
 import { inputTrickle, regionBalance } from '../src/econ/offmap';
-import { capacitySignal, updateCapacity } from '../src/econ/capacity';
+import { capacitySignal, profitMargin, updateCapacity } from '../src/econ/capacity';
 import { buyPrice, midPrice, priceAt, quoteBuy, quoteSell, sellPrice, stockAtPriceFactor } from '../src/econ/prices';
 import { produce, recipeOf } from '../src/econ/recipes';
 import { generateWorld } from '../src/world/generator';
@@ -375,6 +375,25 @@ describe('production capacity (DECISIONS.md, M2)', () => {
     loc.market.iron_ore!.stock = 1;
     updateCapacity([loc], data);
     expect(loc.capacity).toBeGreaterThanOrEqual(cap.changeRate * cap.restartCapacity * 0.99);
+  });
+
+  it('input prices count: a Smelter shrinks when its inputs cost more than its output earns', () => {
+    const loc = producer('smelter');
+    for (const m of Object.values(loc.market)) m.stock = m.target;
+    expect(capacitySignal(loc, data)).toBeCloseTo(0); // output at base: no demand signal
+    expect(profitMargin(loc, data)).toBeGreaterThan(0); // and it covers its costs at base
+    loc.market.alloys!.stock = loc.market.alloys!.target / 2; // Alloys dear: grow
+    expect(capacitySignal(loc, data)).toBeGreaterThan(0);
+    loc.market.iron_ore!.stock = 1; // ore at the high clamp: inputs cost more than Alloys earn
+    expect(profitMargin(loc, data)).toBeLessThan(0);
+    expect(capacitySignal(loc, data)).toBeLessThan(0);
+  });
+
+  it('a mine has no inputs: its output price rules', () => {
+    const loc = atBase();
+    expect(profitMargin(loc, data)).toBeGreaterThan(1);
+    loc.market.iron_ore!.stock = loc.market.iron_ore!.target / 2;
+    expect(capacitySignal(loc, data)).toBeCloseTo(2 ** e.priceExponent - 1);
   });
 
   it('batches and K_ref follow capacity', () => {

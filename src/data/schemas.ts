@@ -75,10 +75,11 @@ export const balanceSchema = z.object({
     offMapBalance: prob,
     /**
      * Production capacity (DECISIONS.md, M2): each day a producer's capacity changes by
-     * changeRate x clamp(profit at local prices / profit at base prices - 1, -1, 1).
-     * Growth uses at least restartCapacity, so a closed producer can start again.
+     * changeRate x clamp(min(output price / (growthPriceFactor x base) - 1, output value /
+     * unit cost - 1), -1, 1). Growth uses at least restartCapacity, so a closed producer
+     * can start again. A lower growthPriceFactor gives a lower general price level.
      */
-    capacity: z.object({ changeRate: prob, restartCapacity: nonNeg }),
+    capacity: z.object({ changeRate: prob, restartCapacity: nonNeg, growthPriceFactor: pos }),
     balanceWindowDays: z.number().int().positive(),
     balanceStartLow: pos,
     balanceStartHigh: pos,
