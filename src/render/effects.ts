@@ -6,6 +6,7 @@
 // minimum frame of 15 ms. A damage effect starts when the shot before it ends.
 import { footprint, lineCells, shipCells } from '../combat/geometry';
 import type { Battle, CombatShip, Effect, Vec2 } from '../combat/types';
+import { defeatKind } from '../career/defeat';
 import type { GameData } from '../data';
 import { styleColor } from './palette';
 
@@ -182,6 +183,8 @@ function effectId(e: Effect, b: Battle, data: GameData): string | null {
     case 'engine':
       return 'engine_hit';
     case 'destroy': {
+      // Pirates disable the player's ship: its engines go dark, it does not explode.
+      if (e.shipId === b.playerId && defeatKind(b) === 'disabled') return 'engine_hit';
       const s = b.ships.find((x) => x.id === e.shipId);
       const size = s ? data.hullById.get(s.ship.hullId)?.sizeClass : 'small';
       return size === 'capital' ? 'destroy_capital' : size === 'small' ? 'destroy_small' : 'destroy_medium';

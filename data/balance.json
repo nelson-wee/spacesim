@@ -64,6 +64,7 @@
     "bestRangeShare": 0.5,
     "retreatHull": 0.5,
     "moraleHull": 0.25,
+    "disabledHullShare": 0.1,
     "surrenderChance": { "trader": 0.7, "evader": 0.6, "raider": 0.4, "patrol": 0, "attack": 0 },
     "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6 }
   },

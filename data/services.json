@@ -7,12 +7,14 @@
     "guildRangeJumps": 2,
     "trendDays": 14,
     "alerts": { "lowOutputRatio": 0.6, "deficitDays": 1 },
-    "waitMaxDays": 30
+    "waitMaxDays": 30,
+    "insurance": { "premiumShare": [0.12, 0.08, 0.05, 0.03, 0.02] }
   },
   "services": [
     { "id": "refuel", "name": "Refuel", "where": [{}] },
     { "id": "market", "name": "Market", "where": [{}] },
     { "id": "mechanic", "name": "Mechanic", "where": [{ "kind": "station" }, { "kind": "planet", "minTech": 2 }] },
+    { "id": "insurance", "name": "Clone Insurance", "where": [{ "kind": "station" }] },
     { "id": "outfitter", "name": "Outfitter", "where": [{ "minTech": 2 }, { "bodyType": ["shipyard_station", "pirate_haven"] }] },
     { "id": "shipyard", "name": "Shipyard", "where": [{ "bodyType": ["shipyard_station"] }, { "bodyType": ["terran"], "minTech": 3 }] },
     {

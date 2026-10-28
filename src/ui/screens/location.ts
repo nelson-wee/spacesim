@@ -16,7 +16,7 @@ import { FleetScreen } from './fleet';
 import { LogScreen } from './log';
 import { MarketTab } from './marketTab';
 import { OutfitterTab } from './outfitterTab';
-import { BountyTab, GuildTab, MechanicTab, RefuelTab, ShipyardTab } from './serviceTabs';
+import { BountyTab, GuildTab, InsuranceTab, MechanicTab, RefuelTab, ShipyardTab } from './serviceTabs';
 import type { LocationTab, TabContext } from './tab';
 import { TradeLedgerScreen } from './tradeLedger';
 
@@ -28,6 +28,8 @@ function makeTab(serviceId: string): LocationTab | null {
       return new RefuelTab();
     case 'mechanic':
       return new MechanicTab();
+    case 'insurance':
+      return new InsuranceTab();
     case 'outfitter':
       return new OutfitterTab();
     case 'shipyard':

@@ -8,6 +8,9 @@ export type Side = 'player' | 'other' | 'neutral';
 /** Who decides a ship's orders: the human player, or an AI behavior (Section 13.8, Q-25). */
 export type AiKind = 'human' | 'attack' | 'raider' | 'trader';
 
+/** Who a ship belongs to. Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28). */
+export type Faction = 'player' | 'pirate' | 'trader' | 'patrol';
+
 export type ShipStatus = 'active' | 'destroyed' | 'fled' | 'surrendered';
 
 export interface Vec2 {
@@ -25,6 +28,7 @@ export interface CombatShip {
   name: string;
   side: Side;
   ai: AiKind;
+  faction: Faction;
   /** A copy of the ship: modules ON/OFF, hull, armor, engine value, fuel, cargo. */
   ship: Ship;
   /** Module ids in priority order for AI power use (loadouts.json). */

@@ -122,25 +122,28 @@ export interface TowResult {
  * Tows the full fleet to the nearest location (Section 8.6, Q-12). The fee is
  * paid for each ship with 0 fuel. Those ships then get a share of a full tank.
  * The tow takes no time. `extraDistance` adds distance before `fromPoint`
- * (for example, the rest of a lane).
+ * (for example, the rest of a lane). With `disabled`, the flagship is towed
+ * also when it has fuel (pirates disabled it, owner 2026-10-28).
  */
-export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: Vec, extraDistance = 0): TowResult {
+export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: Vec, extraDistance = 0, disabled = false): TowResult {
   const { data } = game;
   const { location, distance: nearDistance } = nearestLocation(game, sectorId, fromPoint);
   const distance = nearDistance + extraDistance;
   let fee = 0;
   let towedShips = 0;
+  const flagship = actor.fleet[actor.flagshipIndex];
   for (const ship of actor.fleet) {
-    if (!isEmpty(ship)) continue;
+    const empty = isEmpty(ship);
+    if (!empty && !(disabled && ship === flagship)) continue;
     fee += recoveryFee(ship, distance, data, location);
-    ship.fuel = travelStats(ship, data).fuelCapacity * data.balance.recovery.fuelShareAfterTow;
+    if (empty) ship.fuel = travelStats(ship, data).fuelCapacity * data.balance.recovery.fuelShareAfterTow;
     towedShips++;
   }
   const { soldValue } = payFeeWithCargo(game, actor, fee, location);
   actor.position = { kind: 'docked', locationId: location.id };
   observe(game, actor);
   game.bus.message(
-    `Out of fuel. A tug tows your fleet to ${location.name}. Recovery fee: ${Math.round(fee)} cr.`,
+    `${disabled ? 'Your ship is disabled.' : 'Out of fuel.'} A tug tows your fleet to ${location.name}. Recovery fee: ${Math.round(fee)} cr.`,
     'danger',
   );
   if (soldValue > 0) game.bus.message(`${location.name} buys cargo for ${Math.round(soldValue)} cr to pay the fee.`, 'warning');

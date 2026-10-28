@@ -92,6 +92,8 @@ export const balanceSchema = z.object({
     retreatHull: prob,
     /** Morale (Section 13.8): roll once when hull falls below moraleHull or the engine value is 0. */
     moraleHull: prob,
+    /** A ship that pirates disable keeps this share of its max hull HP (owner, 2026-10-28). */
+    disabledHullShare: prob,
     surrenderChance: z.object({ trader: prob, evader: prob, raider: prob, patrol: prob, attack: prob }),
     /**
      * Map (Section 13.1): random fill and cellular steps (rot.js Map.Cellular; fill 0.42 gives
@@ -457,6 +459,8 @@ export const servicesSchema = z.object({
     alerts: z.object({ lowOutputRatio: prob, deficitDays: nonNeg }),
     /** Most days of one Wait (Section 8.8). */
     waitMaxDays: z.number().int().positive(),
+    /** Clone Insurance (owner, 2026-10-28): premium = share x (hull price + module prices), by security level 0-4. */
+    insurance: z.object({ premiumShare: z.array(prob).length(5) }),
   }),
   services: z.array(z.object({ id: z.string(), name: z.string(), where: z.array(serviceClauseSchema).min(1) })),
 });

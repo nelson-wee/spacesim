@@ -1,13 +1,15 @@
-// Small Location tabs: Refuel, Mechanic, Shipyard, Merchants' Guild, Bounty Guild.
+// Small Location tabs: Refuel, Mechanic, Clone Insurance, Shipyard, Merchants' Guild, Bounty Guild.
 import { observe } from '../../actor/knowledge';
 import { displayDay } from '../../core/clock';
 import type { Term } from '../../render/display';
 import { palette } from '../../render/palette';
 import { report } from '../../services/common';
+import { buyInsurance, quoteInsurance } from '../../services/insurance';
 import { quoteRepair, repair } from '../../services/mechanic';
 import { quoteRefuel, refuel } from '../../services/refuel';
 import { buyHull, hullOffers, quoteHull, tradeInValue } from '../../services/shipyard';
 import { travelStats } from '../../ship/stats';
+import { locationCode } from '../../world/codes';
 import type { KeyInput } from '../input';
 import { drawKeyHints, press } from '../widgets/clicks';
 import { formatCredits } from '../widgets/statusBar';
@@ -98,6 +100,74 @@ export class MechanicTab implements LocationTab {
 
   help(): string[] {
     return ['MECHANIC', '', 'Up/Down   Select a ship', 'R         Repair hull, engine, and armor as far as credits allow'];
+  }
+}
+
+export class InsuranceTab implements LocationTab {
+  readonly serviceId = 'insurance';
+  readonly title = 'Insurance';
+  private confirm = false;
+
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
+    const { data, state } = game;
+    const ui = palette(data).ui;
+    const actor = state.player;
+    const ship = actor.fleet[actor.flagshipIndex];
+    let y = TAB_Y;
+    t.text(0, y++, 'Clone Insurance: if your last ship is destroyed, your clone wakes at the insuring station.', ui.text);
+    t.text(0, y++, 'You get a new copy of the insured ship (full HP and fuel, no cargo) and the insured credits.', ui.dim);
+    t.text(0, y++, 'Pirates do not destroy ships: they disable your ship and take all cargo. The policy is not used.', ui.dim);
+    y++;
+    const p = actor.insurance;
+    if (p) {
+      const at = state.world.locations[p.locationId];
+      const hull = data.hullById.get(p.ship.hullId)?.name ?? p.ship.hullId;
+      t.text(0, y++, `Your policy: ${hull} "${p.ship.name}", ${formatCredits(p.credits)}, at ${at ? `${at.name} (${locationCode(state.world, at, data)})` : '?'}, day ${displayDay(p.day)}.`, ui.good);
+      if (ship && ship.hullId !== p.ship.hullId) t.text(0, y++, 'Your flagship is not the insured hull. Insure again to cover it.', ui.warning);
+    } else t.text(0, y++, 'You have no policy. If your ship is destroyed, the game ends.', ui.danger);
+    y++;
+    if (ship) {
+      const q = quoteInsurance(game, location, ship);
+      t.text(0, y++, `Insure ${ship.name}: value ${formatCredits(q.value)} (hull and modules) x ${Math.round(q.share * 100)}% (${q.levelName} security) = ${formatCredits(q.premium)}.`, ui.bright);
+      t.text(0, y++, `Insured credits: your credits after the premium (${formatCredits(actor.credits - q.premium)}). A new policy replaces the old one.`, ui.dim);
+      y++;
+      const levels = data.security.levels.map((l) => `${l.name} ${Math.round((data.serviceRules.insurance.premiumShare[l.level] ?? 0) * 100)}%`).join(', ');
+      t.text(0, y++, `Premium by sector security: ${levels}.`, ui.dim);
+    }
+    if (this.confirm) t.text(0, y + 1, 'Buy this policy? Press Enter again to confirm, Esc to cancel.', ui.bright);
+    keys(t, ctx, [['Enter', 'Insure flagship', press('Enter')]]);
+  }
+
+  onKey(k: KeyInput, { game, location }: TabContext): boolean {
+    if (k.key === 'Enter') {
+      if (!this.confirm) {
+        this.confirm = true;
+        return true;
+      }
+      report(game, buyInsurance(game, game.state.player, location), 'good');
+      this.confirm = false;
+      return true;
+    }
+    if (k.key === 'Escape' && this.confirm) {
+      this.confirm = false;
+      return true;
+    }
+    return false;
+  }
+
+  help(): string[] {
+    return [
+      'CLONE INSURANCE',
+      '',
+      'Enter   Insure the flagship (press twice)',
+      '',
+      'The premium is a share of the hull and module prices.',
+      'Safe sectors are cheaper; Lawless sectors cost the most.',
+      'If your last ship is destroyed, you wake here with the',
+      'insured ship and the insured credits. Pirates only',
+      'disable ships and take the cargo.',
+    ];
   }
 }
 

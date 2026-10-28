@@ -272,9 +272,21 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-28 [§13.8] Power priority: the loadout list; for a ship with no list (the player's), engines, shields, weapons, thrusters, then the rest. AI ships set their power at the start; the player keeps the ship's setting if it is valid. Shields start full.
 - 2026-10-28 [§13.8, Q-25] The Attack AI switches OFF its hottest weapon only when firing all weapons would overheat it this turn; Raider and Trader use the brief rule (switch OFF at Hot).
 - 2026-10-28 [§13.1] Map: rot.js `Map.Cellular` with the random fill from the combat RNG stream (fill 0.42, 3 steps; about 11% obstacles); 35% of clusters are debris clouds. Each side starts at column 18 from its edge; bands of 6 cells around the start columns and the map edges are open.
-- 2026-10-28 [§13.7, §16] M4: a lost battle is game over and goes back to the title screen (the fleet rule is M6). A ship with 0 fuel after a battle is towed.
+- 2026-10-28 [§13.7, §16] M4: a lost battle is game over and goes back to the title screen (the fleet rule is M6). A ship with 0 fuel after a battle is towed. Replaced by "Defeat and Clone Insurance" below.
 - 2026-10-28 [§12.4] Guided weapons and point defense do not fire in M4 (M5).
 - 2026-10-28 [§18.4, G-20] Effects use the frame types line, at, travel, perim, and foot from `effects.json`; the example `cells` lists in the file are not used. A damage effect starts when the shot before it ends. "frac" cells are a fixed pattern (render only, no game randomness).
+
+## Defeat and Clone Insurance (owner, 2026-10-28, Q-39)
+
+The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance) into the MVP.
+
+- 2026-10-28 [owner] Pirates do not fight to kill. If every hostile ship in the battle is a pirate (`faction` 'pirate'), a loss disables the ship: the pirates take all cargo of the fleet, the ship keeps `disabledHullShare` (0.1) of its max hull, and a tug tows the fleet to the nearest location (the §8.6 recovery fee). Reason: owner decision; an early loss to Raiders must not end the career.
+- 2026-10-28 [owner] Any other loss (a patrol, a trader, an escort, or a group with one non-pirate) destroys the ship. Reason: owner decision; death stays a risk for piracy and for a Wanted player.
+- 2026-10-28 Each combat ship has a `faction` (player, pirate, trader, patrol). Default: Raider AI → pirate, Trader AI → trader, other AI → the side (player or patrol). Reason: in M5, escorts use Patrol AI with pirate loadouts and pursued pirates use Evader AI, so the AI kind cannot tell who is a pirate.
+- 2026-10-28 [owner] Clone Insurance at every station (`services.json`, service `insurance`). The premium is `premiumShare[security level] × (hull price + module prices)` of the flagship, with the security level of the sector now. Shares: Lawless 12%, Low 8%, Medium 5%, High 3%, Secure 2%. Reason: the owner asked for cheap insurance in safe sectors and expensive insurance in Lawless sectors. With 5% in Secure, the starting Shuttle (15,900 cr) cost 795 cr of the 2,000 start credits; 2% gives 318 cr.
+- 2026-10-28 [owner] The policy stores the station, the day, the flagship (hull and loadout, no cargo) and the credits after the premium. If the last ship is destroyed, the player wakes at that station with a new copy of the ship (full hull, armor, engine value, and fuel) and the insured credits; the debt and the credits earned or spent after the purchase do not carry over. The world and the day continue. Reason: owner decision ("resets the player with the insured hull and loadout and credits"; a save state).
+- 2026-10-28 One policy at a time. A new policy replaces the old one with no refund. A claim uses the policy. A disable by pirates does not use the policy. The service is refused in debt. Reason: simple rules; the brief has no insurance rules.
+- 2026-10-28 The start location is always a planet, so a new career starts with no policy. The status bar shows "Insured" or "Not insured". Reason: the owner said "at any station"; a free start policy is an option for the owner.
 
 ## Cuts
 

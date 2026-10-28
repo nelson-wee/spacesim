@@ -9,11 +9,13 @@ import { aiPower } from './ai';
 import { blockedCells, fits, footprint, maskSize } from './geometry';
 import { generateCells } from './map';
 import { combatStats } from './rules';
-import type { AiKind, Battle, CombatShip, Side, Vec2 } from './types';
+import type { AiKind, Battle, CombatShip, Faction, Side, Vec2 } from './types';
 
 export interface BattleShipSpec {
   ship: Ship;
   ai: AiKind;
+  /** Default: from the AI (Raider: pirate, Trader: trader, else the side). */
+  faction?: Faction;
   /** Loadout power priority (loadouts.json); default: the hull's default loadout. */
   powerPriority?: string[];
 }
@@ -38,6 +40,13 @@ function priorityFor(spec: BattleShipSpec, data: GameData): string[] {
     return c === 'engine' ? 0 : c === 'shield' ? 1 : c === 'laser' || c === 'ballistic' || c === 'guided' || c === 'pointDefense' ? 2 : c === 'thrusters' ? 3 : 4;
   };
   return [...new Set(ids)].sort((a, b) => rank(a) - rank(b));
+}
+
+function factionFor(spec: BattleShipSpec, side: Side): Faction {
+  if (spec.faction) return spec.faction;
+  if (spec.ai === 'raider') return 'pirate';
+  if (spec.ai === 'trader') return 'trader';
+  return side === 'player' ? 'player' : 'patrol';
 }
 
 /** The nearest anchor to `want` where the footprint fits, searched in rings. */
@@ -90,6 +99,7 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
         name: sp.ship.name,
         side,
         ai: sp.ai,
+        faction: factionFor(sp, side),
         ship: structuredClone(sp.ship),
         powerPriority: priorityFor(sp, data),
         pos: { x: 0, y: 0 },

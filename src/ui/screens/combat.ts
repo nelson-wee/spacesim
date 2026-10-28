@@ -5,6 +5,7 @@
 // and fire (F) at the target (Tab or a click), at the Hull or the Engines (A).
 // The plan shows at once; E ends the turn and the resolver runs it. Effects
 // from effects.json play after the turn; Space skips them.
+import { defeatKind } from '../../career/defeat';
 import { Rng } from '../../core/rng';
 import { isActive, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
 import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolver';
@@ -173,7 +174,7 @@ export class CombatScreen implements Screen {
     this.orders = [];
     this.notice = '';
     this.playEffects(out.effects);
-    if (this.battle.result) this.log.push(resultText(this.battle.result));
+    if (this.battle.result) this.log.push(resultText(this.battle));
   }
 
   private playEffects(effects: Effect[]): void {
@@ -250,7 +251,7 @@ export class CombatScreen implements Screen {
     t.hline(30, 0, PANEL_X - 1, '─', ui.border);
     t.text(0, HINT_Y, fit(this.notice, PANEL_X - 1), ui.warning);
     if (this.battle.result) {
-      t.text(0, HINT_Y + 1, fit(`${resultText(this.battle.result)} Press Enter to leave the battle.`, PANEL_X - 1), ui.title);
+      t.text(0, HINT_Y + 1, fit(`${resultText(this.battle)} Press Enter to leave the battle.`, PANEL_X - 1), ui.title);
       drawKeyHints(t, zones, 0, HINT_Y + 2, [['Enter', 'Leave', press('Enter')]], ui, this.app.press);
     } else {
       drawKeyHints(
@@ -294,7 +295,9 @@ export class CombatScreen implements Screen {
     // A planned flee still shows the player's ship until the turn ends.
     const plannedFlee = s.id === this.preview.playerId && !this.battle.result;
     if (!art || (s.status === 'fled' && !plannedFlee)) return;
-    if (s.status === 'destroyed') {
+    // Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28).
+    const disabled = s.status === 'destroyed' && s.id === this.battle.playerId && defeatKind(this.battle) === 'disabled';
+    if (s.status === 'destroyed' && !disabled) {
       for (const c of shipCells(s)) t.put(c.x, c.y, ',', styleColor(data.art.style, 'dim'));
       return;
     }
@@ -303,10 +306,10 @@ export class CombatScreen implements Screen {
     const state: DamageState = share < 1 / 3 ? 'critical' : share < 2 / 3 ? 'damaged' : 'normal';
     drawArt(t, data, art.battle, s.pos.x, s.pos.y, {
       side: sideOf(s),
-      state,
+      state: disabled ? 'critical' : state,
       mirrored: s.mirrored,
       hot: heatState(s, data, st) !== 'normal',
-      enginesOff: st.engineCount === 0,
+      enginesOff: disabled || st.engineCount === 0,
     });
     if (s.status === 'surrendered') {
       const mark = data.art.ships.surrenderMarker;
@@ -501,12 +504,12 @@ function color(data: import('../../data').GameData, name: string): string {
   return data.art.effects.colors[name] ?? styleColor(data.art.style, name);
 }
 
-export function resultText(r: Battle['result']): string {
-  switch (r) {
+export function resultText(b: Battle): string {
+  switch (b.result) {
     case 'win':
       return 'Victory: the other side is destroyed, has surrendered, or has fled.';
     case 'loss':
-      return 'Your ship is destroyed.';
+      return defeatKind(b) === 'disabled' ? 'The pirates disable your ship.' : 'Your ship is destroyed.';
     case 'fled':
       return 'You flee from the battle.';
     case 'draw':
@@ -541,7 +544,7 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         out.push(`${name(e.shipId)} overheats: hull -${e.amount.toFixed(0)}`);
         break;
       case 'destroy':
-        out.push(`${name(e.shipId)} is destroyed.`);
+        out.push(`${name(e.shipId)} is ${e.shipId === b.playerId && defeatKind(b) === 'disabled' ? 'disabled' : 'destroyed'}.`);
         break;
       case 'flee':
         out.push(`${name(e.shipId)} flees.`);

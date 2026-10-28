@@ -32,7 +32,8 @@ export class DebugScreen implements Screen {
   private pricePage = 0;
   private battleLoadout = 0;
   private battleCount = 1;
-  private battleAi: 'raider' | 'trader' = 'raider';
+  /** Enemy behavior: Raider (pirates disable), Trader, or a hostile patrol (Attack AI; destroys). */
+  private battleAi: 'raider' | 'trader' | 'patrol' = 'raider';
 
   constructor(private readonly app: App) {}
 
@@ -87,7 +88,7 @@ export class DebugScreen implements Screen {
       t.text(x + 2, y + 4, 'Test battle: your flagship against:', ui.title);
       t.text(x + 2, y + 6, `Enemy loadout: < ${game.data.loadoutById.get(id)?.name ?? id} >   (Left/Right)`, ui.text);
       t.text(x + 2, y + 7, `Number of ships: ${this.battleCount}   (Up/Down, 1-3)`, ui.text);
-      t.text(x + 2, y + 8, `Enemy AI: ${this.battleAi}   (T: Raider/Trader)`, ui.text);
+      t.text(x + 2, y + 8, `Enemy AI: ${this.battleAi}   (T: Raider/Trader/Patrol)`, ui.text);
       t.text(x + 2, y + h - 2, 'Enter: start   Esc: back', ui.highlight);
       return;
     }
@@ -141,12 +142,12 @@ export class DebugScreen implements Screen {
       else if (k.key === 'ArrowLeft') this.battleLoadout = (this.battleLoadout + n - 1) % n;
       else if (k.key === 'ArrowUp') this.battleCount = Math.min(3, this.battleCount + 1);
       else if (k.key === 'ArrowDown') this.battleCount = Math.max(1, this.battleCount - 1);
-      else if (k.key === 't') this.battleAi = this.battleAi === 'raider' ? 'trader' : 'raider';
+      else if (k.key === 't') this.battleAi = this.battleAi === 'raider' ? 'trader' : this.battleAi === 'trader' ? 'patrol' : 'raider';
       else if (k.key === 'Escape') this.mode = 'menu';
       else if (k.key === 'Enter') {
         const id = [...game.data.loadoutById.keys()][this.battleLoadout] ?? 'pirate_raider';
         this.app.pop();
-        startBattle(this.app, Array.from({ length: this.battleCount }, () => ({ loadoutId: id, ai: this.battleAi })));
+        startBattle(this.app, Array.from({ length: this.battleCount }, () => (this.battleAi === 'patrol' ? { loadoutId: id, ai: 'attack' as const, faction: 'patrol' as const } : { loadoutId: id, ai: this.battleAi as 'raider' | 'trader' })));
       }
       return true;
     }
