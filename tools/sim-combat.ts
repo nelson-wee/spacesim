@@ -27,6 +27,7 @@ const PAIRINGS: Pairing[] = [
   { id: 'shuttle-raider', name: 'Starting Shuttle vs 1 Pirate Raider', player: ['start_shuttle'], other: ['pirate_raider'], otherAi: 'raider', band: [0.4, 0.6] },
   { id: 'wasp-2raiders', name: 'Laser Wasp vs 2 Pirate Raiders', player: ['laser_wasp'], other: ['pirate_raider', 'pirate_raider'], otherAi: 'raider', band: [0.5, 0.7] },
   { id: 'shuttle-3raiders', name: 'Starting Shuttle vs 3 Pirate Raiders (report)', player: ['start_shuttle'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
+  { id: 'gunship-3raiders', name: 'Laser Gunship vs 3 Pirate Raiders (report)', player: ['laser_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
   { id: 'gunship-trader', name: 'Laser Gunship vs Light Freighter trader (report)', player: ['laser_gunship'], other: ['light_freighter_trader'], otherAi: 'trader' },
 ];
 

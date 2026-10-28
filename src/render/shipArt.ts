@@ -32,6 +32,8 @@ export interface DrawArtOptions {
   mirrored?: boolean;
   /** Hot ships use the hot tint on hull and armor cells (style.roles.hot_tint). */
   hot?: boolean;
+  /** Engines OFF: engine cells (role 'e') use the `engineOff` color (Section 18.2). */
+  enginesOff?: boolean;
   background?: string;
 }
 
@@ -61,9 +63,11 @@ export function drawArt(t: Term, data: GameData, view: ArtView, x: number, y: nu
       if (ch === ' ') return;
       const role = roles[i] ?? 'a';
       let color =
-        opts.hot && typeof hotTint === 'object' && hotTint[role]
-          ? styleColor(style, hotTint[role])
-          : roleColor(style, opts.side, role);
+        opts.enginesOff && role === 'e'
+          ? styleColor(style, 'engineOff')
+          : opts.hot && typeof hotTint === 'object' && hotTint[role]
+            ? styleColor(style, hotTint[role])
+            : roleColor(style, opts.side, role);
       if (state !== 'normal') {
         const changed = base[i] !== ch;
         color = dimColor(color, changed ? rule.dim.changed : rule.dim[state]);

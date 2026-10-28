@@ -242,6 +242,40 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-28 [§17.6] Best routes (Ledger and trader bot) start only where the location makes the good or at a Trade Hub ("Sells" or "Hub" on the Market tab) (owner). A manual route in the planner can start anywhere; the planner shows a warning when the start does not make the good. `bestRoutes(..., { anyStart: true })` gives the old list. Reason: a market that only uses a good has little stock to sell, so those routes were not practical. Result: the bot's median upgrade day moves from 82 to 91, and its Shuttle profit in the first 30 days from 295 to 189 cr per day (inside the §22 band).
 - 2026-10-28 Save version 3 (sectors have `code`).
 
+## M4 Combat core (2026-10-28)
+
+### Open-question defaults used
+
+- 2026-10-28 [Q-19] An engine shot multiplies the hit chance by 0.85 (`engineShotFactor`).
+- 2026-10-28 [Q-20] Engine damage has no effect until the engine value is 0; then move and maneuver are 0, and the ship cannot flee.
+- 2026-10-28 [Q-25] Attack AI for the player side in `sim-combat`: the nearest hostile target, the wanted distance, no retreat.
+- 2026-10-28 [Q-28] The player gives toggles, moves, and shots in any order; the resolver checks the move budget and one shot per weapon.
+
+### Combat data (owner review, Q-38)
+
+- 2026-10-28 [§11.6, §11.7] `combat.heatScale` 0.5 on all heat per turn and per shot. Reason: with the §11.7 values, every default loadout except the Light Freighter makes more heat at idle than it cools (Shuttle 5 against 3), so all ships overheated and burned even when they did not fire. With 0.5, idle heat is below cooling for the M4 ships; shots still build heat.
+- 2026-10-28 [§12.2, §13.9] `combat.damageScale` 2.75 on weapon damage against ships (not point defense). Reason: with the §12.2 values, two autocannons could not break a Shield S (regen 4 per turn), and battles went to 25 turns. A uniform scale does not change threat units (the formula is a ratio to the Raider). Median battle length is now 8-10 turns.
+- 2026-10-28 [§11.1] Wasp heat capacity 25 → 40. Reason: a laser Wasp (2 lasers) overheated by turn 3; this was the lever that moved the laser Wasp pairing without moving the Shuttle pairing.
+- 2026-10-28 [§10.5] Pirate Raider loadout: 2 autocannons, engine, reactor, shield (was 2 engines, no shield). Reason: the threat formula then gives Raider/Shuttle 1.07 (§10.5 reference 10/9 = 1.11; the old loadout gave 0.83).
+- 2026-10-28 [§13.8] Raider retreat below 50% hull (`retreatHull`; the brief says 30%), and a retreating Raider does not fire. Reason: needed for the laser Wasp pairing; the brief does not say whether a retreating Raider fires (the Evader rule says so, the Raider rule does not).
+- 2026-10-28 [§13.8] AI ships start with at least 5 fuel (`npcFuelReserve`). Reason: a Wasp has no fuel tank, and a ship with 0 fuel cannot move.
+- 2026-10-28 [§8.5] `kCombat` 0.01 and `kFlee` 0.1 (times mass^0.64): a Shuttle uses about 0.09 fuel per turn and 0.9 for a flee.
+
+### Rules where the brief is not complete
+
+- 2026-10-28 [§12.5] Armor Plating HP takes hull damage after armor and before hull HP. An engine shot goes to the engine value only.
+- 2026-10-28 [§11.6] Overheat at the heat step blocks fire on the next turn (the turn after the step), then clears at the next step.
+- 2026-10-28 [§13.8] Morale: one surrender roll per ship, when hull first falls below 25% or the engine value is 0.
+- 2026-10-28 [§12.2] Flak hits only hostile ships in its 3 x 3 area around the nearest target cell; it always aims at the hull.
+- 2026-10-28 [§12.3, §13.1] The line of fire goes from the nearest attacker cell to the nearest target cell (Bresenham). Asteroids on the line block it; debris on the line gives `debrisFactor`; ships do not block it.
+- 2026-10-28 [§13.2, §13.8] Movement: breadth-first search over anchor cells with the full footprint (the same paths as A* inside the move budget). The AI looks up to 4 turns ahead for a cell with a clear line of fire at its wanted distance (`bestRangeShare` 0.5 of its shortest weapon range), and moves along that path. In the UI, Enter or a click moves the ship as far as it can toward the cursor.
+- 2026-10-28 [§13.8] Power priority: the loadout list; for a ship with no list (the player's), engines, shields, weapons, thrusters, then the rest. AI ships set their power at the start; the player keeps the ship's setting if it is valid. Shields start full.
+- 2026-10-28 [§13.8, Q-25] The Attack AI switches OFF its hottest weapon only when firing all weapons would overheat it this turn; Raider and Trader use the brief rule (switch OFF at Hot).
+- 2026-10-28 [§13.1] Map: rot.js `Map.Cellular` with the random fill from the combat RNG stream (fill 0.42, 3 steps; about 11% obstacles); 35% of clusters are debris clouds. Each side starts at column 18 from its edge; bands of 6 cells around the start columns and the map edges are open.
+- 2026-10-28 [§13.7, §16] M4: a lost battle is game over and goes back to the title screen (the fleet rule is M6). A ship with 0 fuel after a battle is towed.
+- 2026-10-28 [§12.4] Guided weapons and point defense do not fire in M4 (M5).
+- 2026-10-28 [§18.4, G-20] Effects use the frame types line, at, travel, perim, and foot from `effects.json`; the example `cells` lists in the file are not used. A damage effect starts when the shot before it ends. "frac" cells are a fixed pattern (render only, no game randomness).
+
 ## Cuts
 
 None.

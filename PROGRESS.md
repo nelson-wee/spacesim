@@ -7,7 +7,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
-| M4 Combat core | 4 | Not started | — |
+| M4 Combat core | 4 | Built. Combat data changes wait on owner review (Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Not started | — |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
 | M7 Contracts, career, save | 7 | Not started | — |
@@ -244,6 +244,68 @@ The bot found that the M2 carrier margin (25% on all goods) left large gaps on g
 - Technical names: sector codes and location codes ("SEL-O2") on all trade screens; the Ledger groups its columns by sector.
 - Best routes start only where the good is made, or at a Trade Hub.
 - `npm test`: 666 tests pass.
+
+## M4 Combat core (2026-10-28)
+
+### What works
+
+- **Combat simulation (`src/combat/`, headless):** 70 x 30 grid with asteroid and debris clusters (rot.js `Map.Cellular` with the combat RNG stream), multi-cell ships with footprints from the battle art (mirrored on the right), Chebyshev distance, lines of fire, movement with the full footprint, power toggles (supply rule; shields start at 0; engines OFF stop the ship), heat (Hot, Overheat), hit chance (track, range, heat, debris, clamp; engine shots x 0.85), the damage pipeline (shields, vs shield, vs hull, armor, armor pierce, minimum 1, Armor Plating HP), flak, shield regeneration, fuel per turn and per flee, morale, battle end (win, loss, flee at an edge, draw at 25 turns, surrender).
+- **Resolver:** a pure function of the battle state and the player orders; it returns the new state and the effects, and uses only the battle's combat RNG state. The same seed and orders give the same result (test).
+- **AI:** power use by loadout priority, Raider (most cargo, best range, retreat), Trader (to the edge, fires only if attacked), Attack (the player side in `sim-combat`, Q-25). The AI looks up to 4 turns ahead to go around asteroid fields.
+- **Combat screen:** grid, right panel (hull, shields, armor, engine, move, fuel, heat bar from `style.json`, power list with number keys, module icons and states, hit chance per weapon), target brackets and line of fire, reachable cells, cursor, battle log. Keys and clicks: 1-0 power, arrows and Enter or a click to move, Tab or a click to target, F fire, A Hull/Engines, E end turn, U undo, Space skip effects. Effects from `effects.json` play after each turn (shots, flak, shields, hull, armor, engine, destroy, surrender).
+- **Debug panel:** item 0 starts a test battle of the flagship against 1-3 ships of any loadout (Raider or Trader AI).
+- **Tool:** `npm run sim-combat -- [battles]`.
+
+### What does not work yet
+
+- Guided weapons, point defense, reinforcements, Patrol and Evader AI, map templates, loot, encounters, the hail screen (M5).
+- Fleet rules in combat (M6). Damage and heat display on the ship art (M8).
+- Battles start only from the debug panel until M5.
+
+### Known issues
+
+- Q-38: the brief's heat and damage values did not fit the §13.9 checks. The M4 tuning changes them (owner review).
+- The laser Wasp pairing passes with a small margin (52%; band 50-70%). M5 tunes all pairings again.
+- `sim-combat` takes about 2 minutes for 500 battles of 5 pairings (the AI look-ahead).
+- Patrol Cutter idle heat (5.5) is still above its cooling (4) after `heatScale`; M5 checks it with the patrol pairings.
+
+### Exit checks
+
+| # | Check | Result | Value |
+|---|---|---|---|
+| 1 | The player can win, lose, and flee against 1 to 3 Raiders. | PASS | Browser test battles: a win and losses against 1 Raider, a flee from 2 Raiders (the ship leaves at the map edge; fuel goes down). `sim-combat`: wins and losses against 1 and 2 Raiders; a Laser Gunship wins 18% against 3 Raiders. |
+| 2 | Power and heat rules work. | PASS | `tests/combat.test.ts` (power supply, OFF weapons, shields, engines, heat states, overheat damage and reset, fuel). |
+| 3 | Starting Shuttle vs 1 Pirate Raider: Shuttle wins 40%-60%. | PASS | 55% (500 battles), median 10 turns |
+| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%-70%. | PASS | 52% (500 battles), median 8 turns |
+| 5 | `PROGRESS.md` is updated with the `sim-combat.ts` results. | PASS | This file |
+
+Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the five pairings.
+
+### sim-combat (500 battles per pairing)
+
+| Pairing | Win | Loss | Player fled | Draw | Wins by surrender / enemy fled | Median turns |
+|---|---|---|---|---|---|---|
+| Starting Shuttle vs 1 Pirate Raider | 55% | 45% | 0% | 0% | 62 / 178 | 10 |
+| Laser Wasp vs 2 Pirate Raiders | 52% | 48% | 0% | 0% | 76 / 232 | 8 |
+| Starting Shuttle vs 3 Raiders (report) | 0% | 100% | 0% | 0% | 0 / 0 | 5 |
+| Laser Gunship vs 3 Raiders (report) | 18% | 82% | 0% | 0% | 31 / 32 | 7 |
+| Laser Gunship vs Light Freighter trader (report) | 100% | 0% | 0% | 0% | 0 / 500 | 3 |
+
+### Tuning steps (Q-38)
+
+| Setting | Shuttle vs Raider | Wasp vs 2 Raiders |
+|---|---|---|
+| Brief values (after AI fixes) | 95% (the Raider burns from heat) | 32% |
+| Heat fixed, damage x1 | 9% wins, 91% draws | 0% wins, 94% draws |
+| Heat fixed, damage x3, Raider with 2 autocannons | 57% | 21% |
+| + pulse laser heat 2 (now from heatScale 0.5) | 61% | 48% |
+| + Wasp heat capacity 40, Raider with shield, retreat at 50%, no fire in retreat, damage x2.75 (build) | 55% | 52% |
+
+### Tool results
+
+- `npm test`: 688 tests pass (21 combat tests).
+- `npm run ship-report`: all PASS (the heat column now shows heat x `heatScale`).
+- `npm run sim-combat`: see above.
 
 <!--
 Template for each milestone:
