@@ -6,6 +6,7 @@ import type { Term } from '../../render/display';
 import { palette, techColor } from '../../render/palette';
 import { report } from '../../services/common';
 import { wait } from '../../services/wait';
+import { locationCode } from '../../world/codes';
 import { locationTypeName } from '../../world/location';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
@@ -81,6 +82,7 @@ export class LocationScreen implements Screen {
     drawStatusBar(t, game);
     const sector = game.state.world.sectors[loc.sectorId];
     let x = t.text(0, 2, loc.name, techColor(data, loc.techLevel));
+    x = t.text(x, 2, ` ${locationCode(game.state.world, loc, data)}`, ui.bright);
     x = t.text(x, 2, `  ${locationTypeName(loc, data)}  Tech ${loc.techLevel}  ${sector?.name ?? ''}`, ui.dim);
     x = 0;
     const zones = this.app.zones;

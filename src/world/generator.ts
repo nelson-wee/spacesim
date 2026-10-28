@@ -1,4 +1,5 @@
 // World generator (Section 6): constructive first, then repair, then reject.
+import { assignSectorCodes } from './codes';
 import { Rng } from '../core/rng';
 import type { JumpPoint, Lane, Location, Sector, World } from '../core/types';
 import type { GameData } from '../data';
@@ -33,6 +34,7 @@ function buildBase(seed: number, rng: Rng, data: GameData): World {
     return {
       id,
       name: makeUniqueName(rng, data, 'sector', usedNames),
+      code: '',
       pos,
       star: rng.weighted(data.bodyTypes.stars, (s) => s.weight).id,
       development: development[id] ?? 'frontier',
@@ -43,6 +45,7 @@ function buildBase(seed: number, rng: Rng, data: GameData): World {
       jumpPointIds: [],
     };
   });
+  assignSectorCodes(sectors);
   const lanes: Lane[] = topology.lanes.map(([a, b], id) => ({
     id,
     a,

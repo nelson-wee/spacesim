@@ -8,6 +8,7 @@ import type { Location } from '../src/core/types';
 import { gameData } from '../src/data';
 import { buyPrice, sellPrice } from '../src/econ/prices';
 import { recipeOf } from '../src/econ/recipes';
+import { locationCode } from '../src/world/codes';
 
 const data = gameData();
 const template = createGame(11, data).state;
@@ -98,7 +99,8 @@ describe('price information (M3-INFO-01, M3-INFO-02, M3-SVC-11)', () => {
     loc.market[input]!.stock = 0;
     const alerts = chainAlerts(game.state.world, data, [loc.sectorId]);
     const name = data.commodityById.get(input)!.name;
-    expect(alerts.map((a) => a.text)).toContain(`${loc.name} ${loc.producer!.replace(/_/g, ' ')}: no ${name}, output 40%`);
+    const code = locationCode(game.state.world, loc, data);
+    expect(alerts.map((a) => a.text)).toContain(`${code} ${loc.name} ${loc.producer!.replace(/_/g, ' ')}: no ${name}, output 40%`);
   });
 });
 

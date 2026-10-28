@@ -18,6 +18,7 @@ import { report } from '../../services/common';
 import { marketRole } from '../../services/market';
 import { quoteRefuel, refuel } from '../../services/refuel';
 import { ringPoint } from '../../world/geometry';
+import { shortCode } from '../../world/codes';
 import { locationTypeName } from '../../world/location';
 import { securityLevelInfo } from '../../world/security';
 import { sectorCenter } from '../../world/bodies';
@@ -165,7 +166,7 @@ export class SectorMapScreen implements Screen {
       y++;
     };
 
-    line(`Sector ${sector.name}`, pal.ui.title);
+    line(`Sector ${sector.name} (${sector.code})`, pal.ui.title);
     const sec = securityLevelInfo(sector.securityValue, data);
     t.text(x, y, `${cap(sector.development)} `, pal.development[sector.development]);
     t.text(x + sector.development.length + 1, y, `Security ${sec.level} ${sec.name} (${Math.round(sector.securityValue)})`, securityColor(data, sec.level));
@@ -178,8 +179,9 @@ export class SectorMapScreen implements Screen {
         this.selected = { kind: 'location', locationId: loc.id };
       });
       t.text(x, y, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
-      t.text(x + 2, y, fit(loc.name, 11), sel ? pal.ui.highlight : techColor(data, loc.techLevel));
-      t.text(x + 14, y, locationTypeName(loc, data), pal.ui.dim, undefined, PANEL_W - 14);
+      t.text(x + 2, y, fit(loc.name, 10), sel ? pal.ui.highlight : techColor(data, loc.techLevel));
+      t.text(x + 13, y, fit(shortCode(state.world, loc, data), 4), pal.ui.bright);
+      t.text(x + 17, y, locationTypeName(loc, data), pal.ui.dim, undefined, PANEL_W - 17);
       y++;
     });
     y++;

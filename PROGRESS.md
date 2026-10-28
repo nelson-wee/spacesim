@@ -210,14 +210,14 @@ Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art
 
 | # | Check | Result | Value |
 |---|---|---|---|
-| 1 | Light Freighter (owner definition, Q-36): median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150. | PASS | Median day 82; 19 of 20 seeds by day 150 (the last at day 138). Report: 11 of 20 in day 60–120 (6 early, days 36–57). |
+| 1 | Light Freighter (owner definition, Q-36): median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150. | PASS | Median day 91; 18 of 20 seeds by day 150. Report: 13 of 20 in day 60–120. (Best routes from producers only, 2026-10-28; before: median 82, 19 of 20.) |
 | 2 | `ship-report` gives the §11.4 values (±1). | PASS | 12 of 12 rows |
 | 3 | All default loadouts are valid. | PASS | 18 of 18 (test and `ship-report`) |
 | 4 | Starting ship range 4–6 jumps. | PASS | 5.00 jumps |
 | 5 | Laden Heavy Freighter about 3× the fuel per jump of an empty Shuttle. | PASS | 18.00 / 6.00 = 3.00 |
 | 6 | `PROGRESS.md` is updated. | PASS | This file |
 
-Monitor (not a gate): Shuttle profit per day in the first 30 days, median 295 cr (20 seeds; §22 target 100–250 on a good raw-goods route). The bot trades raw goods in one sector and small lots of advanced goods; the early limit is mostly cargo, sometimes capital.
+Monitor (not a gate): Shuttle profit per day in the first 30 days, median 189 cr (20 seeds; §22 target 100–250 on a good raw-goods route). It was 295 cr before best routes had to start where the good is made. The bot trades raw goods in one sector and small lots of advanced goods; the early limit is mostly cargo, sometimes capital.
 
 ### Carrier margin and the first upgrade (20 seeds, 130 days)
 
@@ -236,7 +236,14 @@ The bot found that the M2 carrier margin (25% on all goods) left large gaps on g
 - `npm test`: 662 tests pass (19 service tests, 8 knowledge and route tests).
 - `npm run sim-economy -- 1000 20` with the M3 carrier values: all 4 pass/fail checks pass (20 of 20). Reports: 9 commodity-seeds of 240 at the clamp on more than 20% of days (mostly Oxygen); busts on 4 of 20 seeds (Machine Works 73–294 days, a biolab 63 days); gradient 18 of 20; routes 20 of 20; raw-goods band 14 of 20; chain shock Alloys +0% to +14%, back in 2–3 days.
 - `npm run ship-report`: all PASS.
-- `npm run sim-trader -- 20 1 150`: PASS (see the exit checks). Run time 299 s.
+- `npm run sim-trader -- 20 1 150`: PASS (see the exit checks). Run time 116 s.
+
+### Owner feedback (2026-10-28)
+
+- Click zones and arrow keys on all screens (tabs, rows, Ledger cells, key hints, sector and region map lists).
+- Technical names: sector codes and location codes ("SEL-O2") on all trade screens; the Ledger groups its columns by sector.
+- Best routes start only where the good is made, or at a Trade Hub.
+- `npm test`: 666 tests pass.
 
 <!--
 Template for each milestone:

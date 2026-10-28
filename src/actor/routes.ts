@@ -8,7 +8,9 @@ import type { Game } from '../core/game';
 import type { Actor, Location, MarketEntry, Ship } from '../core/types';
 import type { GameData } from '../data';
 import { econContext } from '../econ/context';
+import { tradesAll } from '../econ/markets';
 import { basePrice, priceAt } from '../econ/prices';
+import { recipeOf } from '../econ/recipes';
 import { travelStats } from '../ship/stats';
 import { commodityMass, fleetFreeTonnes } from './cargo';
 import { fuelUnitPrice } from './fuel';
@@ -159,6 +161,18 @@ export interface BestRoutesOptions extends RouteOptions {
   limit?: number;
   /** Only these commodities. */
   commodities?: string[];
+  /**
+   * Also routes that start where the location only uses the good. Default
+   * false: a best route starts where the good is made, or at a Trade Hub
+   * (owner, 2026-10-28). Those markets hold the stock to fill a hold again.
+   */
+  anyStart?: boolean;
+}
+
+/** True if the location makes the commodity, or is a Trade Hub (the Market tab's "Sells" and "Hub"). */
+export function isSource(loc: Location, commodity: string, data: GameData): boolean {
+  if (tradesAll(loc, data)) return true;
+  return loc.producer !== null && recipeOf(data, loc.producer).outputs.some((o) => o.commodity === commodity);
 }
 
 /** The best known routes by profit per day (Section 17.6: the Trade Ledger shows 5). */
@@ -178,6 +192,7 @@ export function bestRoutes(game: Game, actor: Actor, options: BestRoutesOptions 
   for (const from of starts) {
     for (const commodity of Object.keys(actor.knowledge.markets[from.id]?.prices ?? {})) {
       if (options.commodities && !options.commodities.includes(commodity)) continue;
+      if (!options.anyStart && !isSource(from, commodity, data)) continue;
       for (const to of known) {
         if (to.id === from.id || !trades(to, commodity) || !near(from, to)) continue;
         const v = routeValue(game, actor, from, to, commodity, options);

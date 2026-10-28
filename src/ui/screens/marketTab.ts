@@ -6,6 +6,7 @@ import { knowsLocation, priceView } from '../../actor/knowledge';
 import type { Game } from '../../core/game';
 import type { Location } from '../../core/types';
 import { econContext } from '../../econ/context';
+import { locationCode } from '../../world/codes';
 import { basePrice, buyPrice, sellPrice } from '../../econ/prices';
 import type { Term } from '../../render/display';
 import { byTier, tierMark } from '../../render/icons';
@@ -85,7 +86,7 @@ export class MarketTab implements LocationTab {
       const best = bestKnownSell(game, location, c);
       if (best) {
         const color = best.price > s ? ui.good : ui.dim;
-        t.text(71, y, fit(`${Math.round(best.price)} ${best.location.name} ${best.jumps}j`, 28), color, bg);
+        t.text(71, y, fit(`${Math.round(best.price)} ${locationCode(game.state.world, best.location, data)} ${best.location.name} ${best.jumps}j`, 28), color, bg);
       } else t.text(71, y, 'Unknown', ui.dim, bg);
     });
 

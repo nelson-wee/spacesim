@@ -235,6 +235,13 @@ These decisions replace the brief text where they do not agree.
 
 - 2026-10-28 [§17.5] Click zones: each screen adds a zone for each item that it draws (tabs, list rows, Ledger cells and heads, sector map list lines, key hints). A click on a key hint does the same as its key (`src/ui/widgets/clicks.ts`). Arrow keys: Left/Right switch Location tabs (in the Outfitter, at the edge of the slot list or shop), Left/Right select the ship on the Fleet screen, Up/Down step through targets on the sector map and lane exits on the region map. A click on a best route in the Ledger opens it in the route planner. Reason: owner asked for mouse and arrow navigation.
 
+### Technical names and best routes (owner, 2026-10-28)
+
+- 2026-10-28 [§17.1, §17.6] Technical names (owner): each sector has a unique 3-letter code (first 3 letters; on a clash, the first letter and two consonants). A location's code is sector code + type code + number: planets one capital letter (T Terran, O Ocean, D Desert, I Ice, V Volcanic, G Gas Giant), stations two small letters (mn Mining, pr Processing, in Industrial, hb Habitat, th Trade Hub, sy Shipyard, mo Military Outpost, ph Pirate Haven, st other station). The number counts from the star outward, only when the sector has more than one location of that type ("SEL-O2", "SEL-pr"). Type codes are in `bodyTypes.json`. Flavour names stay on the sector map; the Location header and the status bar show both. Reason: owner feedback; in 200 sectors, names are up to 8 letters, 117 sectors have repeated types, and 13 have a clash of the first 3 letters.
+- 2026-10-28 [§17.6] The Trade Ledger groups its columns by sector (nearest first; in a sector, from the star outward), with the sector code and jumps in a band above, and the short code in each column head.
+- 2026-10-28 [§17.6] Best routes (Ledger and trader bot) start only where the location makes the good or at a Trade Hub ("Sells" or "Hub" on the Market tab) (owner). A manual route in the planner can start anywhere; the planner shows a warning when the start does not make the good. `bestRoutes(..., { anyStart: true })` gives the old list. Reason: a market that only uses a good has little stock to sell, so those routes were not practical. Result: the bot's median upgrade day moves from 82 to 91, and its Shuttle profit in the first 30 days from 295 to 189 cr per day (inside the §22 band).
+- 2026-10-28 Save version 3 (sectors have `code`).
+
 ## Cuts
 
 None.

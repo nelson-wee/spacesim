@@ -8,7 +8,7 @@
 //   the cursor, for the commodity under the cursor. Or the best routes.
 // - Chain alerts and the information age of each column.
 import { knowsLocation, priceView } from '../../actor/knowledge';
-import { bestRoutes, type RouteValue, routeValue } from '../../actor/routes';
+import { bestRoutes, isSource, type RouteValue, routeValue } from '../../actor/routes';
 import { displayDay } from '../../core/clock';
 import type { Game } from '../../core/game';
 import type { Location } from '../../core/types';
@@ -23,10 +23,11 @@ import type { KeyInput } from '../input';
 import { drawStatusBar } from '../widgets/statusBar';
 import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
+import { locationCode, shortCode } from '../../world/codes';
 
 const NAME_W = 13;
 const COL_W = 7;
-const TABLE_Y = 5;
+const TABLE_Y = 6;
 const ARROW = { up: '↑', down: '↓', flat: ' ' } as const;
 const LIMIT = { cargo: 'cargo-limited', capital: 'capital-limited', stock: 'stock-limited', margin: 'margin-limited' } as const;
 
@@ -68,7 +69,8 @@ export class TradeLedgerScreen implements Screen {
       .filter((l) => knowsLocation(actor, l) && (actor.knowledge.markets[l.id] || this.here()?.id === l.id))
       .map((loc) => ({ loc, jumps: row[loc.sectorId] ?? 99 }))
       .filter((c) => this.maxJumps === null || c.jumps <= this.maxJumps)
-      .sort((a, b) => a.jumps - b.jumps || a.loc.id - b.loc.id);
+      // Group by sector: nearest sectors first; in a sector, from the star outward.
+      .sort((a, b) => a.jumps - b.jumps || a.loc.sectorId - b.loc.sectorId || a.loc.ring - b.loc.ring || a.loc.id - b.loc.id);
   }
 
   private rows(): string[] {
@@ -98,17 +100,30 @@ export class TradeLedgerScreen implements Screen {
     const filters = `Tier ${this.tier === null ? 'all' : TIER_ORDER[this.tier]}   Distance ${this.maxJumps === null ? 'all' : `${this.maxJumps} jumps`}   ${this.soldHere ? 'Goods sold here' : 'All goods'}`;
     t.text(0, 2, 'Trade Ledger', ui.title);
     t.text(16, 2, filters, ui.dim);
-    // Column heads: name, jumps, information age.
+    // Column heads: a band with the sector code and jumps over each sector's
+    // columns, then the location code (type and number), then the information age.
+    const world = game.state.world;
+    const hereSector = this.hereSector();
     shown.forEach((c, i) => {
       const x = NAME_W + i * COL_W;
+      if (i === 0 || shown[i - 1]?.loc.sectorId !== c.loc.sectorId) {
+        let n = 1;
+        while (shown[i + n]?.loc.sectorId === c.loc.sectorId) n++;
+        const sector = world.sectors[c.loc.sectorId];
+        const label = `${sector?.code ?? '???'} ${c.loc.sectorId === hereSector ? 'here' : `${c.jumps}j`} `;
+        t.hline(3, x, x + n * COL_W - 2, '─', ui.border);
+        t.text(x, 3, label.slice(0, n * COL_W - 1), c.loc.sectorId === hereSector ? ui.good : ui.bright);
+      }
       const sel = this.colScroll + i === this.col;
       const isStart = this.startId === c.loc.id;
-      t.text(x, 3, fit(c.loc.name, COL_W - 1), isStart ? ui.good : sel ? ui.bright : ui.text, sel ? ui.selectBg : undefined);
+      t.text(x, 4, fit(shortCode(world, c.loc, data), COL_W - 1), isStart ? ui.good : sel ? ui.bright : ui.text, sel ? ui.selectBg : undefined);
       const v = priceView(game, actor, c.loc, 'hydrogen');
       const age = v.source === 'live' ? 'now' : `D${displayDay(actor.knowledge.markets[c.loc.id]?.day ?? 0)}`;
-      t.text(x, 4, fit(`${c.jumps}j ${age}`, COL_W - 1), v.source === 'live' ? ui.good : ui.dim);
-      this.app.zones.add(x, 3, COL_W - 1, () => this.moveTo(null, this.colScroll + i), 2);
+      t.text(x, 5, fit(age, COL_W - 1), v.source === 'live' ? ui.good : ui.dim);
+      this.app.zones.add(x, 4, COL_W - 1, () => this.moveTo(null, this.colScroll + i), 2);
     });
+    const selCol = cols[this.col]?.loc;
+    if (selCol) t.text(0, 4, fit(selCol.name, NAME_W - 1), ui.dim);
     const tableH = 15;
     rows.slice(0, tableH).forEach((c, r) => {
       const y = TABLE_Y + r;
@@ -148,11 +163,14 @@ export class TradeLedgerScreen implements Screen {
     const dest = cols[this.col]?.loc;
     const commodity = rows[this.row];
     if (this.best) {
-      t.text(0, y++, `Best known routes by profit per day (${this.startId === null ? 'any start within 3 jumps' : `from ${start?.name}`}):`, ui.title);
+      t.text(0, y++, `Best known routes by profit per day, from where the good is made (${this.startId === null ? 'any start within 3 jumps' : `from ${start ? this.label(start) : '?'}`}):`, ui.title);
       if (this.best.length === 0) t.text(0, y++, 'No profitable route is known.', ui.dim);
       for (const r of this.best) y = this.routeLine(t, y, r);
     } else if (start && dest && commodity) {
-      t.text(0, y++, `Route: ${commodityName(data, commodity)} from ${start.name} to ${dest.name}`, ui.title);
+      t.text(0, y++, `Route: ${commodityName(data, commodity)} from ${this.label(start)} to ${this.label(dest)}`, ui.title);
+      if (start.id !== dest.id && !isSource(start, commodity, data)) {
+        t.text(60, y - 1, fit(`${this.label(start)} does not make it`, 40), ui.warning);
+      }
       const r = routeValue(game, actor, start, dest, commodity);
       if (!r) t.text(0, y++, start.id === dest.id ? 'Select a different destination.' : 'No profit, or a price is unknown.', ui.dim);
       else {
@@ -189,6 +207,11 @@ export class TradeLedgerScreen implements Screen {
     t.text(78, HEIGHT - 1, 'Arrows/click: cursor', ui.dim);
   }
 
+  /** "Galdun (SEL-O2)". */
+  private label(loc: Location): string {
+    return `${loc.name} (${locationCode(this.game.state.world, loc, this.game.data)})`;
+  }
+
   /** Moves the cursor (a click). A null keeps that coordinate. The planner shows again. */
   private moveTo(row: number | null, col: number | null): void {
     if (row !== null) this.row = row;
@@ -199,9 +222,12 @@ export class TradeLedgerScreen implements Screen {
   private routeLine(t: Term, y: number, r: RouteValue): number {
     const g = this.game;
     const ui = palette(g.data).ui;
-    const from = g.state.world.locations[r.fromId]?.name ?? '?';
-    const to = g.state.world.locations[r.toId]?.name ?? '?';
-    const text = `${fit(commodityName(g.data, r.commodity), 12)} ${fit(`${from} -> ${to}`, 24)} ${String(r.units).padStart(4)} u  profit ${String(Math.round(r.profit)).padStart(6)}  fuel ${String(Math.round(r.fuelCost)).padStart(4)}  ${r.days.toFixed(1).padStart(5)} d  ${String(Math.round(r.profitPerDay)).padStart(5)}/day  ${r.limitedBy}`;
+    const world = g.state.world;
+    const fromLoc = world.locations[r.fromId];
+    const toLoc = world.locations[r.toId];
+    const from = fromLoc ? locationCode(world, fromLoc, g.data) : '?';
+    const to = toLoc ? locationCode(world, toLoc, g.data) : '?';
+    const text = `${fit(commodityName(g.data, r.commodity), 12)} ${fit(`${from} -> ${to}`, 18)} ${String(r.units).padStart(4)} u  profit ${String(Math.round(r.profit)).padStart(6)}  fuel ${String(Math.round(r.fuelCost)).padStart(4)}  ${r.days.toFixed(1).padStart(5)} d  ${String(Math.round(r.profitPerDay)).padStart(5)}/day  ${r.limitedBy}`;
     t.text(0, y, fit(text, 100), ui.text);
     // A click on a best route opens it in the planner: its start, commodity, and destination.
     this.app.zones.add(0, y, 100, () => {

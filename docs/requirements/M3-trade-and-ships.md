@@ -75,6 +75,8 @@
 | M3-UI-11 | **Trade Ledger, chain alerts and information age.** Show alerts from Merchants' Guilds and the day each column was updated. | §17.6 | M |
 | M3-UI-12 | **Route view.** The player selects one commodity on a map. Each known location shows its price and a margin color. `+` marks locations that make the commodity. `-` marks locations that need it. | §17.2 | M |
 | M3-UI-13 | The route calculation code is in the simulation (not the UI), so `sim-trader.ts` can use it. | §0.5 | I |
+| M3-UI-14 | **Technical names (owner, 2026-10-28).** Each sector has a unique 3-letter code. Each location has a code: sector code, type code (planet: one capital letter; station: two small letters), and a number by orbit when the type repeats in the sector ("SEL-O2"). Trade screens use the codes; the Ledger groups its columns by sector. | Owner | T, M |
+| M3-UI-15 | **Best routes (owner, 2026-10-28)** start only where the location makes the good, or at a Trade Hub. | Owner | T |
 
 ## 5. Tools (TOOL)
 

@@ -113,7 +113,7 @@ export class RegionMapScreen implements Screen {
     const sel = this.selectedSectorId === null ? null : state.world.sectors[this.selectedSectorId];
     if (sel) {
       const sec = securityLevelInfo(sel.securityValue, data);
-      line(`Sector ${sel.name}`, pal.ui.highlight);
+      line(`Sector ${sel.name} (${sel.code})`, pal.ui.highlight);
       line(`Development: ${sel.development}`, pal.development[sel.development]);
       line(`Security ${sec.level} ${sec.name} (${Math.round(sel.securityValue)})`, securityColor(data, sec.level));
       line(`Baseline ${Math.round(sel.securityBaseline)}, jumps from core ${sel.jumpsFromCore}`, pal.ui.dim);

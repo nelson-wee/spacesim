@@ -215,6 +215,8 @@ export const bodyTypesSchema = z.object({
     z.object({
       id: z.string(),
       name: z.string(),
+      /** Type code in technical names: one capital letter (DECISIONS.md, M3). */
+      code: z.string().regex(/^[A-Z]$/),
       weights: z.object({ frontier: nonNeg, middle: nonNeg, core: nonNeg }),
       gravity: nonNeg,
       atmosphere: z.boolean(),
@@ -224,6 +226,8 @@ export const bodyTypesSchema = z.object({
     z.object({
       id: z.string(),
       name: z.string(),
+      /** Type code in technical names: two small letters (DECISIONS.md, M3). */
+      code: z.string().regex(/^[a-z]{2}$/),
       development: z.array(developmentSchema).min(1),
       minBaselineSecurity: nonNeg.optional(),
       maxBaselineSecurity: nonNeg.optional(),

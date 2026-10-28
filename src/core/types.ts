@@ -4,7 +4,7 @@ import type { Development, SlotSize, Tier } from '../data';
 import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface Vec {
   x: number;
@@ -14,6 +14,8 @@ export interface Vec {
 export interface Sector {
   id: number;
   name: string;
+  /** Unique 3-letter code for technical names (src/world/codes.ts). */
+  code: string;
   /** Cell on the region map. */
   pos: Vec;
   star: string;
