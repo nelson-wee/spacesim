@@ -134,6 +134,8 @@ export interface InstalledModule {
   size: SlotSize;
   tier: Tier;
   on: boolean;
+  /** Guided weapons (M5-GUIDE-05): rounds left; missing = full. */
+  ammo?: number;
 }
 
 export interface CargoLot {

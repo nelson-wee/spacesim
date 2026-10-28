@@ -6,9 +6,12 @@ import type { GameData } from '../data';
 import { moduleValues } from '../ship/modules';
 import { runAi } from './ai';
 import { cellAt, isActive, lineOfFire, onEdge, pathTo, reachable, shipCells } from './geometry';
+import { ammoOf, clearMunitionsInArea, inLaunchRange, isGuided, launchMunition, munitionStep } from './munitions';
 import {
   applyHit,
   combatStats,
+  destroyIfDead,
+  hostile,
   fleeFuel,
   fuelStep,
   heatStep,
@@ -26,9 +29,7 @@ import {
 } from './rules';
 import type { Battle, CombatShip, Effect, Order } from './types';
 
-export function hostile(a: CombatShip, b: CombatShip): boolean {
-  return a.side !== b.side && a.side !== 'neutral' && b.side !== 'neutral';
-}
+export { hostile } from './rules';
 
 export function shipById(b: Battle, id: number): CombatShip | undefined {
   return b.ships.find((s) => s.id === id);
@@ -39,13 +40,6 @@ function fleesAtEdge(s: CombatShip): boolean {
   return s.ai === 'human' || s.retreating || s.ai === 'trader';
 }
 
-function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle): void {
-  if (s.status === 'active' && s.ship.hullHp <= 0) {
-    s.status = 'destroyed';
-    effects.push({ kind: 'destroy', shipId: s.id });
-    b.log.push(`${s.name} is destroyed.`);
-  }
-}
 
 /**
  * Applies one order of one ship, with the rules of Sections 11.5, 12.3, and
@@ -78,12 +72,24 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   }
   // Fire.
   const m = moduleAt(s, order.slot);
-  if (!m || !isDirectWeapon(m, data)) return 'That is not a weapon that can fire now.';
+  const guided = m !== null && isGuided(m, data);
+  if (!m || (!isDirectWeapon(m, data) && !guided)) return 'That is not a weapon that can fire now.';
   if (!m.on) return 'The weapon is OFF.';
   if (s.fired.includes(slotKey(order.slot))) return 'The weapon fired this turn.';
   const t = shipById(b, order.target);
   if (!t || !isActive(t) || !hostile(s, t)) return 'No valid target.';
   const w = moduleValues(data, m);
+  if (guided) {
+    // A guided weapon launches a munition (Section 12.4, M5-GUIDE-01, M5-GUIDE-05).
+    if (ammoOf(m, data) <= 0) return 'No ammunition.';
+    if (!inLaunchRange(s, w, t)) return 'Out of range.';
+    const noPower = spendPower(s, drawOf(m, data), data, rng, effects);
+    if (noPower) return `${noPower} The weapon needs ${drawOf(m, data)}.`;
+    s.fired.push(slotKey(order.slot));
+    s.shotHeat += w.heatPerShot ?? 0;
+    launchMunition(b, s, order.slot, t, data, effects);
+    return null;
+  }
   const aim = w.area !== undefined ? 'hull' : order.aim;
   const chance = hitChance(b, s, w, t, aim, data);
   if (chance <= 0) return 'Out of range, or no line of fire.';
@@ -99,6 +105,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     const half = Math.floor(w.area / 2);
     const center = lof.to;
     effects.push({ kind: 'flak', shipId: s.id, from: lof.from, center });
+    clearMunitionsInArea(b, s, center, half, effects);
     for (const o of b.ships) {
       if (!isActive(o) || !hostile(s, o)) continue;
       const inArea = shipCells(o).find((c) => Math.abs(c.x - center.x) <= half && Math.abs(c.y - center.y) <= half);
@@ -168,6 +175,7 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
     s.moved = 0;
     s.fired = [];
     s.spent = 0;
+    s.pdShots = {};
   }
   const player = shipById(b, b.playerId);
   // 1. Player phase.
@@ -187,6 +195,11 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
       runAi(b, s, data, rng, effects);
       if (battleResult(b, data) === 'loss') break;
     }
+  }
+  // 3-4. Munitions move and resolve; point defense fires during the move (Q-44).
+  if (!b.result) {
+    munitionStep(b, data, rng, effects);
+    b.result = battleResult(b, data);
   }
   // Power (Q-41): unused power charges the capacitor; modules that lost power get it back.
   for (const s of b.ships) if (isActive(s)) powerStep(s, data);

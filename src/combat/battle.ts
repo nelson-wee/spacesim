@@ -84,6 +84,8 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     rng: rngState,
     result: null,
     log: [],
+    munitions: [],
+    nextMunitionId: 0,
   };
   let id = 0;
   const groups: [Side, BattleShipSpec[]][] = [
@@ -118,6 +120,7 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
         spent: 0,
         stored: 0,
         unpowered: [],
+        pdShots: {},
       };
       return s;
     });

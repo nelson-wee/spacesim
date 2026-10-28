@@ -335,6 +335,15 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-28 [§10.6] Escort templates: the pirate templates allowed in the sector, on 0.5 x the pirate budget, with Raiders swapped for Escort Wasps (`templates.json` `escort.loadoutSwap`).
 - 2026-10-28 [Q-45, default] The §10.9 check "median group TU of 10,000 generated encounters is in the §10.5 range" fails for 3 of 15 security and development levels, also with the brief's own values: the template ladder has steps (10, 23, 36, 39...), so in Medium Core (budget 13-31) the Lone Raider (10) is the median. The gate is now the mean group TU (15 of 15 in range); the median is a report. Reason: the mean shows that encounters fit the budget; the median shows only the ladder step. Owner may prefer new filler templates instead (they need new loadouts: a Wasp cannot reach 15 TU with upgrades).
 
+### Guided munitions and point defense (M5-B)
+
+- 2026-10-28 [§12.4] A munition does not move in the turn of its launch; it moves from the next munition step. Reason: §12.4 "it does not hit in the same turn"; this also gives point defense and flak a turn to act.
+- 2026-10-28 [§12.4] A launch needs the target within the weapon range (Chebyshev distance between nearest cells), not a line of fire. The munition starts on the first open cell next to the launcher on the line to the target. Reason: guided weapons fly around asteroids (§12.1 "can follow targets").
+- 2026-10-28 [§12.4] Munition path: shortest 8-direction path to a cell next to the target footprint, around asteroids; ships do not block munitions. If the target is destroyed or flees, the munition is removed. Life goes down by 1 after each move. Reason: §12.4 says "around asteroids with A*"; a breadth-first search gives the same shortest path on this grid.
+- 2026-10-28 [Q-44] Point defense checks at the munition's start cell and at each cell of its move: each point defense module of a ship hostile to the munition's owner, within range 3, with shots left this turn (2), fires one shot (50%, 10 damage, heat 1 per shot). A munition at 0 HP is destroyed. Point defense does not need line of fire, and it defends any ship near it (not only the target).
+- 2026-10-28 [§12.2] Flak destroys the munitions of hostile ships in its 3 x 3 area when it fires at a ship; it cannot aim at a munition. Reason: §12.2; flak has no munition target order in the brief.
+- 2026-10-28 [§7.4, M5-GUIDE-05] Ammunition is on the installed module (`ammo`; missing = full). Price per round in `modules.json` (`ammoPrice`): missile 40 cr, torpedo 300 cr. The Mechanic refills whole rounds after hull, engine, and armor, as far as credits allow. Reason: the brief gives no ammunition price.
+
 ## Cuts
 
 None.

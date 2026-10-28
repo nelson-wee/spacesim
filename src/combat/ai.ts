@@ -9,6 +9,7 @@ import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
 import { distance, edgeDistance, isActive, lineOfFire, parseKey, pathTo, reachable } from './geometry';
+import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from './munitions';
 import { applyOrder, hostile } from './resolver';
 import {
   combatStats,
@@ -106,13 +107,21 @@ export function aiTarget(b: Battle, s: CombatShip, data: GameData): CombatShip |
   return [...foes].sort(byDistance)[0] ?? null;
 }
 
-/** Weapons that are ON and can fire this turn. */
+/** Weapons that are ON and can fire this turn (guided weapons need ammunition). */
 function readyWeapons(s: CombatShip, data: GameData): SlotRef[] {
   if (s.overheated) return [];
   return moduleSlots(s).filter((slot) => {
     const m = moduleAt(s, slot);
-    return m !== null && m.on && isDirectWeapon(m, data) && !s.fired.includes(slotKey(slot));
+    if (!m || !m.on || s.fired.includes(slotKey(slot))) return false;
+    return isDirectWeapon(m, data) || (isGuided(m, data) && ammoOf(m, data) > 0);
   });
+}
+
+/** Chance that the weapon can hurt `t` this turn: hit chance, or for guided weapons 1 if in launch range. */
+function canReach(b: Battle, s: CombatShip, m: NonNullable<ReturnType<typeof moduleAt>>, t: CombatShip, data: GameData): number {
+  const w = moduleValues(data, m);
+  if (isGuided(m, data)) return inLaunchRange(s, w, t) ? guidedHitChance(w, t, data) : 0;
+  return hitChance(b, s, w, t, 'hull', data);
 }
 
 /** The wanted distance: bestRangeShare of the shortest range of the weapons that are ON (Section 13.8). */
@@ -137,7 +146,7 @@ function standAndFire(b: Battle, s: CombatShip, target: CombatShip | null, data:
   if (!target || s.retreating || s.ai === 'trader') return false;
   const weapons = readyWeapons(s, data).map((slot) => moduleAt(s, slot)).filter((m) => m !== null);
   if (weapons.length === 0) return false;
-  if (weapons.some((m) => hitChance(b, s, moduleValues(data, m), target, 'hull', data) <= 0)) return false;
+  if (weapons.some((m) => canReach(b, s, m, target, data) <= 0)) return false;
   const shots = weapons.reduce((sum, m) => sum + drawOf(m, data), 0);
   return moveCost(s, data) + shots > powerFree(s, data) + 1e-9;
 }
@@ -188,11 +197,11 @@ function aiFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
     // The AI does not overdraw power (Q-41): it fires only with available or stored power.
     if (drawOf(m, data) > powerFree(s, data) + 1e-9) continue;
     const foes = b.ships.filter((o) => isActive(o) && hostile(s, o));
-    let pick: CombatShip | null = target && isActive(target) && hitChance(b, s, w, target, 'hull', data) > 0 ? target : null;
+    let pick: CombatShip | null = target && isActive(target) && canReach(b, s, m, target, data) > 0 ? target : null;
     if (!pick) {
       let bestChance = 0;
       for (const o of foes) {
-        const c = hitChance(b, s, w, o, 'hull', data);
+        const c = canReach(b, s, m, o, data);
         if (c > bestChance) {
           bestChance = c;
           pick = o;

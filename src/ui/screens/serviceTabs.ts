@@ -85,7 +85,8 @@ export class MechanicTab implements LocationTab {
       y++;
     });
     y++;
-    t.text(0, y, 'Refill of guided munitions comes with combat (M5).', ui.dim);
+    const q = actor.fleet[this.ship] ? quoteRepair(actor.fleet[this.ship] as NonNullable<(typeof actor.fleet)[number]>, data) : null;
+    t.text(0, y, q && q.ammo > 0 ? `Guided munitions: ${q.ammo} rounds missing, ${formatCredits(q.ammoCost)} (part of the repair).` : 'Guided munitions: full.', q && q.ammo > 0 ? ui.warning : ui.dim);
     keys(t, ctx, [['Up/Down', 'Select ship', press('ArrowDown')], ['R', 'Repair', press('r')]]);
   }
 
@@ -99,7 +100,7 @@ export class MechanicTab implements LocationTab {
   }
 
   help(): string[] {
-    return ['MECHANIC', '', 'Up/Down   Select a ship', 'R         Repair hull, engine, and armor as far as credits allow'];
+    return ['MECHANIC', '', 'Up/Down   Select a ship', 'R         Repair hull, engine, and armor, then refill guided', '          munitions, as far as credits allow'];
   }
 }
 

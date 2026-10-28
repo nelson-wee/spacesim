@@ -448,6 +448,8 @@ export const moduleValuesSchema = z
     flatHitChance: prob.optional(),
     // Guided weapons (Section 12.4): ammunition and munition values.
     ammo: z.number().int().positive().optional(),
+    /** Mechanic price of one round (M5-GUIDE-05). */
+    ammoPrice: nonNeg.optional(),
     munitionSpeed: pos.optional(),
     munitionAgility: pos.optional(),
     munitionLife: z.number().int().positive().optional(),

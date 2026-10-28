@@ -94,7 +94,7 @@ function frameCells(f: Frame, ctx: Ctx, head: number): OverlayCell[] {
   const { data } = ctx;
   const out: OverlayCell[] = [];
   const line = f.line as Frame | undefined;
-  if (line && line.path !== 'pd') {
+  if (line) {
     const set = data.art.effects.lineSets[String(line.set ?? 'thin')] ?? ['-', '|', '/', '\\'];
     let prev = ctx.from ?? ctx.path[0] ?? { x: 0, y: 0 };
     for (const c of ctx.path) {
@@ -118,9 +118,13 @@ function frameCells(f: Frame, ctx: Ctx, head: number): OverlayCell[] {
   if (travel) {
     const count = Number(travel.count ?? 1);
     const gap = Number(travel.gap ?? 1);
+    // A glyph of more than one character (a torpedo "■►") shows its head; it turns with the path.
+    const glyphs = Array.from(String(travel.g ?? '*'));
+    const dir = ctx.path.length > 0 ? Math.sign((ctx.path[ctx.path.length - 1]?.x ?? 0) - (ctx.from?.x ?? ctx.path[0]?.x ?? 0)) : 1;
+    const headGlyph = (glyphs[glyphs.length - 1] ?? '*').replace('►', dir < 0 ? '◄' : '►');
     for (let k = 0; k < count; k++) {
       const c = ctx.path[head - k * (gap + 1)];
-      if (c) out.push({ x: c.x, y: c.y, ch: String(travel.g ?? '*'), fg: color(data, travel.fg) });
+      if (c) out.push({ x: c.x, y: c.y, ch: headGlyph, fg: color(data, travel.fg) });
     }
     const trail = (travel.trail as [string, string][] | undefined) ?? [];
     trail.forEach(([g, fg], i) => {
@@ -191,6 +195,12 @@ function effectId(e: Effect, b: Battle, data: GameData): string | null {
     }
     case 'surrender':
       return 'surrender';
+    case 'munitionMove':
+      return e.moduleId === 'torpedo_tube' ? 'torpedo_move' : 'missile_move';
+    case 'munitionHit':
+      return e.hit ? (e.moduleId === 'torpedo_tube' ? 'torpedo_hit' : 'missile_hit') : null;
+    case 'pd':
+      return 'point_defense';
     default:
       return null;
   }
@@ -215,7 +225,8 @@ export function buildTimeline(effects: Effect[], b: Battle, data: GameData): Tim
       slot++;
     }
     const shipId = 'shipId' in e ? e.shipId : -1;
-    const target = e.kind === 'shot' ? b.ships.find((s) => s.id === e.targetId) : b.ships.find((s) => s.id === shipId);
+    const targetOf = e.kind === 'shot' || e.kind === 'munitionHit' ? e.targetId : shipId;
+    const target = b.ships.find((s) => s.id === targetOf);
     const ctx: Ctx = { data, b, path: [], target: target ?? null, from: null, at: null };
     if (e.kind === 'shot') {
       ctx.from = e.from;
@@ -228,6 +239,15 @@ export function buildTimeline(effects: Effect[], b: Battle, data: GameData): Tim
     } else if (e.kind === 'hull' || e.kind === 'armor' || e.kind === 'engine') {
       ctx.at = e.at;
       ctx.from = lastShot && lastShot.kind === 'shot' ? lastShot.from : null;
+    } else if (e.kind === 'munitionMove') {
+      ctx.path = e.path.slice(1);
+      ctx.from = e.path[0] ?? null;
+    } else if (e.kind === 'munitionHit') {
+      ctx.at = e.at;
+    } else if (e.kind === 'pd') {
+      ctx.from = e.from;
+      ctx.at = e.to;
+      ctx.path = [...lineCells(e.from, e.to), e.to];
     } else if (e.kind === 'shield') {
       ctx.from = lastShot && lastShot.kind === 'shot' ? lastShot.from : null;
     }
@@ -240,7 +260,7 @@ export function buildTimeline(effects: Effect[], b: Battle, data: GameData): Tim
         t += ms;
       }
     }
-    if (e.kind === 'shot' || e.kind === 'flak') {
+    if (e.kind === 'shot' || e.kind === 'flak' || e.kind === 'munitionHit') {
       lastShot = e;
       lastShotEnd = t;
     }

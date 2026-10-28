@@ -6,6 +6,7 @@
 // The plan shows at once; E ends the turn and the resolver runs it. Effects
 // from effects.json play after the turn; Space skips them.
 import { defeatKind } from '../../career/defeat';
+import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from '../../combat/munitions';
 import { Rng } from '../../core/rng';
 import { isActive, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
 import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolver';
@@ -185,9 +186,8 @@ export class CombatScreen implements Screen {
     }
     const ready = moduleSlots(me).filter((slot) => {
       const m = moduleAt(me, slot);
-      if (!m || !m.on || !isDirectWeapon(m, data) || me.fired.includes(slotKey(slot))) return false;
-      const w = moduleValues(data, m);
-      return hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data) > 0;
+      if (!m || !m.on || me.fired.includes(slotKey(slot))) return false;
+      return this.weaponChance(m, t) > 0;
     });
     // Shots pay power (Q-41): with no confirmation, only the shots that free power pays for.
     const allCost = ready.reduce((sum, slot) => sum + drawOf(moduleAt(me, slot) as NonNullable<ReturnType<typeof moduleAt>>, data), 0);
@@ -215,6 +215,16 @@ export class CombatScreen implements Screen {
     if (unpaid > 0 && !overdraw) this.notice += ` ${armedNotice}`;
     this.notice += this.unpoweredText(effects);
     if (n > 0 && heatForecast(me, data) >= combatStats(me, data).heatCapacity) this.notice += ' WARNING: this turn overheats the ship (U to undo).';
+  }
+
+  /** Hit chance of a weapon against `t` now; guided weapons: in launch range with ammunition, the munition hit roll. */
+  private weaponChance(m: NonNullable<ReturnType<typeof moduleAt>>, t: CombatShip): number {
+    const data = this.game.data;
+    const me = this.me();
+    const w = moduleValues(data, m);
+    if (isGuided(m, data)) return ammoOf(m, data) > 0 && inLaunchRange(me, w, t) ? guidedHitChance(w, t, data) : 0;
+    if (!isDirectWeapon(m, data)) return 0;
+    return hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data);
   }
 
   private offlineText(): string {
@@ -287,8 +297,18 @@ export class CombatScreen implements Screen {
         t.put(x, y, '·', ui.dim, ui.raised);
       }
     }
-    // Ships.
+    // Ships, then guided munitions (the glyph of effects.json "persist", turned toward the target).
     for (const s of b.ships) this.drawShip(t, s);
+    for (const mu of b.munitions) {
+      const def = data.art.effects.effects[mu.moduleId === 'torpedo_tube' ? 'torpedo_move' : 'missile_move'];
+      const proj = (def as { persist?: { proj?: { g?: string; fg?: string } } } | undefined)?.persist?.proj;
+      const target = b.ships.find((s) => s.id === mu.targetId);
+      const left = target ? target.pos.x < mu.pos.x : mu.side !== 'player';
+      const glyphs = Array.from(proj?.g ?? '►').map((g) => (left ? g.replace('►', '◄') : g));
+      const fg = color(data, proj?.fg ?? 'guided');
+      // The head is on the munition cell; a body glyph (torpedo) is behind it.
+      glyphs.reverse().forEach((g, k) => t.put(mu.pos.x + (left ? k : -k), mu.pos.y, g, fg));
+    }
     // Target brackets and line of fire.
     const tgt = this.target();
     if (tgt && isActive(me)) {
@@ -440,11 +460,12 @@ export class CombatScreen implements Screen {
       const m = moduleAt(me, slot);
       if (!m) return;
       const key = POWER_KEYS[i] ?? ' ';
-      const weapon = isDirectWeapon(m, data);
-      const w = moduleValues(data, m);
-      const chance = weapon && tgt ? hitChance(this.preview, me, w, tgt, w.area !== undefined ? 'hull' : this.aim, data) : 0;
+      const guided = isGuided(m, data);
+      const weapon = isDirectWeapon(m, data) || guided;
+      const chance = weapon && tgt ? this.weaponChance(m, tgt) : 0;
+      const noAmmo = guided && ammoOf(m, data) <= 0;
       const cannot = weapon && m.on && (me.overheated || chance <= 0);
-      const state = !m.on ? states.off : cannot ? states.cannot_fire : states.on;
+      const state = !m.on ? states.off : noAmmo ? states.no_ammo : cannot ? states.cannot_fire : states.on;
       const rowY = y++;
       t.key(x, rowY, key, ui.key, ui.keyBg);
       t.put(x + 2, rowY, state?.glyph ?? '?', styleColor(data.art.style, state?.fg ?? 'hi'));
@@ -454,7 +475,8 @@ export class CombatScreen implements Screen {
       const unpowered = me.unpowered.includes(slotKey(slot));
       const draw = drawOf(m, data);
       const kind = isReserving(m, data) ? 'res' : moduleValues(data, m).thrust !== undefined ? 'mv' : '';
-      const info = unpowered ? 'no pwr' : weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}% ${draw}p` : `-- ${draw}p`) : `${draw}p ${kind}`;
+      const ammo = guided ? ` a${ammoOf(m, data)}` : ` ${draw}p`;
+      const info = unpowered ? 'no pwr' : noAmmo ? 'no ammo' : weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}%${ammo}` : `--${ammo}`) : `${draw}p ${kind}`;
       t.text(x + 22, rowY, fit(info, 8), unpowered ? ui.danger : weapon && chance > 0 && !fired ? ui.good : ui.dim);
       zones.add(x, rowY, WIDTH - x, () => this.app.press(press(key)));
     });
@@ -633,6 +655,21 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         break;
       case 'online':
         out.push(`${name(e.shipId)} cools down and is back online.`);
+        break;
+      case 'launch':
+        out.push(`${name(e.shipId)} launches a ${moduleShort(data, e.moduleId)} munition.`);
+        break;
+      case 'munitionHit':
+        out.push(`${moduleShort(data, e.moduleId)} munition -> ${name(e.targetId)}: ${e.hit ? 'hit' : 'miss'}`);
+        break;
+      case 'pd':
+        out.push(`${name(e.shipId)} point defense: ${e.hit ? 'hit' : 'miss'}`);
+        break;
+      case 'munitionDown':
+        out.push('  A munition is destroyed.');
+        break;
+      case 'munitionLost':
+        out.push('  A munition burns out.');
         break;
       case 'unpowered':
         out.push(`${name(e.shipId)} overdraws power: ${moduleShort(data, e.moduleId)} has no power until the end of the turn.`);

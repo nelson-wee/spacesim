@@ -288,6 +288,19 @@ export function heatStep(s: CombatShip, data: GameData, effects: Effect[]): void
   }
 }
 
+export function hostile(a: CombatShip, b: CombatShip): boolean {
+  return a.side !== b.side && a.side !== 'neutral' && b.side !== 'neutral';
+}
+
+/** A ship with hull HP 0 is destroyed. */
+export function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle): void {
+  if (s.status === 'active' && s.ship.hullHp <= 0) {
+    s.status = 'destroyed';
+    effects.push({ kind: 'destroy', shipId: s.id });
+    b.log.push(`${s.name} is destroyed.`);
+  }
+}
+
 /** Shields regenerate by their regen value (x 0.5 when Hot), up to capacity. */
 export function shieldStep(s: CombatShip, data: GameData): void {
   const st = combatStats(s, data);
