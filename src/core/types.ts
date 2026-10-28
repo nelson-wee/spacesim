@@ -164,15 +164,13 @@ export type Position =
 
 /**
  * Clone Insurance (owner, 2026-10-28). If the last ship is destroyed, the
- * actor wakes at `locationId` with a new copy of `ship` and `credits`.
+ * actor wakes at `locationId` with a new copy of `ship`. Credits do not change.
  */
 export interface InsurancePolicy {
   locationId: number;
   day: number;
   /** The insured hull and loadout (no cargo). */
   ship: Ship;
-  /** Credits after the premium. */
-  credits: number;
   premium: number;
 }
 

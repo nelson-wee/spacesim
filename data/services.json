@@ -14,7 +14,7 @@
     { "id": "refuel", "name": "Refuel", "where": [{}] },
     { "id": "market", "name": "Market", "where": [{}] },
     { "id": "mechanic", "name": "Mechanic", "where": [{ "kind": "station" }, { "kind": "planet", "minTech": 2 }] },
-    { "id": "insurance", "name": "Clone Insurance", "where": [{ "kind": "station" }] },
+    { "id": "insurance", "name": "Clone Insurance", "where": [{}] },
     { "id": "outfitter", "name": "Outfitter", "where": [{ "minTech": 2 }, { "bodyType": ["shipyard_station", "pirate_haven"] }] },
     { "id": "shipyard", "name": "Shipyard", "where": [{ "bodyType": ["shipyard_station"] }, { "bodyType": ["terran"], "minTech": 3 }] },
     {

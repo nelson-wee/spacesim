@@ -5,7 +5,7 @@
 //   `disabledHullShare` of its hull, and a tug tows the fleet to the nearest
 //   location (Section 8.6 recovery fee).
 // - Any other loss destroys the ship. With Clone Insurance, the player wakes
-//   at the insuring station (services/insurance.ts). Without it: game over.
+//   at the insuring location (services/insurance.ts). Without it: game over.
 import { towFleet } from '../actor/fuel';
 import { actorPlace } from '../actor/travel';
 import type { Battle } from '../combat/types';

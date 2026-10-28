@@ -115,22 +115,22 @@ export class InsuranceTab implements LocationTab {
     const actor = state.player;
     const ship = actor.fleet[actor.flagshipIndex];
     let y = TAB_Y;
-    t.text(0, y++, 'Clone Insurance: if your last ship is destroyed, your clone wakes at the insuring station.', ui.text);
-    t.text(0, y++, 'You get a new copy of the insured ship (full HP and fuel, no cargo) and the insured credits.', ui.dim);
+    t.text(0, y++, 'Clone Insurance: if your last ship is destroyed, your clone wakes where you bought the policy.', ui.text);
+    t.text(0, y++, 'You get a new copy of the insured ship (full HP and fuel, no cargo). You keep your credits.', ui.dim);
     t.text(0, y++, 'Pirates do not destroy ships: they disable your ship and take all cargo. The policy is not used.', ui.dim);
     y++;
     const p = actor.insurance;
     if (p) {
       const at = state.world.locations[p.locationId];
       const hull = data.hullById.get(p.ship.hullId)?.name ?? p.ship.hullId;
-      t.text(0, y++, `Your policy: ${hull} "${p.ship.name}", ${formatCredits(p.credits)}, at ${at ? `${at.name} (${locationCode(state.world, at, data)})` : '?'}, day ${displayDay(p.day)}.`, ui.good);
+      t.text(0, y++, `Your policy: ${hull} "${p.ship.name}", at ${at ? `${at.name} (${locationCode(state.world, at, data)})` : '?'}, day ${displayDay(p.day)}.`, ui.good);
       if (ship && ship.hullId !== p.ship.hullId) t.text(0, y++, 'Your flagship is not the insured hull. Insure again to cover it.', ui.warning);
     } else t.text(0, y++, 'You have no policy. If your ship is destroyed, the game ends.', ui.danger);
     y++;
     if (ship) {
       const q = quoteInsurance(game, location, ship);
       t.text(0, y++, `Insure ${ship.name}: value ${formatCredits(q.value)} (hull and modules) x ${Math.round(q.share * 100)}% (${q.levelName} security) = ${formatCredits(q.premium)}.`, ui.bright);
-      t.text(0, y++, `Insured credits: your credits after the premium (${formatCredits(actor.credits - q.premium)}). A new policy replaces the old one.`, ui.dim);
+      t.text(0, y++, 'A new policy replaces the old one.', ui.dim);
       y++;
       const levels = data.security.levels.map((l) => `${l.name} ${Math.round((data.serviceRules.insurance.premiumShare[l.level] ?? 0) * 100)}%`).join(', ');
       t.text(0, y++, `Premium by sector security: ${levels}.`, ui.dim);
@@ -165,7 +165,7 @@ export class InsuranceTab implements LocationTab {
       'The premium is a share of the hull and module prices.',
       'Safe sectors are cheaper; Lawless sectors cost the most.',
       'If your last ship is destroyed, you wake here with the',
-      'insured ship and the insured credits. Pirates only',
+      'insured ship. You keep your credits. Pirates only',
       'disable ships and take the cargo.',
     ];
   }

@@ -1,11 +1,11 @@
 // Clone Insurance (owner, 2026-10-28; brief Section 21 item 10 moved into the
-// MVP). At a station, the actor insures the flagship: the hull, the loadout,
-// and the credits after the premium. The premium is a share of the hull price
-// plus the module prices; the share goes up as sector security goes down. If
-// the last ship is destroyed, the actor wakes at the insuring station with a
-// new copy of the insured ship (full HP and fuel, no cargo) and the insured
-// credits. One policy at a time; a new policy replaces the old one. A claim
-// uses the policy.
+// MVP). At any location, the actor insures the flagship: the hull and the
+// loadout. The premium is a share of the hull price plus the module prices;
+// the share goes up as sector security goes down. If the last ship is
+// destroyed, the actor wakes at the insuring location with a new copy of the
+// insured ship (full HP and fuel, no cargo). The credits do not change. One
+// policy at a time; a new policy replaces the old one. A claim uses the
+// policy.
 import type { Game } from '../core/game';
 import type { Actor, InsurancePolicy, Location, Ship } from '../core/types';
 import type { GameData } from '../data';
@@ -55,7 +55,7 @@ export interface InsuranceResult extends ServiceResult {
   premium: number;
 }
 
-/** Insures the flagship at this station. */
+/** Insures the flagship at this location. */
 export function buyInsurance(game: Game, actor: Actor, location: Location): InsuranceResult {
   const { data } = game;
   const problem = serviceProblem(actor, location, 'insurance', data);
@@ -70,12 +70,11 @@ export function buyInsurance(game: Game, actor: Actor, location: Location): Insu
     locationId: location.id,
     day: game.state.day,
     ship: freshCopy(ship, data),
-    credits: actor.credits,
     premium: q.premium,
   };
   actor.insurance = policy;
   return {
-    ...done(`You insure ${ship.name} at ${location.name} for ${Math.round(q.premium)} cr. Insured credits: ${Math.round(actor.credits)} cr.`),
+    ...done(`You insure ${ship.name} at ${location.name} for ${Math.round(q.premium)} cr.`),
     premium: q.premium,
   };
 }
@@ -90,9 +89,8 @@ export function claimInsurance(game: Game, actor: Actor): ServiceResult | null {
   const location = game.state.world.locations[policy.locationId] as Location;
   actor.fleet = [freshCopy(policy.ship, game.data)];
   actor.flagshipIndex = 0;
-  actor.credits = policy.credits;
   actor.position = { kind: 'docked', locationId: location.id };
   actor.insurance = null;
   observe(game, actor);
-  return done(`Your clone wakes at ${location.name} with a new ${hullDef(game.data, policy.ship.hullId).name} and ${Math.round(policy.credits)} cr. The policy is used.`);
+  return done(`Your clone wakes at ${location.name} with a new ${hullDef(game.data, policy.ship.hullId).name}. The policy is used.`);
 }

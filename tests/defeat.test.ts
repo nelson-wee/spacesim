@@ -87,7 +87,7 @@ describe('Clone Insurance', () => {
     expect(quoteInsurance(game, loc, ship).share).toBe(shares[0]);
   });
 
-  it('buy: pays the premium and stores the ship and the credits after the premium', () => {
+  it('buy: pays the premium and stores the ship', () => {
     const { game, loc } = setup();
     const actor = game.state.player;
     const q = quoteInsurance(game, loc, actor.fleet[0]!);
@@ -95,7 +95,7 @@ describe('Clone Insurance', () => {
     const r = buyInsurance(game, actor, loc);
     expect(r.ok).toBe(true);
     expect(actor.credits).toBeCloseTo(before - q.premium);
-    expect(actor.insurance?.credits).toBeCloseTo(before - q.premium);
+    expect(actor.insurance?.premium).toBeCloseTo(q.premium);
     expect(actor.insurance?.locationId).toBe(loc.id);
     expect(actor.insurance?.ship.cargo).toEqual({});
   });
@@ -113,27 +113,32 @@ describe('Clone Insurance', () => {
     expect(actor.insurance).toBeNull();
   });
 
-  it('only stations have the service', () => {
-    const game = wrapGame(structuredClone(template), data);
-    for (const l of game.state.world.locations) expect(l.services.includes('insurance')).toBe(l.kind === 'station');
+  it('a planet sells a policy too', () => {
+    const { game, loc } = setup((l) => l.kind === 'planet');
+    expect(buyInsurance(game, game.state.player, loc).ok).toBe(true);
+    expect(game.state.player.insurance?.locationId).toBe(loc.id);
   });
 
-  it('destroyed with a policy: wake at the station with the insured ship and credits', () => {
+  it('all dockable locations have the service', () => {
+    const game = wrapGame(structuredClone(template), data);
+    for (const l of game.state.world.locations) expect(l.services).toContain('insurance');
+  });
+
+  it('destroyed with a policy: wake at the insuring location with the insured ship; credits do not change', () => {
     const { game, loc } = setup();
     const actor = game.state.player;
     buyInsurance(game, actor, loc);
-    const insured = actor.insurance!.credits;
     const hullId = actor.fleet[0]!.hullId;
     // Later: the actor moves away, earns credits, and loads cargo.
     const other = game.state.world.locations.find((l) => l.id !== loc.id)!;
     actor.position = { kind: 'docked', locationId: other.id };
-    actor.credits = insured + 5000;
+    actor.credits = 7777;
     addCargo(actor, data, 'water', 5, 10);
     const b = lostBattle(game, [{ ai: 'attack', faction: 'patrol' }]);
     applyToShip(b, actor.fleet[0]!);
     expect(applyDefeat(game, actor, b)).toBe('cloned');
     expect(actor.position).toEqual({ kind: 'docked', locationId: loc.id });
-    expect(actor.credits).toBeCloseTo(insured);
+    expect(actor.credits).toBe(7777);
     expect(actor.insurance).toBeNull();
     const ship = actor.fleet[0]!;
     expect(ship.hullId).toBe(hullId);

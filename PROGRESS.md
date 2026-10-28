@@ -314,11 +314,11 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 
 - **Works:**
   - A loss against pirates only disables the ship. The pirates take all cargo, the ship keeps 10% hull, and a tug tows the fleet. The combat screen shows "disabled", the ship's engines go dark, and there is no explosion.
-  - Other losses destroy the ship. With a policy, the clone wakes at the insuring station with the insured ship and credits. Without a policy, the game ends.
-  - Insurance tab at every station: policy, quote, premium by security level. The status bar shows "Insured" or "Not insured".
+  - Other losses destroy the ship. With a policy, the clone wakes at the insuring location with the insured ship; the player keeps the credits. Without a policy, the game ends.
+  - Insurance tab at every dockable location: policy, quote, premium by security level (Secure 2% to Lawless 12%). The status bar shows "Insured" or "Not insured".
   - Debug test battle: the enemy AI can be Raider, Trader, or Patrol (a hostile patrol destroys).
-- **Browser check:** insure at a Secure station (318 cr for the starting Shuttle), lose to 3 Raiders (disabled, towed, no game over), lose to a patrol (the clone wakes at the station with the insured credits). No page errors.
-- **Tool results:** `npm test`: 696 tests pass (8 new in `tests/defeat.test.ts`). `npm run build`: passes.
+- **Browser check:** insure at a Secure station (318 cr for the starting Shuttle), lose to 3 Raiders (disabled, towed, no game over), lose to a patrol (the clone wakes at the station). Owner confirmations of 2026-10-28 (credits do not change, insurance also at planets) are covered by tests. No page errors.
+- **Tool results:** `npm test`: 697 tests pass (9 new in `tests/defeat.test.ts`). `npm run build`: passes.
 - **Open:** Q-40 (heat and combat decisions) waits on the owner.
 
 <!--
