@@ -6,7 +6,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 |---|---|---|---|
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
-| M3 Trade and ships | 3 | Built. Exit check 1 waits on the owner (Q-36). | 5 of 6 pass; check 1: 11 of 20 seeds in day 60–120 (median day 82, 18 of 20 upgrade by day 130). |
+| M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
 | M4 Combat core | 4 | Not started | — |
 | M5 Threat and encounters | 5 | Not started | — |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
@@ -202,8 +202,7 @@ Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art
 
 ### Known issues
 
-- Q-36: the first hull upgrade day depends on the world. See the exit checks.
-- Q-37: the Light Freighter has an L internal slot (owner review).
+- The first hull upgrade day depends on the world: a good start earns 600–750 cr per day in the first 30 days, a poor start 20–100 (Q-36).
 - The bot run takes about 18 s per seed (route search at each dock).
 - Seeds 1 and 2 make the same world as seed 3 (the generator retries with seed + 1). The economy RNG differs, so the bot results differ.
 
@@ -211,7 +210,7 @@ Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art
 
 | # | Check | Result | Value |
 |---|---|---|---|
-| 1 | The trader bot buys a Light Freighter between day 60 and day 120 on 15 of 20 seeds. | FAIL (Q-36) | 11 of 20 in the window; 18 of 20 upgrade by day 130; median day 82. Early: days 36–57 (6 seeds). Late or none: 3 seeds. |
+| 1 | Light Freighter (owner definition, Q-36): median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150. | PASS | Median day 82; 19 of 20 seeds by day 150 (the last at day 138). Report: 11 of 20 in day 60–120 (6 early, days 36–57). |
 | 2 | `ship-report` gives the §11.4 values (±1). | PASS | 12 of 12 rows |
 | 3 | All default loadouts are valid. | PASS | 18 of 18 (test and `ship-report`) |
 | 4 | Starting ship range 4–6 jumps. | PASS | 5.00 jumps |
@@ -237,7 +236,7 @@ The bot found that the M2 carrier margin (25% on all goods) left large gaps on g
 - `npm test`: 662 tests pass (19 service tests, 8 knowledge and route tests).
 - `npm run sim-economy -- 1000 20` with the M3 carrier values: all 4 pass/fail checks pass (20 of 20). Reports: 9 commodity-seeds of 240 at the clamp on more than 20% of days (mostly Oxygen); busts on 4 of 20 seeds (Machine Works 73–294 days, a biolab 63 days); gradient 18 of 20; routes 20 of 20; raw-goods band 14 of 20; chain shock Alloys +0% to +14%, back in 2–3 days.
 - `npm run ship-report`: all PASS.
-- `npm run sim-trader`: see the exit checks.
+- `npm run sim-trader -- 20 1 150`: PASS (see the exit checks). Run time 299 s.
 
 <!--
 Template for each milestone:

@@ -195,7 +195,7 @@ These decisions replace the brief text where they do not agree.
 ### Ships
 
 - 2026-10-27 [Q-09] Weapon and point defense mass and price by size: S 1 t, 2,000 cr; M 4 t, 6,000 cr; L 10 t, 18,000 cr. Heat per shot from the Q-09 default. Reason: Q-09 default; the §11.4 masses need a 1 t S weapon.
-- 2026-10-27 [§11.1] **For owner review:** Light Freighter internal slots S2 M2 L1 (the brief has S3 M2 L0). Reason: with no L slot, an LF with an M engine and an M fuel tank has no slot for more than 30 t of cargo, so it carries no more than the Shuttle. With S2 M2 L1 the trader loadout fits Engine M, Fuel Tank M and S, Reactor S, and Cargo Rack L (80 t).
+- 2026-10-27 [§11.1, Q-37] Light Freighter internal slots S2 M2 L1 (owner accepted, 2026-10-28) (the brief has S3 M2 L0). Reason: with no L slot, an LF with an M engine and an M fuel tank has no slot for more than 30 t of cargo, so it carries no more than the Shuttle. With S2 M2 L1 the trader loadout fits Engine M, Fuel Tank M and S, Reactor S, and Cargo Rack L (80 t).
 - 2026-10-27 [§11.4] The §11.4 reference rows test the formulas at the masses in the table (`ship-report`), not the masses of the default loadouts. Reason: the brief says the rows test the formulas; the default loadouts have extra modules (for example the Shuttle's shield) and differ by 1–2 t.
 - 2026-10-27 [§12.2] Point defense is size S in all loadouts. Reason: §12.2 gives one size.
 - 2026-10-27 [§11.9] Loading order: the non-flagship ships with the most thrust first, the flagship last; a sale takes cargo from the flagship first. Reason: §11.9 (heavy goods to the ship with the most thrust; keep the flagship free for combat).
@@ -224,6 +224,11 @@ These decisions replace the brief text where they do not agree.
 ### Carriers (economy change found by the trader bot)
 
 - 2026-10-27 [§9.7, §22] Carrier `minMargin` 0.25 → 0.12, and a new capital cost in transit `capitalCostPerDay` 0.01 (share of the buy price per transit day, in `transportCost`). Reason: with a 25% margin on all goods, a gap of 25–30% stayed between near locations for goods of high value (Electronics 2,000 cr/t). The bot earned 25% on its capital in each 0.6-day trip in one sector, and bought the Light Freighter on day 36 (median, 20 seeds; target day 60–120, §22). A per-tonne handling cost was tested and rejected: at 14 cr/t, Water and Oxygen sat at the high clamp on more than 50% of days, and biolabs stopped. With 0.12 and the capital cost, all M2 pass/fail checks pass (20 of 20 seeds) and the median upgrade day is 82.
+
+### Owner decisions on M3 (2026-10-28)
+
+- 2026-10-28 [Q-36] M3 exit check 1 is now: median upgrade day in day 60–120, and 15 of 20 seeds upgrade by day 150. A seed with no upgrade counts as later than all others for the median. The count in day 60–120 is a report. Reason: the worlds differ (a good start earns 600–750 cr per day, a poor start 20–100), so no economy value puts 75% of seeds in a window of 2×.
+- 2026-10-28 [Q-37] Keep the Light Freighter internal slots S2 M2 L1 (owner).
 
 ## Cuts
 

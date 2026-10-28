@@ -15,6 +15,8 @@ const maxDays = Number(args[2] ?? 150);
 const data = dataWithOverride(process.argv);
 const opts: BotOptions = { targetHull: 'light_freighter', targetLoadout: 'light_freighter_trader', reserve: 2000, maxJumps: 3 };
 const WINDOW = 30;
+/** Exit check 1: upgrade by this day (Q-36). */
+const DEADLINE = 150;
 
 const pad = (v: string | number, n: number) => String(v).padStart(n);
 let inWindow = 0;
@@ -51,11 +53,18 @@ for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
     console.log(`      no upgrade: ${yards.length} Shipyards in the region, ${known.length} known (${known.map((l) => l.name).join(', ')})`);
   }
 }
-const sorted = [...upgradeDays].sort((a, b) => a - b);
-const median = sorted.length ? (sorted[Math.floor(sorted.length / 2)] as number) : NaN;
+// Seeds with no upgrade count as later than all others.
+const sorted = [...upgradeDays, ...new Array<number>(seeds - upgradeDays.length).fill(Infinity)].sort((a, b) => a - b);
+const median = sorted.length ? (sorted[Math.floor((sorted.length - 1) / 2)] as number) : NaN;
 const first = windowRates.map((r) => r[0] ?? 0).sort((a, b) => a - b);
-console.log(`\nUpgrade on ${upgradeDays.length}/${seeds} seeds; median day ${Number.isNaN(median) ? '-' : median.toFixed(0)}.`);
+console.log(`\nUpgrade on ${upgradeDays.length}/${seeds} seeds by day ${maxDays}.`);
 console.log(`Shuttle profit per day, first ${WINDOW} days: median ${Math.round(first[Math.floor(first.length / 2)] ?? 0)} cr (monitor: 100-250 on a good raw-goods route, Section 22).`);
+// Exit check 1 (Q-36, owner 2026-10-28): median upgrade day in 60-120, and 15 of 20 seeds upgrade by day 150.
 const need = Math.ceil(seeds * 0.75);
-console.log(`${inWindow >= need ? 'PASS' : 'FAIL'}  Light Freighter bought between day 60 and day 120 on ${inWindow}/${seeds} seeds (need ${need}).`);
+const byDeadline = upgradeDays.filter((d) => d <= DEADLINE).length;
+const medianOk = median >= 60 && median <= 120;
+console.log(
+  `${medianOk && byDeadline >= need ? 'PASS' : 'FAIL'}  Light Freighter: median day ${Number.isNaN(median) ? '-' : median.toFixed(0)} (need 60-120); bought by day ${DEADLINE} on ${byDeadline}/${seeds} seeds (need ${need}).`,
+);
+console.log(`NOTE  Bought between day 60 and day 120 on ${inWindow}/${seeds} seeds (report).`);
 console.log(`Run time ${((Date.now() - started) / 1000).toFixed(1)} s.`);

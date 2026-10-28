@@ -105,7 +105,7 @@
 
 | # | Check | Source | Verify |
 |---|---|---|---|
-| 1 | The greedy trader bot buys a Light Freighter between day 60 and day 120 on 15 of 20 seeds. | §19, §22 | S (`sim-trader.ts`) |
+| 1 | The greedy trader bot buys a Light Freighter: the median upgrade day is in day 60–120, and 15 of 20 seeds upgrade by day 150 (owner, Q-36). The count of seeds in day 60–120 is a report. | §19, §22, Q-36 | S (`sim-trader.ts`) |
 | 2 | `ship-report.ts` gives the reference values in §11.4 (±1). | §19 | S |
 | 3 | All default loadouts are valid. | §19 | T |
 | 4 | Starting ship range is 4–6 jumps, empty, on a full tank. | §8.7 | S, T |
