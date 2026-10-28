@@ -34,7 +34,9 @@ export class LogScreen implements Screen {
     t.hline(HEIGHT - 2, 0, WIDTH - 1, '─', ui.border);
     let x = t.key(0, HEIGHT - 1, 'Up/Down PgUp/PgDn Home/End', ui.key, ui.keyBg);
     x = t.text(x, HEIGHT - 1, ' Scroll   ', ui.text);
+    const esc = x;
     x = t.key(x, HEIGHT - 1, 'Esc', ui.key, ui.keyBg);
+    this.app.zones.add(esc, HEIGHT - 1, 8, () => this.app.pop());
     t.text(x, HEIGHT - 1, ' Back', ui.text);
   }
 

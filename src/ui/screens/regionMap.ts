@@ -10,6 +10,7 @@ import { securityLevelInfo } from '../../world/security';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { LOG_Y, MAP_H, MAP_W, MAP_X, MAP_Y, PANEL_W, PANEL_X } from '../layout';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { drawRecentLog, drawStatusBar } from '../widgets/statusBar';
 import { days, fit, fuelLine } from '../widgets/text';
 import { LogScreen } from './log';
@@ -84,6 +85,8 @@ export class RegionMapScreen implements Screen {
       y++;
     };
     const keyLine = (key: string, text: string) => {
+      const k = key.length === 1 ? press(key.toLowerCase()) : press(key);
+      this.app.zones.add(x, y, PANEL_W, () => this.app.press(k));
       t.key(x, y, key, pal.ui.key, pal.ui.keyBg);
       t.text(x + 6, y, text, pal.ui.text, undefined, PANEL_W - 6);
       y++;
@@ -97,6 +100,9 @@ export class RegionMapScreen implements Screen {
     this.exits().forEach((jp, i) => {
       const to = state.world.sectors[jp.toSectorId] as Sector;
       const sel = to.id === this.selectedSectorId;
+      this.app.zones.add(x, y, PANEL_W, () => {
+        this.selectedSectorId = to.id;
+      });
       t.text(x, y, String(i + 1), pal.ui.key, pal.ui.keyBg);
       t.text(x + 2, y, fit(to.name, 12), sel ? pal.ui.highlight : pal.ui.text);
       t.text(x + 15, y, `lane ${state.world.lanes[jp.laneId]?.length.toFixed(1) ?? '?'}`, pal.ui.dim);
@@ -142,7 +148,7 @@ export class RegionMapScreen implements Screen {
 
     y = Math.max(y + 1, LOG_Y - 4);
     keyLine('Esc', 'Sector map');
-    keyLine('L', 'Log    ? Help');
+    drawKeyHints(t, this.app.zones, x, y++, [['L', 'Log', press('l')], ['?', 'Help', press('?')]], pal.ui, this.app.press, 2);
   }
 
   onKey(k: KeyInput): boolean {
@@ -155,6 +161,15 @@ export class RegionMapScreen implements Screen {
       return true;
     }
     switch (k.key) {
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        // Step through the sectors that a lane connects to.
+        const ids = exits.map((j) => j.toSectorId);
+        const now = this.selectedSectorId === null ? -1 : ids.indexOf(this.selectedSectorId);
+        const step = k.key === 'ArrowDown' ? 1 : ids.length - 1;
+        this.selectedSectorId = ids[now < 0 ? 0 : (now + step) % ids.length] ?? this.selectedSectorId;
+        return true;
+      }
       case 'Tab': {
         const count = game.state.world.sectors.length;
         const step = k.shift ? count - 1 : 1;
@@ -206,6 +221,7 @@ export class RegionMapScreen implements Screen {
       'REGION MAP',
       '',
       '1-4      Select a sector that a lane connects to',
+      'Up/Down  Step through the sectors that a lane connects to',
       'Tab      Select the next sector (Shift+Tab: back)',
       'Click    Select a sector on the map',
       'Enter    Go to the jump point and jump to the selected sector',

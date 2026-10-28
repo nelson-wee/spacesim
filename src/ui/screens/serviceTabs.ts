@@ -9,23 +9,21 @@ import { quoteRefuel, refuel } from '../../services/refuel';
 import { buyHull, hullOffers, quoteHull, tradeInValue } from '../../services/shipyard';
 import { travelStats } from '../../ship/stats';
 import type { KeyInput } from '../input';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { formatCredits } from '../widgets/statusBar';
 import { fit } from '../widgets/text';
 import { type LocationTab, TAB_H, TAB_Y, type TabContext } from './tab';
 
-function keys(t: Term, y: number, list: [string, string][], ui: ReturnType<typeof palette>['ui']): void {
-  let x = 0;
-  for (const [key, text] of list) {
-    x = t.key(x, y, key, ui.key, ui.keyBg);
-    x = t.text(x, y, ` ${text}   `, ui.text);
-  }
+function keys(t: Term, ctx: TabContext, list: [string, string, KeyInput][]): void {
+  drawKeyHints(t, ctx.zones, 0, TAB_Y + TAB_H - 1, list, palette(ctx.game.data).ui, ctx.press);
 }
 
 export class RefuelTab implements LocationTab {
   readonly serviceId = 'refuel';
   readonly title = 'Refuel';
 
-  render(t: Term, { game, location }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
     const ui = palette(game.data).ui;
     const actor = game.state.player;
     const q = quoteRefuel(game, actor, location);
@@ -43,7 +41,7 @@ export class RefuelTab implements LocationTab {
       t.text(0, y++, `Fill all tanks: ${q.units.toFixed(1)} fuel for ${formatCredits(q.cost)}.`, ui.bright);
       if (q.affordable < q.units - 1e-6) t.text(0, y, `You can buy ${q.affordable.toFixed(1)} fuel now.`, ui.warning);
     }
-    keys(t, TAB_Y + TAB_H - 1, [['R', 'Refuel all ships']], ui);
+    keys(t, ctx, [['R', 'Refuel all ships', press('r')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {
@@ -62,7 +60,8 @@ export class MechanicTab implements LocationTab {
   readonly title = 'Mechanic';
   private ship = 0;
 
-  render(t: Term, { game }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game } = ctx;
     const { data } = game;
     const ui = palette(data).ui;
     const actor = game.state.player;
@@ -75,6 +74,9 @@ export class MechanicTab implements LocationTab {
       const q = quoteRepair(ship, data);
       const bg = i === this.ship ? ui.selectBg : undefined;
       if (bg) t.fill(0, y, 100, 1, bg);
+      ctx.zones.add(0, y, 100, () => {
+        this.ship = i;
+      });
       t.text(0, y, fit(ship.name, 20), ui.bright, bg);
       t.text(21, y, `Hull ${Math.round(ship.hullHp)}/${s.maxHullHp}  Engine ${ship.engineValue.toFixed(0)}/${s.maxEngineValue}  Armor ${Math.round(ship.armorHp)}/${s.maxArmorHp}`, ui.text, bg);
       t.text(80, y, q.cost > 0 ? formatCredits(q.cost) : 'No repair', q.cost > 0 ? ui.warning : ui.good, bg);
@@ -82,7 +84,7 @@ export class MechanicTab implements LocationTab {
     });
     y++;
     t.text(0, y, 'Refill of guided munitions comes with combat (M5).', ui.dim);
-    keys(t, TAB_Y + TAB_H - 1, [['Up/Down', 'Select ship'], ['R', 'Repair']], ui);
+    keys(t, ctx, [['Up/Down', 'Select ship', press('ArrowDown')], ['R', 'Repair', press('r')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {
@@ -105,7 +107,8 @@ export class ShipyardTab implements LocationTab {
   private row = 0;
   private confirm: string | null = null;
 
-  render(t: Term, { game, location }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
     const { data } = game;
     const ui = palette(data).ui;
     const actor = game.state.player;
@@ -124,6 +127,10 @@ export class ShipyardTab implements LocationTab {
       if (!h) return;
       const bg = i === this.row ? ui.selectBg : undefined;
       if (bg) t.fill(0, y, 100, 1, bg);
+      ctx.zones.add(0, y, 100, () => {
+        if (this.row !== i) this.confirm = null;
+        this.row = i;
+      });
       const q = quoteHull(actor, actor.flagshipIndex, location, o.hullId, data);
       const v = [h.name, h.role, String(h.hp).padStart(4), String(h.armor).padStart(3), String(h.mass).padStart(4), String(h.basePower).padStart(3),
         `${h.hardpoints.S}/${h.hardpoints.M}/${h.hardpoints.L}`, `${h.internal.S}/${h.internal.M}/${h.internal.L}`, String(h.tech ?? '-'),
@@ -134,7 +141,7 @@ export class ShipyardTab implements LocationTab {
     y++;
     t.text(0, y++, 'A new hull has an empty loadout: fit an engine, a reactor if needed, a fuel tank, and cargo.', ui.warning);
     if (this.confirm) t.text(0, y, this.confirm, ui.bright);
-    keys(t, TAB_Y + TAB_H - 1, [['Up/Down', 'Select'], ['Enter', 'Buy (trade in)']], ui);
+    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Buy (trade in)', press('Enter')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {

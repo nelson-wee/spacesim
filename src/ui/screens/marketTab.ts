@@ -13,6 +13,7 @@ import { palette } from '../../render/palette';
 import { report } from '../../services/common';
 import { buy, buyLimit, commodityName, formatUnits, marketRole, sell } from '../../services/market';
 import type { KeyInput } from '../input';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
 import { type LocationTab, TAB_H, TAB_Y, type TabContext } from './tab';
 
@@ -60,6 +61,9 @@ export class MarketTab implements LocationTab {
       const sel = this.scroll + i === this.row;
       const bg = sel ? ui.selectBg : undefined;
       if (sel) t.fill(0, y, 100, 1, ui.selectBg);
+      ctx.zones.add(0, y, 100, () => {
+        this.row = this.scroll + i;
+      });
       const entry = location.market[c];
       const com = data.commodityById.get(c);
       if (!entry || !com) return;
@@ -95,17 +99,21 @@ export class MarketTab implements LocationTab {
       t.text(24, y, `${commodityName(data, c)}: you can buy ${lim.units} (limit: ${LIMIT_TEXT[lim.limitedBy]})`, ui.text);
     }
     y += 2;
-    let x = 0;
-    for (const [key, text] of [
-      ['Up/Down', 'Select'],
-      ['B', 'Buy 1'],
-      ['Shift+B', 'Buy max'],
-      ['S', 'Sell 1'],
-      ['Shift+S', 'Sell all'],
-    ] as const) {
-      x = t.key(x, y, key, ui.key, ui.keyBg);
-      x = t.text(x, y, ` ${text}   `, ui.text);
-    }
+    drawKeyHints(
+      t,
+      ctx.zones,
+      0,
+      y,
+      [
+        ['Up/Down', 'Select', press('ArrowDown')],
+        ['B', 'Buy 1', press('b')],
+        ['Shift+B', 'Buy max', press('b', true)],
+        ['S', 'Sell 1', press('s')],
+        ['Shift+S', 'Sell all', press('s', true)],
+      ],
+      ui,
+      ctx.press,
+    );
   }
 
   onKey(k: KeyInput, ctx: TabContext): boolean {
@@ -135,7 +143,7 @@ export class MarketTab implements LocationTab {
     return [
       'MARKET',
       '',
-      'Up/Down   Select a commodity',
+      'Up/Down   Select a commodity (or click it)',
       'B         Buy 1 unit;  Shift+B buy as much as you can',
       'S         Sell 1 unit; Shift+S sell all',
       '',

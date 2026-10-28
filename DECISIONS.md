@@ -231,6 +231,10 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-28 [Q-37] Keep the Light Freighter internal slots S2 M2 L1 (owner).
 - 2026-10-28 [§9.9] NPC trade agents are parked until after the MVP (owner). The carriers do all background trade. The trader bot stays a test tool.
 
+### Navigation (owner feedback, 2026-10-28)
+
+- 2026-10-28 [§17.5] Click zones: each screen adds a zone for each item that it draws (tabs, list rows, Ledger cells and heads, sector map list lines, key hints). A click on a key hint does the same as its key (`src/ui/widgets/clicks.ts`). Arrow keys: Left/Right switch Location tabs (in the Outfitter, at the edge of the slot list or shop), Left/Right select the ship on the Fleet screen, Up/Down step through targets on the sector map and lane exits on the region map. A click on a best route in the Ledger opens it in the route planner. Reason: owner asked for mouse and arrow navigation.
+
 ## Cuts
 
 None.

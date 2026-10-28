@@ -21,6 +21,7 @@ import { commodityName, marketRole } from '../../services/market';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { drawStatusBar } from '../widgets/statusBar';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
 
 const NAME_W = 13;
@@ -106,6 +107,7 @@ export class TradeLedgerScreen implements Screen {
       const v = priceView(game, actor, c.loc, 'hydrogen');
       const age = v.source === 'live' ? 'now' : `D${displayDay(actor.knowledge.markets[c.loc.id]?.day ?? 0)}`;
       t.text(x, 4, fit(`${c.jumps}j ${age}`, COL_W - 1), v.source === 'live' ? ui.good : ui.dim);
+      this.app.zones.add(x, 3, COL_W - 1, () => this.moveTo(null, this.colScroll + i), 2);
     });
     const tableH = 15;
     rows.slice(0, tableH).forEach((c, r) => {
@@ -116,6 +118,7 @@ export class TradeLedgerScreen implements Screen {
       const selRow = r === this.row;
       t.text(0, y, mark.letter, mark.color);
       t.text(2, y, fit(com.name, NAME_W - 3), mark.color, selRow ? ui.selectBg : undefined);
+      this.app.zones.add(0, y, NAME_W - 1, () => this.moveTo(r, null));
       const views = cols.map((col) => ({ col, v: priceView(game, actor, col.loc, c) })).filter((x) => x.v.source !== 'unknown');
       const avg = views.length ? views.reduce((s, x) => s + x.v.mid, 0) / views.length : 0;
       shown.forEach((col, i) => {
@@ -123,6 +126,7 @@ export class TradeLedgerScreen implements Screen {
         const v = priceView(game, actor, col.loc, c);
         const sel = selRow && this.colScroll + i === this.col;
         const bg = sel ? ui.selectBg : undefined;
+        this.app.zones.add(x, y, COL_W - 1, () => this.moveTo(r, this.colScroll + i));
         if (v.source === 'unknown') {
           t.text(x, y, '   -  ', ui.dim, bg);
           return;
@@ -165,11 +169,31 @@ export class TradeLedgerScreen implements Screen {
     if (k.alerts.length === 0) t.text(0, y++, 'None known.', ui.dim);
     for (const a of k.alerts.slice(0, room)) t.text(2, y++, fit(a.text, 97), ui.warning);
 
-    let kx = 0;
-    for (const [key, text] of [['Arrows', 'Cursor'], ['I', 'Tier'], ['D', 'Distance'], ['G', 'Sold here'], ['A', 'Start'], ['B', 'Best routes'], ['Esc', 'Back']] as const) {
-      kx = t.key(kx, HEIGHT - 1, key, ui.key, ui.keyBg);
-      kx = t.text(kx, HEIGHT - 1, ` ${text}  `, ui.text);
-    }
+    drawKeyHints(
+      t,
+      this.app.zones,
+      0,
+      HEIGHT - 1,
+      [
+        ['I', 'Tier', press('i')],
+        ['D', 'Distance', press('d')],
+        ['G', 'Sold here', press('g')],
+        ['A', 'Start', press('a')],
+        ['B', 'Best routes', press('b')],
+        ['Esc', 'Back', press('Escape')],
+      ],
+      ui,
+      this.app.press,
+      2,
+    );
+    t.text(78, HEIGHT - 1, 'Arrows/click: cursor', ui.dim);
+  }
+
+  /** Moves the cursor (a click). A null keeps that coordinate. The planner shows again. */
+  private moveTo(row: number | null, col: number | null): void {
+    if (row !== null) this.row = row;
+    if (col !== null) this.col = col;
+    this.best = null;
   }
 
   private routeLine(t: Term, y: number, r: RouteValue): number {
@@ -179,6 +203,13 @@ export class TradeLedgerScreen implements Screen {
     const to = g.state.world.locations[r.toId]?.name ?? '?';
     const text = `${fit(commodityName(g.data, r.commodity), 12)} ${fit(`${from} -> ${to}`, 24)} ${String(r.units).padStart(4)} u  profit ${String(Math.round(r.profit)).padStart(6)}  fuel ${String(Math.round(r.fuelCost)).padStart(4)}  ${r.days.toFixed(1).padStart(5)} d  ${String(Math.round(r.profitPerDay)).padStart(5)}/day  ${r.limitedBy}`;
     t.text(0, y, fit(text, 100), ui.text);
+    // A click on a best route opens it in the planner: its start, commodity, and destination.
+    this.app.zones.add(0, y, 100, () => {
+      const rows = this.rows();
+      const cols = this.columns();
+      this.startId = r.fromId;
+      this.moveTo(Math.max(0, rows.indexOf(r.commodity)), Math.max(0, cols.findIndex((c) => c.loc.id === r.toId)));
+    });
     return y + 1;
   }
 
@@ -235,6 +266,8 @@ export class TradeLedgerScreen implements Screen {
       'I        Filter by tier          D   Filter by distance',
       'G        Only goods sold here    A   Mark the start of a route',
       'B        The 5 best known routes by profit per day',
+      'Click    A cell, a commodity, or a location moves the cursor.',
+      '         A best route opens it in the route planner.',
       '',
       'A cell shows the buy price (+) where the location makes the',
       'commodity, else its sell price. Green: below the average of',
