@@ -206,8 +206,8 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 
 | ID | Problem | Proposed default | Milestone |
 |---|---|---|---|
-| Q-36 | **First hull upgrade (M3 exit check 1).** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
-| Q-37 | **Light Freighter slots.** The brief gives internal S3 M2 L0; the build uses S2 M2 L1, so the trader loadout can fit a Cargo Rack L (`DECISIONS.md`, M3). | Keep S2 M2 L1. | M3 |
+| Q-36 | **First hull upgrade (M3 exit check 1).** **Decided (owner, 2026-10-28): proposed default.** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
+| Q-37 | **Light Freighter slots.** **Decided (owner, 2026-10-28): keep S2 M2 L1.** The brief gives internal S3 M2 L0; the build uses S2 M2 L1, so the trader loadout can fit a Cargo Rack L (`DECISIONS.md`, M3). | Keep S2 M2 L1. | M3 |
 
 ## 9. Risks
 
@@ -232,7 +232,7 @@ These items need the repository owner. Claude Code cannot do them.
 4. **Visual design:** ship art (`ships.yaml`) and style (`style.json`) are in `data/art/`. Module icons (`modules.json`) and combat effects (`effects.yaml`) are also in `data/art/`. Still to come from Claude Design: map icons and the visual brief (`space-sim-visual-brief.md`, `Ship Art.dc.html`). Answer Q-29 and Q-30 with the designer.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.
 6. **Economy checks (M2):** done (Q-31 to Q-35 decided, 2026-10-27). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
-7. **Trade checks (M3):** decide Q-36 (first hull upgrade check) and Q-37 (Light Freighter slots). M4 starts after the M3 exit checks pass, or after you accept the M3 results.
+7. **Trade checks (M3):** done (Q-36 and Q-37 decided, 2026-10-28).
 
 ## 11. After the MVP (owner notes)
 
