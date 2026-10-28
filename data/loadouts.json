@@ -32,7 +32,11 @@
       "name": "Pirate Raider",
       "hullId": "wasp",
       "hardpoints": [{ "moduleId": "autocannon", "size": "S", "tier": 1 }, { "moduleId": "autocannon", "size": "S", "tier": 1 }],
-      "internal": [{ "moduleId": "engine", "size": "S", "tier": 1 }, { "moduleId": "reactor", "size": "S", "tier": 1 }, { "moduleId": "shield_generator", "size": "S", "tier": 1 }],
+      "internal": [
+        { "moduleId": "engine", "size": "S", "tier": 1 },
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
+        { "moduleId": "shield_generator", "size": "S", "tier": 1 }
+      ],
       "powerPriority": ["engine", "shield_generator", "autocannon"]
     },
     {
@@ -65,7 +69,7 @@
       "id": "light_freighter_trader",
       "name": "Light Freighter (trader)",
       "hullId": "light_freighter",
-      "hardpoints": [{ "moduleId": "pulse_laser", "size": "S", "tier": 1 }, null],
+      "hardpoints": [{ "moduleId": "pulse_laser", "size": "S", "tier": 1 }, { "moduleId": "flak_cannon", "size": "M", "tier": 1 }],
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "fuel_tank", "size": "S", "tier": 1 },
@@ -73,7 +77,7 @@
         { "moduleId": "fuel_tank", "size": "M", "tier": 1 },
         { "moduleId": "cargo_rack", "size": "L", "tier": 1 }
       ],
-      "powerPriority": ["engine", "shield_generator", "pulse_laser"]
+      "powerPriority": ["engine", "shield_generator", "pulse_laser", "flak_cannon"]
     },
     {
       "id": "laser_gunship",
@@ -125,7 +129,7 @@
         { "moduleId": "shield_generator", "size": "S", "tier": 1 },
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "engine", "size": "M", "tier": 1 },
-        null
+        { "moduleId": "armor_plating", "size": "M", "tier": 1 }
       ],
       "powerPriority": ["engine", "shield_generator", "mass_driver", "autocannon"]
     },
@@ -134,7 +138,7 @@
       "name": "Patrol Cutter",
       "hullId": "gunship",
       "hardpoints": [
-        { "moduleId": "point_defense", "size": "S", "tier": 1 },
+        { "moduleId": "autocannon", "size": "S", "tier": 1 },
         { "moduleId": "beam_laser", "size": "M", "tier": 1 },
         { "moduleId": "mass_driver", "size": "M", "tier": 1 }
       ],
@@ -145,22 +149,22 @@
         { "moduleId": "engine", "size": "M", "tier": 1 },
         { "moduleId": "shield_generator", "size": "M", "tier": 1 }
       ],
-      "powerPriority": ["engine", "shield_generator", "beam_laser", "mass_driver", "point_defense"]
+      "powerPriority": ["engine", "shield_generator", "beam_laser", "mass_driver", "point_defense", "autocannon"]
     },
     {
       "id": "heavy_freighter_trader",
       "name": "Heavy Freighter (trader)",
       "hullId": "heavy_freighter",
-      "hardpoints": [{ "moduleId": "point_defense", "size": "S", "tier": 1 }, null],
+      "hardpoints": [{ "moduleId": "flak_cannon", "size": "M", "tier": 1 }, { "moduleId": "mass_driver", "size": "M", "tier": 1 }],
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "cargo_rack", "size": "M", "tier": 1 },
-        { "moduleId": "fuel_tank", "size": "M", "tier": 1 },
+        { "moduleId": "shield_generator", "size": "M", "tier": 1 },
         { "moduleId": "engine", "size": "L", "tier": 1 },
         { "moduleId": "cargo_rack", "size": "L", "tier": 1 }
       ],
-      "powerPriority": ["engine", "point_defense"]
+      "powerPriority": ["engine", "point_defense", "flak_cannon", "mass_driver"]
     },
     {
       "id": "laser_corvette",
@@ -206,14 +210,14 @@
       "hullId": "corvette",
       "hardpoints": [
         { "moduleId": "autocannon", "size": "S", "tier": 1 },
-        { "moduleId": "point_defense", "size": "S", "tier": 1 },
-        { "moduleId": "mass_driver", "size": "M", "tier": 1 },
-        { "moduleId": "mass_driver", "size": "M", "tier": 1 }
+        { "moduleId": "autocannon", "size": "S", "tier": 1 },
+        { "moduleId": "mass_driver", "size": "M", "tier": 3 },
+        { "moduleId": "mass_driver", "size": "M", "tier": 3 }
       ],
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
-        { "moduleId": "radiator", "size": "S", "tier": 1 },
-        { "moduleId": "shield_generator", "size": "M", "tier": 1 },
+        { "moduleId": "armor_plating", "size": "S", "tier": 1 },
+        { "moduleId": "shield_generator", "size": "M", "tier": 2 },
         { "moduleId": "reactor", "size": "M", "tier": 1 },
         { "moduleId": "engine", "size": "L", "tier": 1 }
       ],
@@ -292,9 +296,9 @@
       "hardpoints": [
         { "moduleId": "beam_laser", "size": "M", "tier": 1 },
         { "moduleId": "mass_driver", "size": "M", "tier": 1 },
-        { "moduleId": "flak_cannon", "size": "M", "tier": 1 },
-        { "moduleId": "heavy_cannon", "size": "L", "tier": 1 },
-        { "moduleId": "heavy_cannon", "size": "L", "tier": 1 },
+        { "moduleId": "mass_driver", "size": "M", "tier": 1 },
+        { "moduleId": "heavy_cannon", "size": "L", "tier": 2 },
+        { "moduleId": "heavy_cannon", "size": "L", "tier": 2 },
         { "moduleId": "torpedo_tube", "size": "L", "tier": 1 }
       ],
       "internal": [

@@ -59,6 +59,19 @@ export const balanceSchema = z.object({
   }),
   ship: z.object({ mRef: pos, engineStackFalloff: z.number().min(0).max(1), engineValueShare: prob }),
   /** Tactical combat (Sections 8.5, 11.6, 12.3, 13). */
+  /**
+   * Threat units (Section 10.5): TU = referenceTu x rawThreat / rawThreat(referenceLoadout);
+   * firepower uses trackFactor at `trackManeuver` (guided: munition agility), flak `flakTrackFactor`,
+   * `ammoFactor` by module id; groupTU = sum x (1 + groupBonus x (count - 1)).
+   */
+  threat: z.object({
+    referenceLoadout: z.string(),
+    referenceTu: pos,
+    trackManeuver: pos,
+    flakTrackFactor: prob,
+    ammoFactor: z.record(z.string(), prob),
+    groupBonus: nonNeg,
+  }),
   combat: z.object({
     gridWidth: z.number().int().positive(),
     gridHeight: z.number().int().positive(),
@@ -312,6 +325,56 @@ export const securitySchema = z.object({
       }),
     )
     .length(5),
+  /** Section 10.5: securityBase[level] x devMult[development] x random, minimum `min`. */
+  pirateBudget: z.object({
+    securityBase: z.array(nonNeg).length(5),
+    devMult: z.object({ core: pos, middle: pos, frontier: pos }),
+    random: z.tuple([pos, pos]),
+    min: nonNeg,
+  }),
+  /** Section 10.7: odds multiplier by security level; ratio limits for Attack and Tribute. */
+  boldness: z.array(pos).length(5),
+  odds: z.object({ attack: pos, tribute: pos }),
+  /** Section 10.8 and Q-04 (interim): patrolBase[level] x random. */
+  patrolBudget: z.object({ base: z.array(nonNeg).length(5), random: z.tuple([pos, pos]) }),
+  /** Q-18: budget midpoint limits for 1 to 4 skulls (more = 5). */
+  threatBand: z.object({ limits: z.array(pos).length(4) }),
+  /** Section 13.5. */
+  reinforcement: z.object({ startTurn: z.number().int().positive(), pirateBudgetShare: prob }),
+  /** Section 10.3: changes of value and baseline. */
+  changes: z.record(z.string(), z.object({ value: z.number(), baseline: z.number() })),
+  dailyDrift: prob,
+  trendDays: z.number().int().positive(),
+});
+
+const templateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Loadout ids (loadouts.json). TU is calculated, not typed (Section 10.6). */
+  ships: z.array(z.string()).min(1),
+  maxSecurity: z.number().int().min(0).max(4).optional(),
+  notCore: z.boolean().optional(),
+  namedOnly: z.boolean().optional(),
+  development: z.array(developmentSchema).optional(),
+});
+export type TemplateDef = z.infer<typeof templateSchema>;
+const weightedLoadout = z.object({ loadout: z.string(), weight: pos });
+export const templatesSchema = z.object({
+  pirate: z.array(templateSchema).min(1),
+  trader: z.object({ core: z.array(weightedLoadout).min(1), middle: z.array(weightedLoadout).min(1), frontier: z.array(weightedLoadout).min(1) }),
+  /** Section 10.8: trader escort in sectors with security level <= maxSecurity; budget share of the pirate budget; loadout swaps (Raiders become Escort Wasps). */
+  escort: z.object({ maxSecurity: z.number().int(), budgetShare: prob, loadoutSwap: z.record(z.string(), z.string()) }),
+  patrol: z.array(templateSchema).min(1),
+});
+
+/** Section 10.4 and Q-15, Q-17. */
+export const encountersSchema = z.object({
+  traderChance: prob,
+  patrolChance: prob,
+  patrolMinSecurity: z.number().int(),
+  huntMultiplier: pos,
+  fleeChance: prob,
+  tributeShare: prob,
 });
 
 const syllablesSchema = z.object({

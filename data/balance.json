@@ -43,6 +43,14 @@
     "referenceLaneLength": 18.7
   },
   "ship": { "mRef": 10, "engineStackFalloff": 1, "engineValueShare": 0.2 },
+  "threat": {
+    "referenceLoadout": "pirate_raider",
+    "referenceTu": 10,
+    "trackManeuver": 40,
+    "flakTrackFactor": 0.6,
+    "ammoFactor": { "torpedo_tube": 0.6 },
+    "groupBonus": 0.15
+  },
   "combat": {
     "gridWidth": 70,
     "gridHeight": 30,

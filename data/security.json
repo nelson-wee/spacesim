@@ -12,5 +12,23 @@
     { "level": 2, "name": "Medium", "min": 40, "pirateChanceArrival": 0.15, "pirateChanceTrip": 0.09, "patrolPerTurn": 0.08, "piratePerTurn": 0, "economyMult": 1.0 },
     { "level": 3, "name": "High", "min": 60, "pirateChanceArrival": 0.08, "pirateChanceTrip": 0.05, "patrolPerTurn": 0.15, "piratePerTurn": 0, "economyMult": 1.1 },
     { "level": 4, "name": "Secure", "min": 80, "pirateChanceArrival": 0.03, "pirateChanceTrip": 0.02, "patrolPerTurn": 0.25, "piratePerTurn": 0, "economyMult": 1.2 }
-  ]
+  ],
+  "pirateBudget": {
+    "securityBase": [70, 45, 28, 16, 10],
+    "devMult": { "core": 0.8, "middle": 1.0, "frontier": 1.3 },
+    "random": [0.6, 1.4],
+    "min": 10
+  },
+  "boldness": [1.25, 1.1, 1, 1, 1],
+  "odds": { "attack": 1.5, "tribute": 0.75 },
+  "patrolBudget": { "base": [0, 40, 50, 85, 110], "random": [0.8, 1.2] },
+  "threatBand": { "limits": [15, 30, 50, 80] },
+  "reinforcement": { "startTurn": 3, "pirateBudgetShare": 0.3 },
+  "changes": {
+    "destroyPirate": { "value": 3, "baseline": 0.5 },
+    "pirateSurrenders": { "value": 2, "baseline": 0.3 },
+    "attackNonPirate": { "value": -4, "baseline": -0.5 }
+  },
+  "dailyDrift": 0.02,
+  "trendDays": 30
 }
