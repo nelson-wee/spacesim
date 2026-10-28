@@ -229,6 +229,7 @@ These decisions replace the brief text where they do not agree.
 
 - 2026-10-28 [Q-36] M3 exit check 1 is now: median upgrade day in day 60–120, and 15 of 20 seeds upgrade by day 150. A seed with no upgrade counts as later than all others for the median. The count in day 60–120 is a report. Reason: the worlds differ (a good start earns 600–750 cr per day, a poor start 20–100), so no economy value puts 75% of seeds in a window of 2×.
 - 2026-10-28 [Q-37] Keep the Light Freighter internal slots S2 M2 L1 (owner).
+- 2026-10-28 [§9.9] NPC trade agents are parked until after the MVP (owner). The carriers do all background trade. The trader bot stays a test tool.
 
 ## Cuts
 

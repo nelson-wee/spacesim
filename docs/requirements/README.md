@@ -243,4 +243,5 @@ These items are not in the MVP. Do not build them before the MVP is done. Keep t
 | No career limit | Remove the hard career end at day 730 (§16), so that the player can see how their actions change the world over a long time. | M7: keep the day-730 end in one place (one value in `balance.json`), and keep the economy and world stable past day 730 (`sim-economy` can run longer). |
 | Demand for manufactured goods | Station building, station upgrades, and research use manufactured goods. Until then, a small population demand outside the Core stands in for them (DECISIONS.md, 2026-10-27). | None. |
 | Money for producers | A full money economy (producers and populations hold credits) is not needed for the MVP. Producers use local prices as signals (K*, carriers). | None. |
+| NPC trade agents | Parked until after the MVP (owner, 2026-10-28). Carriers do all background trade in the MVP. Agents are the first item after the MVP (§21, item 1), best after encounters exist, so that pirates can attack real goods. | Keep services, knowledge, and the route planner usable for any Actor (G-07). `tools/lib/traderBot.ts` is a test bot, not agent code. |
 
