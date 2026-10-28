@@ -1,6 +1,6 @@
 # Combat v2: scope proposals (Q-40)
 
-Status: proposals for the owner. Nothing in this file is built, except the items in Section 1.
+Status: proposals for the owner. Built: Section 1 (Q-40) and Section 4 (Q-41, power as actions, with the owner's display "available (reserved) / max + capacitor"). After the MVP (owner, 2026-10-28): Section 2 (Heat Dump) and Section 3 (plasma).
 Date: 2026-10-28.
 
 ## 1. Built (owner request, 2026-10-28)
@@ -28,7 +28,7 @@ Heat budget per default loadout (all weapons fire every turn; "sustain" = share 
 
 Result: ships with one weapon can fire every turn. Laser builds on Gunships and larger ships overheat in 7–11 turns and must choose when to fire. Ballistic builds can fire for the whole battle. This is the family difference in brief Section 12.1 ("Lasers: much heat. Ballistics: low heat"). Heat still has little effect on small ships. A stronger heat effect needs a Wasp loadout with a heat module, or a new Wasp pairing band (M5).
 
-## 2. Heat Dump (module)
+## 2. Heat Dump (module) — after the MVP
 
 **Purpose:** a burst tool. A radiator removes a fixed amount of heat each turn. A heat dump removes a large amount of heat one time, when the player chooses.
 
@@ -45,7 +45,7 @@ Result: ships with one weapon can fire every turn. Laser builds on Gunships and 
 
 **Cost:** about 0.5 day (data, order, AI rule, UI key, tests). Claude Design: one module icon and one vent effect.
 
-## 3. Plasma weapons (new family)
+## 3. Plasma weapons (new family) — after the MVP
 
 **Purpose:** damage that is mostly heat. A plasma ship pushes its target into overheat, so the target goes offline (no engines, no shields). Heat becomes an attack layer, and plasma becomes a capture tool for piracy.
 
@@ -72,7 +72,7 @@ Open points for the owner:
 
 **Cost:** about 1 to 1.5 days with the torpedo (the torpedo needs the M5 munition code first). Claude Design: 2 icons and 4 effects (shot, hit, miss, torpedo).
 
-## 4. Power as an action economy
+## 4. Power as an action economy — built (Q-41, `DECISIONS.md`)
 
 **Now:** power is a fit check. The sum of the draw of modules that are ON must be at or below supply. In combat, toggles are free, and the AI sets them one time. This gives few decisions each turn.
 

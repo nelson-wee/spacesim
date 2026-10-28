@@ -215,6 +215,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 |---|---|---|---|
 | Q-38 | **Combat data.** **Decided (owner, 2026-10-28): proposed default.** The §11.7 and §12.2 values do not agree with the §13.9 checks: idle heat is above cooling for all default loadouts (ships burn without firing), and two autocannons cannot break a Shield S, so battles go to 25 turns. | Keep the M4 tuning (`DECISIONS.md`, M4): `heatScale` 0.5, `damageScale` 2.75, Wasp heat capacity 40, a Raider with a shield, Raider retreat at 50% (brief: 30%) and no fire in retreat. M5 tunes again with all §13.9 pairings and the threat calibration (§10.9). | M4, M5 |
 | Q-39 | **Early losses.** **Decided (owner, 2026-10-28): pirates disable, Clone Insurance.** The starting Shuttle wins about 55% against one Raider (§13.9 band 40–60%), and a loss was game over (§16). A Raider Pair attacks without a tribute demand. | Pirates disable the ship and take all cargo; other losses destroy the ship. Clone Insurance at every dockable location; it covers only the ship; premium by sector security (Secure 2% to Lawless 12%) (`DECISIONS.md`). Built after M4. | M4, M5 |
+| Q-41 | **Power as actions.** **Decided (owner, 2026-10-28).** Power was a fit check only; combat toggles gave no decisions. | Built: available (reserved) / max + capacitor; overdraw drops reserved systems at random until the end of the turn; Capacitor module; reactor S 5; pulse laser power 1 (`DECISIONS.md`). | M4, M5 |
 | Q-40 | **Heat and combat decisions.** Heat does not limit most loadouts in battles of 8–10 turns, so "fire all weapons every turn" wins. **Partly decided (owner, 2026-10-28):** heat split, overheat takes the ship offline, aimed shots use tracking (built, `DECISIONS.md`). | Open: Heat Dump, plasma weapons, power as an action economy, velocity and inertia, skill-gap check, auto-battle. Scope and costs: `docs/proposals/combat-v2.md`. | M5 |
 
 ## 9. Risks
@@ -242,7 +243,8 @@ These items need the repository owner. Claude Code cannot do them.
 6. **Economy checks (M2):** done (Q-31 to Q-35 decided, 2026-10-27). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
 7. **Trade checks (M3):** done (Q-36 and Q-37 decided, 2026-10-28).
 8. **Combat data (M4):** done (Q-38 decided, 2026-10-28). Early losses: done (Q-39 decided, 2026-10-28).
-9. **Combat decisions (M5):** read `docs/proposals/combat-v2.md` and select the items and order for Q-40 before M5 tuning.
+9. **Combat decisions (M5):** read `docs/proposals/combat-v2.md` and select the items and order for Q-40 before M5 tuning. Heat Dump and plasma weapons are after the MVP (owner, 2026-10-28).
+10. **Capacitor icon:** ask Claude Design for a Capacitor icon in `data/art/modules.json` (the game uses a placeholder until then).
 
 ## 11. After the MVP (owner notes)
 
@@ -253,5 +255,7 @@ These items are not in the MVP. Do not build them before the MVP is done. Keep t
 | No career limit | Remove the hard career end at day 730 (§16), so that the player can see how their actions change the world over a long time. | M7: keep the day-730 end in one place (one value in `balance.json`), and keep the economy and world stable past day 730 (`sim-economy` can run longer). |
 | Demand for manufactured goods | Station building, station upgrades, and research use manufactured goods. Until then, a small population demand outside the Core stands in for them (DECISIONS.md, 2026-10-27). | None. |
 | Money for producers | A full money economy (producers and populations hold credits) is not needed for the MVP. Producers use local prices as signals (K*, carriers). | None. |
+| Heat Dump | After the MVP (owner, 2026-10-28). A module that removes a fixed amount of heat at once, with charges per battle (`docs/proposals/combat-v2.md`, Section 2). | Keep heat changes in `heatStep` and orders in `applyOrder`, so a "dump" order is one more order kind. |
+| Plasma weapons | After the MVP (owner, 2026-10-28). Plasma Cannon and Plasma Torpedo: damage mostly as heat; targets overheat and go offline (`docs/proposals/combat-v2.md`, Section 3). | Keep the hit pipeline in `applyHit` so a `heatDamage` field can join it; TU needs a heat term later. |
 | NPC trade agents | Parked until after the MVP (owner, 2026-10-28). Carriers do all background trade in the MVP. Agents are the first item after the MVP (§21, item 1), best after encounters exist, so that pirates can attack real goods. | Keep services, knowledge, and the route planner usable for any Actor (G-07). `tools/lib/traderBot.ts` is a test bot, not agent code. |
 

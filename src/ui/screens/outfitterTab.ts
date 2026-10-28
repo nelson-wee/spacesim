@@ -48,6 +48,12 @@ interface StatRow {
   delta: number;
 }
 
+/** Combat power (Q-41): available (reserved) / max, + capacitor if any. */
+export function powerText(s: ShipStats, compact = false): string {
+  const t = `${s.powerSupply - s.powerReserve} (${s.powerReserve}) / ${s.powerSupply}${s.capacitorCapacity > 0 ? ` + ${s.capacitorCapacity}` : ''}`;
+  return compact ? t.replace(/ /g, '') : t;
+}
+
 /** The stat panel rows of Section 17.3. */
 export function statRows(a: ShipStats, b: ShipStats): StatRow[] {
   const cmp = (x: number, y: number, higherBetter: boolean) => (Math.abs(x - y) < 1e-9 ? 0 : (y > x) === higherBetter ? 1 : -1);
@@ -56,7 +62,8 @@ export function statRows(a: ShipStats, b: ShipStats): StatRow[] {
     { label: 'TWR', old: a.twr.toFixed(2), now: b.twr.toFixed(2), delta: cmp(a.twr, b.twr, true) },
     { label: 'Move', old: String(a.move), now: String(b.move), delta: cmp(a.move, b.move, true) },
     { label: 'Maneuver', old: String(Math.round(a.maneuver)), now: String(Math.round(b.maneuver)), delta: cmp(Math.round(a.maneuver), Math.round(b.maneuver), true) },
-    { label: 'Power', old: `${a.powerDraw}/${a.powerSupply}`, now: `${b.powerDraw}/${b.powerSupply}`, delta: cmp(a.powerSupply - a.powerDraw, b.powerSupply - b.powerDraw, true) },
+    { label: 'Power', old: powerText(a, true), now: powerText(b, true), delta: cmp(a.powerSupply - a.powerReserve, b.powerSupply - b.powerReserve, true) },
+    { label: 'Move+fire', old: String(a.powerMove + a.powerWeapons), now: String(b.powerMove + b.powerWeapons), delta: cmp(a.powerMove + a.powerWeapons, b.powerMove + b.powerWeapons, false) },
     { label: 'Heat/turn', old: `+${a.heatPerTurn.toFixed(0)} c${a.cooling}`, now: `+${b.heatPerTurn.toFixed(0)} c${b.cooling}`, delta: cmp(a.cooling - a.heatPerTurn, b.cooling - b.heatPerTurn, true) },
     { label: 'Fuel/jump', old: a.fuelPerJump.toFixed(1), now: b.fuelPerJump.toFixed(1), delta: cmp(a.fuelPerJump, b.fuelPerJump, false) },
     { label: 'Cargo', old: `${a.cargoCapacity} t`, now: `${b.cargoCapacity} t`, delta: cmp(a.cargoCapacity, b.cargoCapacity, true) },
@@ -175,7 +182,7 @@ export class OutfitterTab implements LocationTab {
     });
     const check = checkLoadout(after ?? ship, data);
     const warn = check.errors[0] ?? check.warnings[0];
-    if (warn) t.text(0, STAT_Y + 3, fit(warn, 100), check.errors.length ? ui.danger : ui.warning);
+    if (warn) t.text(0, STAT_Y + Math.ceil(statRows(a, b).length / 3), fit(warn, 100), check.errors.length ? ui.danger : ui.warning);
     drawKeyHints(
       t,
       ctx.zones,

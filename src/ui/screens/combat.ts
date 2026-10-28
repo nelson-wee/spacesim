@@ -18,9 +18,15 @@ import {
   isDirectWeapon,
   moduleAt,
   moduleSlots,
+  isReserving,
   moveBudget,
+  moveCost,
   overheatTurnsLeft,
+  powerCeiling,
+  powerFree,
+  powerState,
   slotKey,
+  spendPower,
 } from '../../combat/rules';
 import type { Aim, Battle, CombatShip, Effect, Order, SlotRef, Vec2 } from '../../combat/types';
 import type { Game } from '../../core/game';
@@ -56,6 +62,10 @@ export class CombatScreen implements Screen {
   private targetId: number | null = null;
   private aim: Aim = 'hull';
   private notice = '';
+  /** An overdraw waits for confirmation (Q-41): the order that the player must repeat. */
+  private armed: 'move' | 'fire' | null = null;
+  /** The order that the player repeated in this key press. */
+  private confirmed: 'move' | 'fire' | null = null;
   private log: string[] = [];
   private timeline: Timeline | null = null;
   private animStart = 0;
@@ -103,15 +113,44 @@ export class CombatScreen implements Screen {
     });
   }
 
+  /**
+   * An order that needs more power than is free (available + capacitor) takes
+   * power from reserved systems (Q-41). The player confirms it: the same
+   * order again. Returns true if the order may go on.
+   */
+  private overdrawOk(kind: 'move' | 'fire', cost: number): boolean {
+    const me = this.me();
+    const data = this.game.data;
+    const free = powerFree(me, data);
+    if (cost <= free + 1e-9 || cost > powerCeiling(me, data) + 1e-9) return true;
+    if (this.confirmed === kind) return true;
+    this.armed = kind;
+    const n = moduleSlots(me).filter((slot) => {
+      const m = moduleAt(me, slot);
+      return m !== null && m.on && isReserving(m, data) && !me.unpowered.includes(slotKey(slot));
+    }).length;
+    const what = n > 1 ? 'reserved systems (picked at random) lose' : 'the shields lose';
+    this.notice = `${kind === 'move' ? 'The move' : 'The shots'} need${kind === 'move' ? 's' : ''} ${cost} power; ${Math.round(free * 10) / 10} is free. Then ${what} power until the end of the turn. ${kind === 'move' ? 'Enter' : 'F'} again to confirm.`;
+    return false;
+  }
+
+  /** Text for modules that lost power in the preview (Q-41). */
+  private unpoweredText(effects: Effect[]): string {
+    const names = effects.filter((e) => e.kind === 'unpowered').map((e) => moduleShort(this.game.data, (e as { moduleId: string }).moduleId));
+    return names.length > 0 ? ` Overdraw: ${names.join(', ')} without power until the end of the turn.` : '';
+  }
+
   /** Applies a planned toggle or move to the preview, and keeps it for the turn. */
   private plan(order: Order): void {
-    const why = applyOrder(this.preview, this.me(), order, this.game.data, new Rng([1, 2, 3, 4]), []);
+    if (order.kind === 'move' && !this.overdrawOk('move', moveCost(this.me(), this.game.data))) return;
+    const effects: Effect[] = [];
+    const why = applyOrder(this.preview, this.me(), order, this.game.data, new Rng([1, 2, 3, 4]), effects);
     if (why) {
       this.notice = why;
       return;
     }
     this.orders.push(order);
-    this.notice = this.me().status === 'fled' ? 'Flee planned: press E to end the turn and leave the battle (U to undo).' : '';
+    this.notice = (this.me().status === 'fled' ? 'Flee planned: press E to end the turn and leave the battle (U to undo).' : '') + this.unpoweredText(effects);
   }
 
   /**
@@ -144,18 +183,37 @@ export class CombatScreen implements Screen {
       this.notice = this.offlineText();
       return;
     }
-    let n = 0;
-    for (const slot of moduleSlots(me)) {
+    const ready = moduleSlots(me).filter((slot) => {
       const m = moduleAt(me, slot);
-      if (!m || !m.on || !isDirectWeapon(m, data) || me.fired.includes(slotKey(slot))) continue;
+      if (!m || !m.on || !isDirectWeapon(m, data) || me.fired.includes(slotKey(slot))) return false;
       const w = moduleValues(data, m);
-      if (hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data) <= 0) continue;
+      return hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data) > 0;
+    });
+    // Shots pay power (Q-41): with no confirmation, only the shots that free power pays for.
+    const allCost = ready.reduce((sum, slot) => sum + drawOf(moduleAt(me, slot) as NonNullable<ReturnType<typeof moduleAt>>, data), 0);
+    const overdraw = this.overdrawOk('fire', allCost);
+    const armedNotice = this.notice;
+    const effects: Effect[] = [];
+    const rng = new Rng([1, 2, 3, 4]);
+    let n = 0;
+    let unpaid = 0;
+    for (const slot of ready) {
+      const m = moduleAt(me, slot);
+      if (!m) continue;
+      const w = moduleValues(data, m);
+      const cost = drawOf(m, data);
+      if ((!overdraw && cost > powerFree(me, data) + 1e-9) || spendPower(me, cost, data, rng, effects)) {
+        unpaid++;
+        continue;
+      }
       this.orders.push({ kind: 'fire', slot, target: t.id, aim: this.aim });
       me.fired.push(slotKey(slot));
       me.shotHeat += w.heatPerShot ?? 0;
       n++;
     }
-    this.notice = n > 0 ? `${n} shot${n === 1 ? '' : 's'} planned at ${t.name}.` : 'No weapon can hit that target now.';
+    this.notice = n > 0 ? `${n} shot${n === 1 ? '' : 's'} planned at ${t.name}.` : unpaid > 0 ? 'Not sufficient power for a shot.' : 'No weapon can hit that target now.';
+    if (unpaid > 0 && !overdraw) this.notice += ` ${armedNotice}`;
+    this.notice += this.unpoweredText(effects);
     if (n > 0 && heatForecast(me, data) >= combatStats(me, data).heatCapacity) this.notice += ' WARNING: this turn overheats the ship (U to undo).';
   }
 
@@ -368,7 +426,12 @@ export class CombatScreen implements Screen {
     const hotPct = 100 * data.balance.combat.hotShare;
     const label = me.overheated ? `OFF ${overheatTurnsLeft(me, data)}t` : `${Math.round(now)}>${Math.round(pct)}%`;
     t.text(x + 18, y++, label, me.overheated || pct >= 100 ? ui.danger : pct >= hotPct ? color(data, 'hot') : ui.text);
-    line(`Cooling ${st.cooling}/turn  Power ${st.powerDraw}/${st.powerSupply}`);
+    line(`Cooling ${st.cooling}/turn`);
+    // Power (Q-41): available (reserved) / max, + capacitor charge if the ship has one.
+    const pw = powerState(me, data);
+    const num = (v: number) => String(Math.round(v * 10) / 10);
+    t.text(x, y, 'Power ', ui.dim);
+    t.text(x + 6, y++, `${num(Math.max(0, pw.available))} (${num(pw.reserved)}) / ${num(pw.max)}${pw.capacity > 0 ? ` + ${num(pw.stored)}` : ''}`, pw.available <= 1e-9 ? ui.warning : ui.bright);
     y++;
     // Power list.
     const tgt = this.target();
@@ -388,8 +451,11 @@ export class CombatScreen implements Screen {
       drawModuleIcon(t, data, x + 4, rowY, m);
       t.text(x + 10, rowY, fit(moduleShort(data, m.moduleId), 11), m.on ? ui.text : ui.dim);
       const fired = me.fired.includes(slotKey(slot));
-      const info = weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}%` : '--') : `${drawOf(m, data)}p`;
-      t.text(x + 22, rowY, fit(info, 7), weapon && chance > 0 && !fired ? ui.good : ui.dim);
+      const unpowered = me.unpowered.includes(slotKey(slot));
+      const draw = drawOf(m, data);
+      const kind = isReserving(m, data) ? 'res' : moduleValues(data, m).thrust !== undefined ? 'mv' : '';
+      const info = unpowered ? 'no pwr' : weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}% ${draw}p` : `-- ${draw}p`) : `${draw}p ${kind}`;
+      t.text(x + 22, rowY, fit(info, 8), unpowered ? ui.danger : weapon && chance > 0 && !fired ? ui.good : ui.dim);
       zones.add(x, rowY, WIDTH - x, () => this.app.press(press(key)));
     });
     y++;
@@ -430,6 +496,8 @@ export class CombatScreen implements Screen {
       return true;
     }
     if (this.timeline) this.skipEffects();
+    this.confirmed = this.armed;
+    this.armed = null;
     const me = this.me();
     const i = POWER_KEYS.indexOf(k.key);
     if (k.key.length === 1 && i >= 0) {
@@ -483,6 +551,8 @@ export class CombatScreen implements Screen {
   /** A click on the grid: a reachable cell plans a move; any cell moves the cursor. */
   onClick(x: number, y: number): void {
     if (x >= this.preview.width || y >= this.preview.height || this.battle.result) return;
+    this.confirmed = this.armed;
+    this.armed = null;
     this.cursor = { x, y };
     const me = this.me();
     const budget = moveBudget(me, this.game.data);
@@ -493,7 +563,7 @@ export class CombatScreen implements Screen {
     return [
       'COMBAT',
       '',
-      '1-0          Switch a module ON or OFF (free; power must be enough)',
+      '1-0          Switch a module ON or OFF (free)',
       'Arrows       Move the cursor (Shift: 5 cells)',
       'Enter/click  Move the ship (its left cell) to the cursor, or as far',
       '             as it can go toward it this turn',
@@ -505,6 +575,10 @@ export class CombatScreen implements Screen {
       'U            Clear the plan for this turn',
       'Space        Skip the effects',
       '',
+      'Power: available (reserved) / max + capacitor. Shields reserve their',
+      'draw. A move costs the engines\' draw (one time a turn); a shot costs',
+      'the weapon\'s draw. Over the available power: the capacitor pays, then',
+      'reserved systems lose power until the end of the turn (confirm).',
       'Flee: move onto a map edge cell with an engine ON.',
       'Heat: the bar shows the heat after this turn. Hot (70%+) gives -10%',
       'hit and half shield regen. Overheat (100%+) hurts the hull and takes',
@@ -559,6 +633,9 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         break;
       case 'online':
         out.push(`${name(e.shipId)} cools down and is back online.`);
+        break;
+      case 'unpowered':
+        out.push(`${name(e.shipId)} overdraws power: ${moduleShort(data, e.moduleId)} has no power until the end of the turn.`);
         break;
       case 'destroy':
         out.push(`${name(e.shipId)} is ${e.shipId === b.playerId && defeatKind(b) === 'disabled' ? 'disabled' : 'destroyed'}.`);

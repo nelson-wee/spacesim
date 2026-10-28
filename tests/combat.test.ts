@@ -3,7 +3,20 @@ import { createBattle } from '../src/combat/battle';
 import { distance, footprint, lineOfFire, onEdge, pathTo, reachable } from '../src/combat/geometry';
 import { generateCells } from '../src/combat/map';
 import { applyOrder, battleResult, resolveTurn } from '../src/combat/resolver';
-import { applyHit, combatStats, fuelStep, heatState, heatStep, hitChance, moveBudget, shieldStep, toggleModule } from '../src/combat/rules';
+import {
+  applyHit,
+  combatStats,
+  fuelStep,
+  heatState,
+  heatStep,
+  hitChance,
+  moveBudget,
+  powerState,
+  powerStep,
+  shieldStep,
+  spendPower,
+  toggleModule,
+} from '../src/combat/rules';
 import type { Battle, CombatShip, Effect } from '../src/combat/types';
 import { createRngState, Rng } from '../src/core/rng';
 import { gameData } from '../src/data';
@@ -214,21 +227,24 @@ describe('flak (M4-WPN-04)', () => {
 });
 
 describe('power and heat (M4-PWR)', () => {
-  it('a switch ON over supply is refused; OFF weapons cannot fire; a shield that goes ON starts at 0', () => {
+  it('a reserving module ON over the available power is refused; OFF weapons cannot fire; a shield that goes ON starts at 0', () => {
     const b = open();
     const me = P(b);
-    // Shuttle: supply 9, draw 6. A second shield over supply is refused (fill the free slot).
+    // Shuttle: max 6, reserve 2 (shield), available 4.
     me.ship.internal[3] = { moduleId: 'shield_generator', size: 'S', tier: 1, on: false };
     E(b).pos = { x: 15, y: 14 };
-    // Laser OFF: draw 4; a second shield ON: draw 6 <= 9.
     expect(toggleModule(me, { kind: 'hardpoint', index: 0 }, false, data)).toBeNull();
     const why = applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, new Rng(createRngState(1, 'x')), []);
     expect(why).toMatch(/OFF/);
+    // A second shield: reserve 4, available 2.
     expect(toggleModule(me, { kind: 'internal', index: 3 }, true, data)).toBeNull();
-    // Laser ON again: draw 8; a third shield (+2) is over the supply of 9.
+    expect(powerState(me, data)).toMatchObject({ max: 6, reserved: 4, available: 2 });
+    // After 2 power is used this turn, a third shield (+2) is over the available power.
     me.ship.hardpoints[0]!.on = true;
+    me.spent = 2;
     me.ship.internal[4] = { moduleId: 'shield_generator', size: 'S', tier: 1, on: false };
     expect(toggleModule(me, { kind: 'internal', index: 4 }, true, data)).toMatch(/power/);
+    me.spent = 0;
     const shield = me.shield;
     expect(toggleModule(me, { kind: 'internal', index: 2 }, false, data)).toBeNull();
     expect(me.shield).toBeLessThanOrEqual(combatStats(me, data).shieldCapacity);
@@ -334,6 +350,96 @@ describe('power and heat (M4-PWR)', () => {
     const f = me.ship.fuel;
     fuelStep(me, data);
     expect(f - me.ship.fuel).toBeCloseTo(massFactor(combatStats(me, data).mass, data) * c.kCombat);
+  });
+});
+
+describe('power as actions (Q-41)', () => {
+  const rng = () => new Rng(createRngState(4, 'x'));
+
+  it('max = reactors; shields reserve their draw; a move pays the engines one time; a shot pays the weapon', () => {
+    const b = open();
+    const me = P(b);
+    E(b).pos = { x: 15, y: 14 };
+    expect(powerState(me, data)).toMatchObject({ max: 6, reserved: 2, available: 4, stored: 0, capacity: 0 });
+    expect(applyOrder(b, me, { kind: 'move', to: { x: 11, y: 14 } }, data, rng(), [])).toBeNull();
+    expect(powerState(me, data).available).toBe(2);
+    expect(applyOrder(b, me, { kind: 'move', to: { x: 12, y: 14 } }, data, rng(), [])).toBeNull();
+    expect(powerState(me, data).available).toBe(2);
+    expect(applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, rng(), [])).toBeNull();
+    expect(powerState(me, data).available).toBe(1);
+    expect(me.unpowered).toEqual([]);
+  });
+
+  it('an overdraw takes power from the reserve: the shield drops to 0 until the end of the turn', () => {
+    const b = open();
+    const me = P(b);
+    // A second engine: a move costs 4 (all the available power).
+    me.ship.internal[3] = { moduleId: 'engine', size: 'S', tier: 1, on: true };
+    E(b).pos = { x: 15, y: 14 };
+    const effects: Effect[] = [];
+    expect(powerState(me, data)).toMatchObject({ max: 6, reserved: 2, available: 4 });
+    expect(applyOrder(b, me, { kind: 'move', to: { x: 11, y: 14 } }, data, rng(), effects)).toBeNull();
+    expect(me.shield).toBeGreaterThan(0);
+    // Move 4 + laser 1 = 5 > 4: the shield loses power.
+    expect(applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, rng(), effects)).toBeNull();
+    expect(me.unpowered).toEqual(['internal:2']);
+    expect(me.shield).toBe(0);
+    expect(combatStats(me, data).shieldCapacity).toBe(0);
+    expect(effects.some((e) => e.kind === 'unpowered')).toBe(true);
+    // The shield's 2 power paid the last 1; 1 is left. More than that is refused.
+    expect(powerState(me, data)).toMatchObject({ reserved: 0, available: 1 });
+    expect(spendPower(me, 2, data, rng(), effects)).toMatch(/power/);
+    // At the end of the turn the shield has power again (it regenerates from 0).
+    powerStep(me, data);
+    expect(me.unpowered).toEqual([]);
+    expect(me.spent).toBe(0);
+    expect(combatStats(me, data).shieldCapacity).toBeGreaterThan(0);
+  });
+
+  it('two reserving modules: an overdraw takes power from one, at random, until the reserve covers it', () => {
+    const b = open();
+    const me = P(b);
+    me.ship.internal[3] = { moduleId: 'maneuvering_thrusters', size: 'S', tier: 1, on: true };
+    expect(powerState(me, data)).toMatchObject({ reserved: 3, available: 3 });
+    expect(spendPower(me, 4, data, rng(), [])).toBeNull();
+    expect(me.unpowered).toHaveLength(1);
+    expect(powerState(me, data).available).toBeGreaterThanOrEqual(0);
+  });
+
+  it('a capacitor starts full, pays before the reserve, and stores unused power at the end of the turn', () => {
+    const ship = createShipFromLoadout(data, 'start_shuttle', 'p', 'P');
+    ship.internal[3] = { moduleId: 'capacitor', size: 'S', tier: 1, on: true };
+    const b = createBattle({ player: [{ ship, ai: 'human' }], other: [{ ship: createShipFromLoadout(data, 'pirate_raider', 'o', 'O'), ai: 'raider' }], aggressor: 'other', rng: createRngState(1, 'combat') }, data);
+    const me = P(b);
+    expect(powerState(me, data)).toMatchObject({ max: 6, reserved: 2, available: 4, stored: 3, capacity: 3 });
+    expect(spendPower(me, 6, data, rng(), [])).toBeNull();
+    expect(me.stored).toBe(1);
+    expect(me.unpowered).toEqual([]);
+    powerStep(me, data);
+    // Nothing was left: the store stays at 1. Next turn, 3 is not used: the store fills to 3.
+    expect(me.stored).toBe(1);
+    expect(spendPower(me, 1, data, rng(), [])).toBeNull();
+    powerStep(me, data);
+    expect(me.stored).toBe(3);
+  });
+
+  it('the AI never overdraws: no module loses power in AI battles', () => {
+    for (const [player, other] of [['laser_wasp', 'pirate_raider'], ['laser_gunship', 'pirate_raider']] as const) {
+      let b = createBattle(
+        {
+          player: [{ ship: createShipFromLoadout(data, player, 'p', 'P'), ai: 'attack', powerPriority: data.loadoutById.get(player)?.powerPriority }],
+          other: [0, 1].map((i) => ({ ship: createShipFromLoadout(data, other, `o${i}`, 'O'), ai: 'raider' as const, powerPriority: data.loadoutById.get(other)?.powerPriority })),
+          aggressor: 'other',
+          rng: createRngState(12, 'combat'),
+        },
+        data,
+      );
+      while (!b.result) {
+        const out = resolveTurn(b, null, data);
+        expect(out.effects.filter((e) => e.kind === 'unpowered')).toEqual([]);
+        b = out.battle;
+      }
+    }
   });
 });
 

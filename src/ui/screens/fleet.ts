@@ -14,6 +14,7 @@ import type { KeyInput } from '../input';
 import { drawStatusBar } from '../widgets/statusBar';
 import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
+import { powerText } from './outfitterTab';
 
 export class FleetScreen implements Screen {
   private ship = 0;
@@ -74,7 +75,7 @@ export class FleetScreen implements Screen {
     stat('Mass', `${s.mass.toFixed(1)} t (cargo ${s.cargoMass.toFixed(1)} t)`);
     stat('TWR / agility', `${s.twr.toFixed(2)} / ${s.agility.toFixed(2)}`);
     stat('Move / maneuver', `${s.move} / ${Math.round(s.maneuver)}`);
-    stat('Power', `${s.powerDraw}/${s.powerSupply} (all ON ${s.powerDrawAll})`);
+    stat('Power', `${powerText(s)}; a move ${s.powerMove}, all weapons ${s.powerWeapons}`);
     stat('Heat', `+${s.heatPerTurn.toFixed(0)}/turn, cooling ${s.cooling}, capacity ${s.heatCapacity}`);
     stat('Shields', `${s.shieldCapacity} (regen ${s.shieldRegen})`);
     stat('Hull / armor', `${Math.round(ship.hullHp)}/${s.maxHullHp} HP, armor ${s.armor}, plating ${Math.round(ship.armorHp)}/${s.maxArmorHp}`);

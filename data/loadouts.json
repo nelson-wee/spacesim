@@ -87,7 +87,7 @@
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "shield_generator", "size": "S", "tier": 1 },
-        null,
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "engine", "size": "M", "tier": 1 },
         null
       ],
@@ -105,7 +105,7 @@
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "shield_generator", "size": "S", "tier": 1 },
-        null,
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "engine", "size": "M", "tier": 1 },
         null
       ],
@@ -123,7 +123,7 @@
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "shield_generator", "size": "S", "tier": 1 },
-        { "moduleId": "engine", "size": "S", "tier": 1 },
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "engine", "size": "M", "tier": 1 },
         null
       ],
@@ -141,7 +141,7 @@
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "shield_generator", "size": "S", "tier": 1 },
-        { "moduleId": "engine", "size": "S", "tier": 1 },
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "engine", "size": "M", "tier": 1 },
         { "moduleId": "shield_generator", "size": "M", "tier": 1 }
       ],
@@ -154,7 +154,7 @@
       "hardpoints": [{ "moduleId": "point_defense", "size": "S", "tier": 1 }, null],
       "internal": [
         { "moduleId": "reactor", "size": "S", "tier": 1 },
-        { "moduleId": "fuel_tank", "size": "S", "tier": 1 },
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
         { "moduleId": "cargo_rack", "size": "M", "tier": 1 },
         { "moduleId": "fuel_tank", "size": "M", "tier": 1 },
         { "moduleId": "engine", "size": "L", "tier": 1 },

@@ -25,7 +25,7 @@
       "category": "reactor",
       "mainStats": ["powerOutput"],
       "sizes": {
-        "S": { "powerOutput": 8, "power": 0, "heatPerTurn": 1, "mass": 3, "price": 1200 },
+        "S": { "powerOutput": 5, "power": 0, "heatPerTurn": 1, "mass": 3, "price": 1200 },
         "M": { "powerOutput": 18, "power": 0, "heatPerTurn": 2, "mass": 8, "price": 4500 },
         "L": { "powerOutput": 40, "power": 0, "heatPerTurn": 4, "mass": 20, "price": 14000 }
       }
@@ -83,6 +83,19 @@
       "sizes": { "S": { "cooling": 2, "mass": 2, "price": 900 }, "M": { "cooling": 5, "mass": 5, "price": 3000 } }
     },
     {
+      "id": "capacitor",
+      "name": "Capacitor",
+      "slot": "internal",
+      "category": "capacitor",
+      "mainStats": ["capacitorCapacity"],
+      "placeholderIcon": { "family": "internal", "glyph": "≡≡", "fg": "neutralBright" },
+      "sizes": {
+        "S": { "capacitorCapacity": 3, "mass": 1, "price": 1000 },
+        "M": { "capacitorCapacity": 6, "mass": 3, "price": 2500 },
+        "L": { "capacitorCapacity": 12, "mass": 6, "price": 6000 }
+      }
+    },
+    {
       "id": "maneuvering_thrusters",
       "name": "Maneuvering Thrusters",
       "slot": "internal",
@@ -96,7 +109,7 @@
       "slot": "hardpoint",
       "category": "laser",
       "mainStats": ["damage"],
-      "sizes": { "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 2, "heatPerShot": 4, "mass": 1, "price": 2000 } }
+      "sizes": { "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 1, "heatPerShot": 4, "mass": 1, "price": 2000 } }
     },
     {
       "id": "beam_laser",

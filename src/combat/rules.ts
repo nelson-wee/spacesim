@@ -6,6 +6,7 @@ import type { GameData, ModuleValues } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
 import { type ShipStats, shipStats } from '../ship/stats';
 import { lineOfFire } from './geometry';
+import type { Rng } from '../core/rng';
 import type { Aim, Battle, CombatShip, Effect, SlotRef, Vec2 } from './types';
 
 /**
@@ -15,16 +16,101 @@ import type { Aim, Battle, CombatShip, Effect, SlotRef, Vec2 } from './types';
  * heat sinks, radiators, cargo, fuel, reactors) still work (Q-40).
  */
 export function combatStats(s: CombatShip, data: GameData): ShipStats {
-  if (!s.overheated) return shipStats(s.ship, data);
+  if (!s.overheated && s.unpowered.length === 0) return shipStats(s.ship, data);
   const offline = structuredClone(s.ship);
-  for (const m of [...offline.hardpoints, ...offline.internal]) if (m && drawOf(m, data) > 0) m.on = false;
+  const off = (kind: SlotRef['kind']) => (m: InstalledModule | null, index: number) => {
+    if (!m) return;
+    if (s.overheated ? drawOf(m, data) > 0 : s.unpowered.includes(slotKey({ kind, index }))) m.on = false;
+  };
+  offline.hardpoints.forEach(off('hardpoint'));
+  offline.internal.forEach(off('internal'));
   return shipStats(offline, data);
 }
 
-/** Cells the ship can move this turn: 0 with no fuel (Section 8.6), engine value 0 (Q-20), or overheat (Q-40). */
+/**
+ * Cells the ship can move this turn: 0 with no fuel (Section 8.6), engine
+ * value 0 (Q-20), overheat (Q-40), or not sufficient power for the engines
+ * (Q-41; the first move of a turn pays).
+ */
 export function moveBudget(s: CombatShip, data: GameData): number {
   if (s.ship.fuel <= 1e-9 || s.overheated) return 0;
+  if (s.moved === 0 && moveCost(s, data) > powerCeiling(s, data) + 1e-9) return 0;
   return Math.max(0, combatStats(s, data).move - s.moved);
+}
+
+// Power as actions (Q-41). Each turn the reactors give `powerSupply` (max).
+// Modules ON in `reserveCategories` reserve their draw. The rest is available
+// for a move (the engines' draw, one time per turn) and shots (the weapon's
+// draw). An order uses available power first, then the capacitor, then the
+// reserve: reserving modules then lose power at random until the end of the
+// turn (a shield that loses power drops to 0). Power that is not used at the
+// end of the turn charges the capacitor.
+
+export interface PowerState {
+  max: number;
+  reserved: number;
+  /** max - reserved - spent this turn. */
+  available: number;
+  stored: number;
+  capacity: number;
+}
+
+export function powerState(s: CombatShip, data: GameData): PowerState {
+  const st = combatStats(s, data);
+  return { max: st.powerSupply, reserved: st.powerReserve, available: st.powerSupply - st.powerReserve - s.spent, stored: s.stored, capacity: st.capacitorCapacity };
+}
+
+/** The most power one more order can use: available + capacitor + the reserve. */
+export function powerCeiling(s: CombatShip, data: GameData): number {
+  const p = powerState(s, data);
+  return Math.max(0, p.available) + p.stored + p.reserved;
+}
+
+/** Power that an order can use without an overdraw: available + capacitor. */
+export function powerFree(s: CombatShip, data: GameData): number {
+  const p = powerState(s, data);
+  return Math.max(0, p.available) + p.stored;
+}
+
+/** Power of this turn's move (the engines that are ON); 0 after the first move of the turn. */
+export function moveCost(s: CombatShip, data: GameData): number {
+  return s.moved > 0 ? 0 : combatStats(s, data).powerMove;
+}
+
+export function isReserving(m: InstalledModule, data: GameData): boolean {
+  return drawOf(m, data) > 0 && data.balance.combat.reserveCategories.includes(moduleDef(data, m.moduleId).category);
+}
+
+/** Pays `cost`: available power, then the capacitor, then the reserve. Returns why it cannot, or null. */
+export function spendPower(s: CombatShip, cost: number, data: GameData, rng: Rng, effects: Effect[]): string | null {
+  if (cost <= 0) return null;
+  if (cost > powerCeiling(s, data) + 1e-9) return 'Not sufficient power.';
+  const p = powerState(s, data);
+  const fromAvailable = Math.min(cost, Math.max(0, p.available));
+  const fromStore = Math.min(s.stored, cost - fromAvailable);
+  s.stored -= fromStore;
+  s.spent += cost - fromStore;
+  // Overdraw: reserving modules lose power at random until the reserve covers the rest.
+  while (powerState(s, data).available < -1e-9) {
+    const powered = moduleSlots(s).filter((slot) => {
+      const m = moduleAt(s, slot);
+      return m !== null && m.on && isReserving(m, data) && !s.unpowered.includes(slotKey(slot));
+    });
+    if (powered.length === 0) break;
+    const slot = rng.pick(powered);
+    s.unpowered.push(slotKey(slot));
+    effects.push({ kind: 'unpowered', shipId: s.id, moduleId: moduleAt(s, slot)?.moduleId ?? '' });
+    s.shield = Math.min(s.shield, combatStats(s, data).shieldCapacity);
+  }
+  return null;
+}
+
+/** End of the turn: unused power charges the capacitor, and modules that lost power get it back (Q-41). */
+export function powerStep(s: CombatShip, data: GameData): void {
+  const p = powerState(s, data);
+  s.stored = Math.min(p.capacity, s.stored + Math.max(0, p.available));
+  s.spent = 0;
+  s.unpowered = [];
 }
 
 export type HeatState = 'normal' | 'hot' | 'over';
@@ -67,8 +153,9 @@ export function drawOf(m: InstalledModule, data: GameData): number {
 }
 
 /**
- * Switches a module ON or OFF (a free action, Section 11.5). A switch ON that
- * puts the draw above supply is refused. A shield generator that goes ON
+ * Switches a module ON or OFF (a free action, Section 11.5). A reserving
+ * module that goes ON is refused if its draw is above the power that is
+ * available this turn (Q-41); other modules use power only when they act. A shield generator that goes ON
  * starts at 0 points: the pool does not grow. A shield that goes OFF lowers
  * the capacity, and the pool keeps no more than the new capacity.
  */
@@ -76,10 +163,8 @@ export function toggleModule(s: CombatShip, slot: SlotRef, on: boolean, data: Ga
   const m = moduleAt(s, slot);
   if (!m) return 'The slot is empty.';
   if (m.on === on) return null;
-  if (on) {
-    const st = combatStats(s, data);
-    if (st.powerDraw + drawOf(m, data) > st.powerSupply + 1e-9) return 'Not sufficient power.';
-  }
+  if (on && isReserving(m, data) && drawOf(m, data) > powerState(s, data).available + 1e-9) return 'Not sufficient power.';
+  if (!on) s.unpowered = s.unpowered.filter((k) => k !== slotKey(slot));
   m.on = on;
   const cap = combatStats(s, data).shieldCapacity;
   s.shield = Math.min(s.shield, cap);

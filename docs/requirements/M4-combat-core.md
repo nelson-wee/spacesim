@@ -40,7 +40,7 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M4-PWR-01 | At the start of each turn, a ship can switch modules ON and OFF. The draw of modules ON must be ≤ supply. | §11.5 | T |
+| M4-PWR-01 | At the start of each turn, a ship can switch modules ON and OFF. The draw of modules ON must be ≤ supply. Changed by Q-41: power is an action budget (reserve, move cost, shot cost, overdraw, capacitor). | §11.5, Q-41 | T |
 | M4-PWR-02 | Weapons that are OFF cannot fire. A shield generator that goes ON starts at 0 shield points. Engines that are OFF give no thrust; `move` and `maneuver` change at once. | §11.5 | T |
 | M4-PWR-03 | Number keys switch modules ON and OFF in combat. | §17.5 | M |
 | M4-PWR-04 | Heat each turn: `heat + sum(heatPerTurn of modules ON) + sum(heatPerShot of shots) − cooling`. Minimum 0. | §11.6 | T |

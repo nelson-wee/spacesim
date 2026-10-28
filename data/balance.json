@@ -60,6 +60,7 @@
     "overheatRecoverShare": 0.7,
     "debrisFactor": 0.8,
     "moduleAimTracking": 25,
+    "reserveCategories": ["shield", "thrusters", "pointDefense"],
     "kCombat": 0.01,
     "kFlee": 0.1,
     "npcFuelReserve": 5,

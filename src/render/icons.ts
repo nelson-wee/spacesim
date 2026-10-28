@@ -33,7 +33,7 @@ export function byTier(data: GameData, ids: string[]): string[] {
 export function drawModuleIcon(t: Term, data: GameData, x: number, y: number, m: Pick<InstalledModule, 'moduleId' | 'size' | 'tier'> & { on?: boolean }): number {
   const art = data.art.modules;
   const style = data.art.style;
-  const def = art.modules.find((a) => a.id === m.moduleId);
+  const def = art.modules.find((a) => a.id === m.moduleId) ?? data.moduleById.get(m.moduleId)?.placeholderIcon;
   const ui = palette(data).ui;
   if (!def) return t.text(x, y, '?????', ui.dim);
   const family = art.families[def.family];
