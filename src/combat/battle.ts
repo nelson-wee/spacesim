@@ -9,11 +9,14 @@ import { aiPower } from './ai';
 import { blockedCells, fits, footprint, maskSize } from './geometry';
 import { generateCells } from './map';
 import { combatStats } from './rules';
+import type { BattleMapTemplate } from '../data/schemas';
 import type { AiKind, Battle, CombatShip, Faction, Side, Vec2 } from './types';
 
 export interface BattleShipSpec {
   ship: Ship;
   ai: AiKind;
+  /** Patrol AI escort: index of the guarded ship in the same side's list (Section 13.8). */
+  escortOf?: number;
   /** Default: from the AI (Raider: pirate, Trader: trader, else the side). */
   faction?: Faction;
   /** Loadout power priority (loadouts.json); default: the hull's default loadout. */
@@ -26,6 +29,11 @@ export interface BattleSpec {
   aggressor: Side;
   /** The combat RNG state to use (a copy is made). */
   rng: RngState;
+  /** Battle map template (Section 13.1); default: `combat.map`. */
+  map?: BattleMapTemplate;
+  /** Sector of the battle, for reinforcements (Section 13.5). */
+  sectorId?: number;
+  sector?: { securityValue: number; development: 'core' | 'middle' | 'frontier' };
 }
 
 /**
@@ -47,6 +55,72 @@ function factionFor(spec: BattleShipSpec, side: Side): Faction {
   if (spec.ai === 'raider') return 'pirate';
   if (spec.ai === 'trader') return 'trader';
   return side === 'player' ? 'player' : 'patrol';
+}
+
+/** A combat ship from a spec (heat 0, shields set by `readyShip`). */
+function makeCombatShip(sp: BattleShipSpec, side: Side, id: number, mirrored: boolean, data: GameData): CombatShip {
+  return {
+    id,
+    name: sp.ship.name,
+    side,
+    ai: sp.ai,
+    faction: factionFor(sp, side),
+    ship: structuredClone(sp.ship),
+    powerPriority: priorityFor(sp, data),
+    pos: { x: 0, y: 0 },
+    mask: footprint(data, sp.ship.hullId, mirrored),
+    mirrored,
+    heat: 0,
+    shield: 0,
+    overheated: false,
+    status: 'active',
+    moraleRolled: false,
+    attacked: false,
+    retreating: false,
+    escortOf: null,
+    moved: 0,
+    fired: [],
+    shotHeat: 0,
+    spent: 0,
+    stored: 0,
+    unpowered: [],
+    pdShots: {},
+  };
+}
+
+/** AI fuel reserve, power setting, full shields, and a full capacitor. */
+function readyShip(b: Battle, s: CombatShip, data: GameData, rng: Rng): void {
+  const c = data.balance.combat;
+  // AI ships come from outside travel: they have at least a combat fuel reserve.
+  if (s.ai !== 'human') s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
+  const st = combatStats(s, data);
+  if (s.ai !== 'human' || st.powerReserve > st.powerSupply) aiPower(b, s, data, rng, []);
+  const ready = combatStats(s, data);
+  s.shield = ready.shieldCapacity;
+  // Capacitors are charged in travel (Q-41).
+  s.stored = ready.capacitorCapacity;
+}
+
+/**
+ * Reinforcements (Section 13.5): ships join `side` at a random map edge. The
+ * ships get new ids. Returns the new ships.
+ */
+export function addShips(b: Battle, side: Side, specs: BattleShipSpec[], data: GameData, rng: Rng): CombatShip[] {
+  const next = b.ships.reduce((m, s) => Math.max(m, s.id), -1) + 1;
+  const mirrored = side !== 'player';
+  const edge = rng.int(0, 3);
+  const added: CombatShip[] = [];
+  specs.forEach((sp, i) => {
+    const s = makeCombatShip(sp, side, next + i, mirrored, data);
+    const { w, h } = maskSize(s.mask);
+    const along = rng.int(1, Math.max(1, (edge < 2 ? b.width : b.height) - 2));
+    const want = edge === 0 ? { x: along, y: 0 } : edge === 1 ? { x: along, y: b.height - h } : edge === 2 ? { x: 0, y: along } : { x: b.width - w, y: along };
+    b.ships.push(s);
+    s.pos = place(b, s, want);
+    readyShip(b, s, data, rng);
+    added.push(s);
+  });
+  return added;
 }
 
 /** The nearest anchor to `want` where the footprint fits, searched in rings. */
@@ -76,7 +150,7 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
   const b: Battle = {
     width: c.gridWidth,
     height: c.gridHeight,
-    cells: generateCells(data, rng),
+    cells: generateCells(data, rng, spec.map),
     ships: [],
     playerId: 0,
     turn: 0,
@@ -86,6 +160,10 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     log: [],
     munitions: [],
     nextMunitionId: 0,
+    pods: [],
+    sectorId: spec.sectorId ?? null,
+    sector: spec.sector ? { ...spec.sector } : null,
+    reinforced: { patrol: false, pirate: false },
   };
   let id = 0;
   const groups: [Side, BattleShipSpec[]][] = [
@@ -94,35 +172,10 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
   ];
   for (const [side, specs] of groups) {
     const mirrored = side !== 'player';
-    const ships = specs.map((sp) => {
-      const mask = footprint(data, sp.ship.hullId, mirrored);
-      const s: CombatShip = {
-        id: id++,
-        name: sp.ship.name,
-        side,
-        ai: sp.ai,
-        faction: factionFor(sp, side),
-        ship: structuredClone(sp.ship),
-        powerPriority: priorityFor(sp, data),
-        pos: { x: 0, y: 0 },
-        mask,
-        mirrored,
-        heat: 0,
-        shield: 0,
-        overheated: false,
-        status: 'active',
-        moraleRolled: false,
-        attacked: false,
-        retreating: false,
-        moved: 0,
-        fired: [],
-        shotHeat: 0,
-        spent: 0,
-        stored: 0,
-        unpowered: [],
-        pdShots: {},
-      };
-      return s;
+    const ships = specs.map((sp) => makeCombatShip(sp, side, id++, mirrored, data));
+    specs.forEach((sp, i) => {
+      const guard = sp.escortOf === undefined ? undefined : ships[sp.escortOf];
+      if (guard) (ships[i] as CombatShip).escortOf = guard.id;
     });
     // Stack the group in the middle of its side, 2 rows apart.
     const heights = ships.map((s) => maskSize(s.mask).h);
@@ -136,17 +189,7 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
       y += h + 2;
     }
   }
-  const empty: never[] = [];
-  for (const s of b.ships) {
-    // AI ships come from outside travel: they have at least a combat fuel reserve.
-    if (s.ai !== 'human') s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
-    const st = combatStats(s, data);
-    if (s.ai !== 'human' || st.powerReserve > st.powerSupply) aiPower(b, s, data, rng, empty);
-    const ready = combatStats(s, data);
-    s.shield = ready.shieldCapacity;
-    // Capacitors are charged in travel (Q-41).
-    s.stored = ready.capacitorCapacity;
-  }
+  for (const s of b.ships) readyShip(b, s, data, rng);
   return b;
 }
 

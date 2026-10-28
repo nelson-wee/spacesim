@@ -8,6 +8,8 @@ import { advanceClock } from './clock';
 import { EventBus } from './eventBus';
 import { Rng, type StreamName } from './rng';
 import type { GameState } from './types';
+import { notorietyDay } from '../career/notoriety';
+import { securityDay } from '../world/security';
 
 export interface Game {
   state: GameState;
@@ -44,6 +46,9 @@ function dailyTick(game: Game, day: number): void {
   const { world } = game.state;
   economyDay(econContext(world, game.data), world.economy, rng(game, 'economy'));
   decayCargo(game.state.player, game.data);
+  // Security drift and notoriety decay (M5-SEC-02, M5-NOT-01).
+  securityDay(world.sectors, game.data);
+  notorietyDay(game.state.player, game.data);
   game.bus.emit({ type: 'newDay', day });
 }
 

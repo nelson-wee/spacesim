@@ -9,7 +9,7 @@ import type { GameData } from '../data';
 import { tradesAll } from '../econ/markets';
 import { basePrice, priceAt, quoteBuy, quoteSell } from '../econ/prices';
 import { recipeOf } from '../econ/recipes';
-import { done, refused, type ServiceResult, serviceProblem } from './common';
+import { done, isPirateHaven, refused, type ServiceResult, serviceProblem } from './common';
 
 /** What limits a buy: local stock, free cargo tonnes, or credits ("capital"). */
 export type BuyLimit = 'stock' | 'cargo' | 'credits';
@@ -34,6 +34,22 @@ export function marketRole(location: Location, commodity: string, data: GameData
 
 function entryOf(location: Location, commodity: string): MarketEntry | undefined {
   return location.market[commodity];
+}
+
+/**
+ * The entry for a sale. A Pirate Haven buys all cargo (Q-24): a commodity
+ * that it does not trade sells at the base price (a large virtual market, no
+ * stock change).
+ */
+export function sellEntryOf(location: Location, commodity: string, data: GameData): MarketEntry | undefined {
+  const entry = entryOf(location, commodity);
+  if (entry || !isPirateHaven(location, data)) return entry;
+  return { stock: 1e6, target: 1e6, history: [] };
+}
+
+/** Share of the sell price that the location pays: 70% at a Pirate Haven (Q-24), else 100%. */
+export function sellShare(location: Location, data: GameData): number {
+  return isPirateHaven(location, data) ? data.serviceRules.pirateHaven.cargoBuyShare : 1;
 }
 
 /** Most whole units that `credits` buys, unit by unit. */
@@ -98,12 +114,12 @@ export function buy(game: Game, actor: Actor, location: Location, commodity: str
 export function sell(game: Game, actor: Actor, location: Location, commodity: string, units: number): TradeResult {
   const { data } = game;
   const problem = serviceProblem(actor, location, 'market', data);
-  const entry = entryOf(location, commodity);
+  const entry = sellEntryOf(location, commodity, data);
   if (problem) return { ...refused(problem), units: 0, total: 0 };
   if (!entry) return { ...refused(`${location.name} does not buy ${commodityName(data, commodity)}.`), units: 0, total: 0 };
   const n = Math.min(units, fleetUnits(actor, commodity));
   if (n <= 1e-9) return { ...refused(`You have no ${commodityName(data, commodity)}.`), units: 0, total: 0 };
-  const q = quoteSell(entry, basePrice(data, commodity), n, data);
+  const q = { total: quoteSell(entry, basePrice(data, commodity), n, data).total * sellShare(location, data) };
   const debt = Math.max(0, -actor.credits);
   removeCargo(actor, commodity, n);
   entry.stock += n;
@@ -114,9 +130,9 @@ export function sell(game: Game, actor: Actor, location: Location, commodity: st
 
 /** Sell value of the actor's cargo of one commodity here, unit by unit, or null if the location does not trade it. */
 export function cargoSaleValue(actor: Actor, location: Location, commodity: string, data: GameData): number | null {
-  const entry = entryOf(location, commodity);
+  const entry = sellEntryOf(location, commodity, data);
   if (!entry) return null;
-  return quoteSell(entry, basePrice(data, commodity), fleetUnits(actor, commodity), data).total;
+  return quoteSell(entry, basePrice(data, commodity), fleetUnits(actor, commodity), data).total * sellShare(location, data);
 }
 
 /** Profit of a sale against the purchase price, for the Market tab. */

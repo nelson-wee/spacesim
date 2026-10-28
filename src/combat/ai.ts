@@ -5,6 +5,11 @@
 // - Trader: moves to the nearest edge; fires only if attacked.
 // - Attack (the player side in sim-combat): attacks the nearest hostile ship;
 //   keeps the best range; does not retreat.
+// - Patrol (patrols, trader escorts): attacks the nearest hostile ship; keeps
+//   the best range; does not retreat; an escort stays within 6 cells of its
+//   trader.
+// - Evader (pursued pirates): moves to the nearest edge; fires at the player
+//   when in range; surrenders when the engine value is 0 (morale).
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
@@ -134,6 +139,8 @@ export function wantedDistance(s: CombatShip, data: GameData): number {
   return Math.max(1, Math.round(Math.min(...ranges) * data.balance.combat.bestRangeShare));
 }
 
+const ESCORT_RANGE = 6;
+
 /** How far ahead (in turns of movement) the AI looks for a cell with a clear line of fire. */
 const LOOK_AHEAD_TURNS = 4;
 
@@ -143,7 +150,7 @@ const LOOK_AHEAD_TURNS = 4;
  * a move and all those shots.
  */
 function standAndFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameData): boolean {
-  if (!target || s.retreating || s.ai === 'trader') return false;
+  if (!target || s.retreating || s.ai === 'trader' || s.ai === 'evader') return false;
   const weapons = readyWeapons(s, data).map((slot) => moduleAt(s, slot)).filter((m) => m !== null);
   if (weapons.length === 0) return false;
   if (weapons.some((m) => canReach(b, s, m, target, data) <= 0)) return false;
@@ -155,16 +162,19 @@ function aiMove(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
   const budget = moveBudget(s, data);
   if (budget <= 0) return;
   // The AI does not overdraw power to move (Q-41), and it stands to fire when it cannot pay for both.
-  if (moveCost(s, data) > powerFree(s, data) + 1e-9 && !s.retreating && s.ai !== 'trader') return;
+  if (moveCost(s, data) > powerFree(s, data) + 1e-9 && !s.retreating && s.ai !== 'trader' && s.ai !== 'evader') return;
   if (standAndFire(b, s, target, data)) return;
-  const toEdge = s.retreating || s.ai === 'trader';
+  const toEdge = s.retreating || s.ai === 'trader' || s.ai === 'evader';
   const want = wantedDistance(s, data);
+  const guarded = s.escortOf === null ? undefined : b.ships.find((o) => o.id === s.escortOf && isActive(o));
   // Look some turns ahead, so that the ship can go around an asteroid field.
   const reach = reachable(b, s, toEdge ? budget : budget * LOOK_AHEAD_TURNS);
   let goal: Vec2 = s.pos;
   let bestScore = Number.POSITIVE_INFINITY;
   for (const [key, steps] of reach.steps) {
     const at = parseKey(key);
+    // An escort stays within 6 cells of its trader (Section 13.8).
+    if (guarded && distance(s, guarded, at) > ESCORT_RANGE) continue;
     let score: number;
     if (toEdge) score = edgeDistance(b, s, at) * 100 + steps;
     else if (target) {

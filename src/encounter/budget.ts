@@ -3,44 +3,51 @@
 // the budget. The player's ship does not change it (M5-THREAT-04).
 import type { Rng } from '../core/rng';
 import type { Sector } from '../core/types';
+
+/** What the budget needs from a sector (a battle keeps only this, Section 13.5). */
+export type SectorLike = Pick<Sector, 'securityValue' | 'development'>;
 import type { GameData } from '../data';
 import type { TemplateDef } from '../data/schemas';
 import { groupTu, loadoutTu } from '../ship/threat';
 import { securityLevel } from '../world/security';
 
-export function sectorLevel(sector: Sector, data: GameData): number {
+export function sectorLevel(sector: SectorLike, data: GameData): number {
   return securityLevel(sector.securityValue, data);
 }
 
 /** securityBase[level] x devMult[development] (the budget without the random factor). */
-export function budgetMid(sector: Sector, data: GameData): number {
+export function budgetMid(sector: SectorLike, data: GameData): number {
   const b = data.security.pirateBudget;
   return (b.securityBase[sectorLevel(sector, data)] ?? 0) * b.devMult[sector.development];
 }
 
 /** The budget range: mid x random limits, each at least the minimum. */
-export function budgetRange(sector: Sector, data: GameData): [number, number] {
+export function budgetRange(sector: SectorLike, data: GameData): [number, number] {
   const b = data.security.pirateBudget;
   const mid = budgetMid(sector, data);
   return [Math.max(b.min, mid * b.random[0]), Math.max(b.min, mid * b.random[1])];
 }
 
-export function pirateBudget(sector: Sector, rng: Rng, data: GameData): number {
+export function pirateBudget(sector: SectorLike, rng: Rng, data: GameData): number {
   const b = data.security.pirateBudget;
   return Math.max(b.min, budgetMid(sector, data) * rng.range(b.random[0], b.random[1]));
 }
 
-export function patrolBudget(sector: Sector, rng: Rng, data: GameData): number {
+export function patrolBudget(sector: SectorLike, rng: Rng, data: GameData): number {
   const p = data.security.patrolBudget;
   return (p.base[sectorLevel(sector, data)] ?? 0) * rng.range(p.random[0], p.random[1]);
 }
 
-/** Threat band 1 to 5 from the budget midpoint (Q-18). */
-export function threatBand(sector: Sector, data: GameData): number {
-  const mid = budgetMid(sector, data);
+/** Threat band 1 to 5 of a TU value (Q-18 limits). */
+export function bandOf(tu: number, data: GameData): number {
   const limits = data.security.threatBand.limits;
-  const i = limits.findIndex((l) => mid <= l);
+  const i = limits.findIndex((l) => tu <= l);
   return i < 0 ? limits.length + 1 : i + 1;
+}
+
+/** Threat band 1 to 5 from the budget midpoint (Q-18). */
+export function threatBand(sector: SectorLike, data: GameData): number {
+  return bandOf(budgetMid(sector, data), data);
 }
 
 const tuCache = new WeakMap<GameData, Map<string, number>>();
@@ -65,7 +72,7 @@ export function templateTu(t: Pick<TemplateDef, 'ships'>, data: GameData): numbe
 }
 
 /** Pirate templates allowed in a sector (placement rules; named-only templates are not for normal encounters). */
-export function allowedPirateTemplates(sector: Sector, data: GameData): TemplateDef[] {
+export function allowedPirateTemplates(sector: SectorLike, data: GameData): TemplateDef[] {
   const level = sectorLevel(sector, data);
   return data.templates.pirate.filter(
     (t) =>
@@ -93,7 +100,7 @@ export function selectTemplate(templates: TemplateDef[], budget: number, rng: Rn
 }
 
 /** A pirate group for a sector: the budget, then a template (Lone Raider if nothing fits). */
-export function pirateGroup(sector: Sector, rng: Rng, data: GameData): { budget: number; template: TemplateDef } {
+export function pirateGroup(sector: SectorLike, rng: Rng, data: GameData): { budget: number; template: TemplateDef } {
   const budget = pirateBudget(sector, rng, data);
   const allowed = allowedPirateTemplates(sector, data);
   const template = selectTemplate(allowed, budget, rng, data) ?? (allowed[0] as TemplateDef);
@@ -101,7 +108,7 @@ export function pirateGroup(sector: Sector, rng: Rng, data: GameData): { budget:
 }
 
 /** A patrol group (Q-04 interim: the pirate selection rule on the patrol budget). Null in Lawless sectors. */
-export function patrolGroup(sector: Sector, rng: Rng, data: GameData): { budget: number; template: TemplateDef } | null {
+export function patrolGroup(sector: SectorLike, rng: Rng, data: GameData): { budget: number; template: TemplateDef } | null {
   const budget = patrolBudget(sector, rng, data);
   if (budget <= 0) return null;
   const template = selectTemplate(data.templates.patrol, budget, rng, data) ?? data.templates.patrol[0];

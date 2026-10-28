@@ -4,9 +4,9 @@ import { actorPlace, jump, planJump, planSectorTrip, travelInSector } from '../.
 import type { Game } from '../../core/game';
 import type { JumpPoint, Sector } from '../../core/types';
 import type { Term } from '../../render/display';
-import { palette, securityColor } from '../../render/palette';
+import { palette, securityColor, threatBandColor } from '../../render/palette';
 import { lineCells } from '../../world/geometry';
-import { securityLevelInfo } from '../../world/security';
+import { securityLevelInfo, securityTrend } from '../../world/security';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { LOG_Y, MAP_H, MAP_W, MAP_X, MAP_Y, PANEL_W, PANEL_X } from '../layout';
@@ -14,6 +14,8 @@ import { drawKeyHints, press } from '../widgets/clicks';
 import { drawRecentLog, drawStatusBar } from '../widgets/statusBar';
 import { days, fit, fuelLine } from '../widgets/text';
 import { LogScreen } from './log';
+import { HailScreen } from './hail';
+import { budgetRange, threatBand } from '../../encounter/budget';
 
 export class RegionMapScreen implements Screen {
   private selectedSectorId: number | null = null;
@@ -59,11 +61,18 @@ export class RegionMapScreen implements Screen {
     }
     const current = this.currentSectorId();
     const exits = this.exits();
+    const band = data.art.style.threatBand;
     for (const s of sectors) {
       const level = securityLevelInfo(s.securityValue, data).level;
       const sel = s.id === this.selectedSectorId;
       at(s.pos.x, s.pos.y, icons.sector, pal.map.sun, sel ? pal.ui.selectBg : undefined);
       at(s.pos.x + 1, s.pos.y, String(level), securityColor(data, level));
+      // Security trend over 30 days (M5-SEC-03) and the threat band under the name (M5-THREAT-08, Q-18).
+      const trend = securityTrend(s);
+      if (trend !== 0) at(s.pos.x + 2, s.pos.y, trend > 0 ? '↑' : '↓', trend > 0 ? pal.ui.good : pal.ui.danger);
+      const skulls = threatBand(s, data);
+      const bandFg = threatBandColor(data.art.style, skulls);
+      for (let i = 0; i < band.width; i++) at(s.pos.x + 3 + i, s.pos.y + 1, i < skulls ? band.glyph : band.empty, i < skulls ? bandFg : pal.ui.dim);
       // Left of the sector: @ for the player's sector, or the key for a jump to it.
       const exitIndex = exits.findIndex((j) => j.toSectorId === s.id);
       if (exitIndex >= 0) at(s.pos.x - 1, s.pos.y, String(exitIndex + 1), pal.ui.key, pal.ui.keyBg);
@@ -94,6 +103,8 @@ export class RegionMapScreen implements Screen {
 
     line('Region map', pal.ui.title);
     line('* sector  0-4 security level', pal.ui.dim);
+    line('↑↓ security trend (30 days)', pal.ui.dim);
+    line('!!!·· threat band (1-5)', pal.ui.dim);
     line('1-4 jump key  @ you are here', pal.ui.dim);
     y++;
     line('Jumps from here', pal.ui.dim);
@@ -115,7 +126,10 @@ export class RegionMapScreen implements Screen {
       const sec = securityLevelInfo(sel.securityValue, data);
       line(`Sector ${sel.name} (${sel.code})`, pal.ui.highlight);
       line(`Development: ${sel.development}`, pal.development[sel.development]);
-      line(`Security ${sec.level} ${sec.name} (${Math.round(sel.securityValue)})`, securityColor(data, sec.level));
+      const trend = securityTrend(sel);
+      line(`Security ${sec.level} ${sec.name} (${Math.round(sel.securityValue)}) ${trend > 0 ? '↑ rising' : trend < 0 ? '↓ falling' : 'flat'}`, securityColor(data, sec.level));
+      const [lo, hi] = budgetRange(sel, data);
+      line(`Threat band ${threatBand(sel, data)}: pirate groups ${Math.round(lo)}-${Math.round(hi)} TU`, pal.ui.text);
       line(`Baseline ${Math.round(sel.securityBaseline)}, jumps from core ${sel.jumpsFromCore}`, pal.ui.dim);
       line(`Locations: ${sel.locationIds.length}`, pal.ui.dim);
       y++;
@@ -198,15 +212,21 @@ export class RegionMapScreen implements Screen {
     if (!exit) return;
     const atExit = player.position.kind === 'jumpPoint' && player.position.jumpPointId === exit.id;
     if (!atExit) {
-      const out = travelInSector(game, player, { kind: 'jumpPoint', jumpPointId: exit.id });
+      const out = travelInSector(game, player, { kind: 'jumpPoint', jumpPointId: exit.id }, true);
+      if (out.result === 'encounter') {
+        this.app.pop();
+        this.app.push(new HailScreen(this.app, out.encounter));
+        return;
+      }
       if (out.result !== 'arrived') {
         if (out.result === 'refused') game.bus.message(out.reason, 'warning');
         return;
       }
     }
-    const out = jump(game, player);
+    const out = jump(game, player, true);
     if (out.result === 'refused') game.bus.message(out.reason, 'warning');
     this.app.pop();
+    if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
   }
 
   onClick(x: number, y: number): void {

@@ -1,6 +1,11 @@
-// Travel in a sector and jumps between sectors (Sections 8.2 to 8.4, 8.6).
-import { type Game, passTime } from '../core/game';
-import type { Actor, JumpPoint, Lane, Location, Vec } from '../core/types';
+// Travel in a sector and jumps between sectors (Sections 8.2 to 8.4, 8.6),
+// and Hunt (Section 8.8). With `encounters` ON, a sector trip rolls for an
+// encounter at a random point of the trip, a jump rolls on arrival, and Hunt
+// rolls with the Hunt multiplier (Section 10.4); the trip then stops there.
+import { type Encounter, rollEncounter } from '../encounter/encounter';
+import { type Game, passTime, rng } from '../core/game';
+import { dockingRefusal } from '../career/notoriety';
+import type { Actor, JumpPoint, Lane, Location, Sector, Vec } from '../core/types';
 import type { GameData } from '../data';
 import { checkLoadout } from '../ship/rules';
 import { mapDistance } from '../world/geometry';
@@ -29,6 +34,7 @@ export interface TripPlan {
 
 export type TripOutcome =
   | { result: 'arrived'; days: number }
+  | { result: 'encounter'; days: number; encounter: Encounter }
   | { result: 'towed'; days: number; fee: number; locationId: number; soldValue: number }
   | { result: 'refused'; reason: string };
 
@@ -115,6 +121,11 @@ export function planSectorTrip(game: Game, actor: Actor, dest: Destination): Tri
   if (isAt(actor, dest)) return refusedPlan('sector', there.name, 'You are already there.', actor);
   const blocked = loadoutBlock(actor, data);
   if (blocked) return refusedPlan('sector', there.name, blocked, actor);
+  if (dest.kind === 'location') {
+    const loc = game.state.world.locations[dest.locationId] as Location;
+    const refusal = dockingRefusal(actor, loc, game.state.world.sectors[loc.sectorId] as Sector, data);
+    if (refusal) return refusedPlan('sector', there.name, refusal, actor);
+  }
   const stats = fleetTravelStats(actor, data);
   const move = fleetMove(stats);
   if (move <= 0) return refusedPlan('sector', there.name, 'A ship in the fleet cannot move (no engine thrust).', actor);
@@ -210,7 +221,7 @@ function useFuel(actor: Actor, need: number[], share: number): void {
 }
 
 /** Travel in the current sector. If fuel goes to 0, the fleet stops and is towed (Q-11). */
-export function travelInSector(game: Game, actor: Actor, dest: Destination): TripOutcome {
+export function travelInSector(game: Game, actor: Actor, dest: Destination, encounters = false): TripOutcome {
   const { data } = game;
   const plan = planSectorTrip(game, actor, dest);
   if (!plan.possible) return { result: 'refused', reason: plan.reason ?? 'Not possible.' };
@@ -221,6 +232,22 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
   const stats = fleetTravelStats(actor, data);
   const travelNeed = stats.map((s) => sectorTripFuel(plan.distance, s, data));
   const share = completedShare(travelNeed, plan.fuelHave);
+
+  // An encounter at a random point of the trip (Section 10.4). The fleet stops there.
+  if (encounters) {
+    const r = rng(game, 'encounter');
+    const at = r.range(0.2, 0.8);
+    const point = { x: here.point.x + (there.point.x - here.point.x) * at, y: here.point.y + (there.point.y - here.point.y) * at };
+    const sector = game.state.world.sectors[here.sectorId];
+    const enc = sector && at <= share ? rollEncounter('trip', sector, point, actor, game.state.world.locations, r, data) : null;
+    if (enc) {
+      useFuel(actor, travelNeed, at);
+      passTime(game, plan.days * at);
+      actor.position = { kind: 'space', sectorId: here.sectorId, x: point.x, y: point.y };
+      observe(game, actor);
+      return { result: 'encounter', days: plan.days * at, encounter: enc };
+    }
+  }
 
   if (share < 1) {
     useFuel(actor, travelNeed, share);
@@ -263,7 +290,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination): Tri
 }
 
 /** Jump to the connected sector. If fuel goes to 0 in the lane, the fleet is towed to the destination sector (Q-12). */
-export function jump(game: Game, actor: Actor): TripOutcome {
+export function jump(game: Game, actor: Actor, encounters = false): TripOutcome {
   const plan = planJump(game, actor);
   if (!plan.possible) return { result: 'refused', reason: plan.reason ?? 'Not possible.' };
   const route = jumpRoute(game, actor);
@@ -282,5 +309,37 @@ export function jump(game: Game, actor: Actor): TripOutcome {
   actor.position = { kind: 'jumpPoint', jumpPointId: route.to.id };
   observe(game, actor);
   game.bus.message(`You jump to ${plan.destinationName}. The trip takes ${days.toFixed(1)} days.`);
+  // An encounter on sector arrival (Section 10.4).
+  const sector = game.state.world.sectors[route.to.sectorId];
+  if (encounters && sector) {
+    const enc = rollEncounter('arrival', sector, route.to.pos, actor, game.state.world.locations, rng(game, 'encounter'), game.data);
+    if (enc) return { result: 'encounter', days, encounter: enc };
+  }
   return { result: 'arrived', days };
+}
+
+/**
+ * Hunt (Section 8.8, M5-ENC-11): in space or at a jump point, pass 1 day,
+ * use the fuel of 1 day of cruise, and roll for pirates with the Hunt
+ * multiplier.
+ */
+export function hunt(game: Game, actor: Actor): TripOutcome {
+  const { data } = game;
+  if (actor.position.kind === 'docked') return { result: 'refused', reason: 'Undock first: Hunt works in space.' };
+  const blocked = loadoutBlock(actor, data);
+  if (blocked) return { result: 'refused', reason: blocked };
+  const stats = fleetTravelStats(actor, data);
+  const move = fleetMove(stats);
+  if (move <= 0) return { result: 'refused', reason: 'A ship in the fleet cannot move (no engine thrust).' };
+  const distance = data.balance.travel.cruiseFactor * move;
+  const need = stats.map((s) => sectorTripFuel(distance, s, data));
+  if (need.some((n, i) => (actor.fleet[i]?.fuel ?? 0) < n)) return { result: 'refused', reason: 'Not sufficient fuel for a day of Hunt.' };
+  useFuel(actor, need, 1);
+  passTime(game, 1);
+  const place = actorPlace(game, actor);
+  const sector = game.state.world.sectors[place.sectorId];
+  const enc = sector ? rollEncounter('hunt', sector, place.point, actor, game.state.world.locations, rng(game, 'encounter'), data) : null;
+  if (enc) return { result: 'encounter', days: 1, encounter: enc };
+  game.bus.message('You hunt for a day. No pirates come.');
+  return { result: 'arrived', days: 1 };
 }

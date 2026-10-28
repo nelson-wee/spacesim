@@ -87,6 +87,7 @@ export interface GameData {
   security: z.infer<typeof S.securitySchema>;
   templates: z.infer<typeof S.templatesSchema>;
   encounters: z.infer<typeof S.encountersSchema>;
+  battleMaps: z.infer<typeof S.battleMapsSchema>;
   names: z.infer<typeof S.namesSchema>;
   hulls: Hull[];
   hullById: Map<string, Hull>;
@@ -296,6 +297,11 @@ function checkModuleArt(data: GameData): string[] {
     data.balance.threat.referenceLoadout,
   ];
   for (const id of loadoutIds) if (!data.loadoutById.has(id)) problems.push(`templates.json or balance.json: no loadout ${id}`);
+  if (!data.battleMaps.templates.some((t) => t.id === data.battleMaps.default)) problems.push(`battleMaps.json: no default template ${data.battleMaps.default}`);
+  for (const t of data.battleMaps.templates) {
+    for (const p of t.nearPlanets ?? []) if (!data.planetTypeById.has(p)) problems.push(`battleMaps.json: ${t.id} planet type ${p} is not in bodyTypes.json`);
+    for (const st of t.nearStations ?? []) if (!data.stationTypeById.has(st)) problems.push(`battleMaps.json: ${t.id} station type ${st} is not in bodyTypes.json`);
+  }
   const { modules: art, style } = data.art;
   const hasColor = (name: string) => name in style.colors;
   const byId = new Map(art.modules.map((m) => [m.id, m]));
@@ -379,7 +385,6 @@ export function buildGameData(raw: RawData): GameData {
   parse('events.json', S.plannedSchema, raw.events);
 
   parse('contracts.json', S.plannedSchema, raw.contracts);
-  parse('battleMaps.json', S.plannedSchema, raw.battleMaps);
 
   const balance = parse('balance.json', S.balanceSchema, raw.balance);
   // volumeScale multiplies all daily amounts (DECISIONS.md, M2). GameData holds the scaled values.
@@ -408,6 +413,7 @@ export function buildGameData(raw: RawData): GameData {
     security: parse('security.json', S.securitySchema, raw.security),
     templates: parse('templates.json', S.templatesSchema, raw.templates),
     encounters: parse('encounters.json', S.encountersSchema, raw.encounters),
+    battleMaps: parse('battleMaps.json', S.battleMapsSchema, raw.battleMaps),
     names: parse('names.json', S.namesSchema, raw.names),
     hulls,
     hullById: byId(hulls, (h) => h.id, 'hulls.json'),

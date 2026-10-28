@@ -41,6 +41,7 @@ function buildBase(seed: number, rng: Rng, data: GameData): World {
       jumpsFromCore: jumps[id] as number,
       securityBaseline: baseline,
       securityValue: baseline,
+      securityHistory: [],
       locationIds: [],
       jumpPointIds: [],
     };

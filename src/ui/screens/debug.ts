@@ -16,8 +16,14 @@ import { displayDay } from '../../core/clock';
 import { midPrice } from '../../econ/prices';
 import { travelStats } from '../../ship/stats';
 import { startBattle } from '../combatStart';
+import { actorPlace } from '../../actor/travel';
+import { rng } from '../../core/game';
+import type { Sector } from '../../core/types';
+import { templateTu } from '../../encounter/budget';
+import { type Encounter, patrolEncounterOf, pirateEncounterOf, traderEncounter } from '../../encounter/encounter';
+import { HailScreen } from './hail';
 
-type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle';
+type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle' | 'encounter' | 'security';
 
 const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
 const MODULE_PAGE = 5;
@@ -34,6 +40,21 @@ export class DebugScreen implements Screen {
   private battleCount = 1;
   /** Enemy behavior: Raider (pirates disable), Trader, or a hostile patrol (Attack AI; destroys). */
   private battleAi: 'raider' | 'trader' | 'patrol' = 'raider';
+  private encounterRow = 0;
+
+  /** Encounter choices for M5-ENC-12: every pirate and patrol template, and a trader. */
+  private encounterChoices(): { label: string; build: () => Encounter }[] {
+    const game = this.game;
+    const { data, state } = game;
+    const player = state.player;
+    const place = actorPlace(game, player);
+    const sector = state.world.sectors[place.sectorId] as Sector;
+    return [
+      ...data.templates.pirate.map((t) => ({ label: `Pirates: ${t.name} (${Math.round(templateTu(t, data))} TU)`, build: () => pirateEncounterOf(t, sector, place.point, player, data) })),
+      ...data.templates.patrol.map((t) => ({ label: `Patrol: ${t.name} (${Math.round(templateTu(t, data))} TU)`, build: () => patrolEncounterOf(t, sector, place.point, player, data) })),
+      { label: 'Trader (by development; escort by security)', build: () => traderEncounter(sector, place.point, state.world.locations, rng(game, 'encounter'), data) },
+    ];
+  }
 
   constructor(private readonly app: App) {}
 
@@ -63,6 +84,8 @@ export class DebugScreen implements Screen {
         ['8', 'Show all prices'],
         ['9', 'Flagship derived stats'],
         ['0', 'Test battle (your flagship against any loadouts)'],
+        ['E', 'Encounter with any template (hail screen)'],
+        ['S', 'Set the security level of this sector (0-4)'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -79,6 +102,19 @@ export class DebugScreen implements Screen {
     if (this.mode === 'prices') {
       const pages = this.renderPrices(t, x + 2, y + 4, h - 8);
       t.text(x + 2, y + h - 2, `Page ${this.pricePage + 1}/${pages}   Left/Right: page   Esc: back`, ui.highlight);
+      return;
+    }
+    if (this.mode === 'encounter') {
+      // M5-ENC-12: an encounter with any template, in this sector, through the hail screen.
+      t.text(x + 2, y + 4, 'Encounter in this sector (pirates judge the odds against your flagship):', ui.title);
+      this.encounterChoices().forEach((c, i) => t.text(x + 4, y + 6 + i, `${i === this.encounterRow ? '>' : ' '} ${c.label}`, i === this.encounterRow ? ui.bright : ui.text));
+      t.text(x + 2, y + h - 2, 'Up/Down: select   Enter: hail   Esc: back', ui.highlight);
+      return;
+    }
+    if (this.mode === 'security') {
+      const sector = game.state.world.sectors[actorPlace(game, game.state.player).sectorId];
+      t.text(x + 2, y + 4, `${sector?.name ?? '?'}: security ${Math.round(sector?.securityValue ?? 0)}. Press 0-4 to set the level (value = level minimum + 10).`, ui.text);
+      t.text(x + 2, y + h - 2, '0 Lawless  1 Low  2 Medium  3 High  4 Secure   Esc: back', ui.highlight);
       return;
     }
     if (this.mode === 'battle') {
@@ -134,6 +170,30 @@ export class DebugScreen implements Screen {
     }
     if (this.mode === 'ship') {
       if (k.key === 'Escape') this.mode = 'menu';
+      return true;
+    }
+    if (this.mode === 'encounter') {
+      const choices = this.encounterChoices();
+      if (k.key === 'ArrowDown') this.encounterRow = (this.encounterRow + 1) % choices.length;
+      else if (k.key === 'ArrowUp') this.encounterRow = (this.encounterRow + choices.length - 1) % choices.length;
+      else if (k.key === 'Escape') this.mode = 'menu';
+      else if (k.key === 'Enter') {
+        const enc = choices[this.encounterRow]?.build();
+        this.app.pop();
+        if (enc) this.app.push(new HailScreen(this.app, enc));
+      }
+      return true;
+    }
+    if (this.mode === 'security') {
+      if (k.key === 'Escape') this.mode = 'menu';
+      else if (/^[0-4]$/.test(k.key)) {
+        const sector = game.state.world.sectors[actorPlace(game, player).sectorId] as Sector;
+        const min = game.data.security.levels.find((l) => l.level === Number(k.key))?.min ?? 0;
+        sector.securityValue = min + 10;
+        sector.securityBaseline = min + 10;
+        game.bus.message(`[debug] ${sector.name} security set to ${min + 10} (level ${k.key}).`, 'warning');
+        this.mode = 'menu';
+      }
       return true;
     }
     if (this.mode === 'battle') {
@@ -202,6 +262,12 @@ export class DebugScreen implements Screen {
         return true;
       case '9':
         this.mode = 'ship';
+        return true;
+      case 'e':
+        this.mode = 'encounter';
+        return true;
+      case 's':
+        this.mode = 'security';
         return true;
       case '0':
         this.mode = 'battle';

@@ -23,7 +23,7 @@ const DEVS = ['core', 'middle', 'frontier'] as const;
 /** A sector stub at a security level (value = level minimum + 10). */
 function sector(level: number, development: Sector['development']): Sector {
   const min = data.security.levels.find((l) => l.level === level)?.min ?? 0;
-  return { id: 0, name: 'S', code: 'SSS', pos: { x: 0, y: 0 }, star: 'g', development, jumpsFromCore: 0, securityBaseline: min + 10, securityValue: min + 10, locationIds: [], jumpPointIds: [] };
+  return { id: 0, name: 'S', code: 'SSS', pos: { x: 0, y: 0 }, star: 'g', development, jumpsFromCore: 0, securityBaseline: min + 10, securityValue: min + 10, securityHistory: [], locationIds: [], jumpPointIds: [] };
 }
 
 describe('threat units (M5-THREAT-01, M5-THREAT-02)', () => {

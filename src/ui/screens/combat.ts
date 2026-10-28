@@ -50,9 +50,10 @@ const LOG_ROWS = 5;
 const POWER_KEYS = '1234567890';
 
 /** Side color by AI kind (style.json `sides`). */
+/** Art side colors by faction: player, pirate, trader (escorts too), patrol. Allies of the player keep their faction color. */
 function sideOf(s: CombatShip): string {
-  if (s.side === 'player') return 'player';
-  return s.ai === 'trader' ? 'trader' : 'pirate';
+  if (s.ai === 'human') return 'player';
+  return s.faction === 'player' ? 'player' : s.faction;
 }
 
 export class CombatScreen implements Screen {
@@ -297,6 +298,8 @@ export class CombatScreen implements Screen {
         t.put(x, y, '·', ui.dim, ui.raised);
       }
     }
+    // Cargo pods (Section 13.7).
+    for (const pod of b.pods) t.put(pod.pos.x, pod.pos.y, '$', color(data, 'cargoPod'));
     // Ships, then guided munitions (the glyph of effects.json "persist", turned toward the target).
     for (const s of b.ships) this.drawShip(t, s);
     for (const mu of b.munitions) {
@@ -664,6 +667,15 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         break;
       case 'pd':
         out.push(`${name(e.shipId)} point defense: ${e.hit ? 'hit' : 'miss'}`);
+        break;
+      case 'reinforce':
+        out.push(`${e.faction === 'patrol' ? 'A patrol' : 'Pirate reinforcements'} arrive${e.faction === 'patrol' ? 's' : ''}: ${e.shipIds.length} ship${e.shipIds.length === 1 ? '' : 's'} on the ${e.side === 'player' ? 'your' : 'enemy'} side.`);
+        break;
+      case 'pod':
+        out.push(`  ${name(e.shipId)} drops a cargo pod ($).`);
+        break;
+      case 'collect':
+        out.push(`${name(e.shipId)} collects ${e.units} units of cargo.`);
         break;
       case 'munitionDown':
         out.push('  A munition is destroyed.');

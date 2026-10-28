@@ -43,6 +43,16 @@
     "referenceLaneLength": 18.7
   },
   "ship": { "mRef": 10, "engineStackFalloff": 1, "engineValueShare": 0.2 },
+  "notoriety": {
+    "max": 100,
+    "suspect": 25,
+    "wanted": 50,
+    "attackNonPirate": 15,
+    "destroyNonPirate": 10,
+    "aggressorWhenPatrolArrives": 10,
+    "pirateKilledOrCaptured": -3,
+    "perDay": -0.3
+  },
   "threat": {
     "referenceLoadout": "pirate_raider",
     "referenceTu": 10,
@@ -75,6 +85,7 @@
     "bestRangeShare": 0.5,
     "retreatHull": 0.5,
     "moraleHull": 0.25,
+    "podShare": [0.3, 0.6],
     "disabledHullShare": 0.1,
     "surrenderChance": { "trader": 0.7, "evader": 0.6, "raider": 0.4, "patrol": 0, "attack": 0 },
     "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6 }

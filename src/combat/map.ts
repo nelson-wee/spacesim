@@ -1,15 +1,17 @@
 // Battle map (Section 13.1): obstacle clusters from rot.js Map.Cellular, with
 // the random fill from the combat RNG stream. Each cluster is an asteroid
 // field ('#') or a debris cloud (':'). The map edges (a ship flees there) and
-// bands around the two start columns stay open. M4 uses one random layout
-// (templates come in M5).
+// bands around the two start columns stay open. A template (battleMaps.json,
+// Section 13.1) sets the fill and the debris share, and can add a debris band
+// on one edge (Gas Giant Edge). With no template: `combat.map` (M4 layout).
 import { Map as RotMap } from 'rot-js';
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
+import type { BattleMapTemplate } from '../data/schemas';
 
-export function generateCells(data: GameData, rng: Rng): string[] {
+export function generateCells(data: GameData, rng: Rng, template?: BattleMapTemplate): string[] {
   const c = data.balance.combat;
-  const m = c.map;
+  const m = { ...c.map, ...(template ? { fill: template.fill, debrisShare: template.debrisShare } : {}) };
   const w = c.gridWidth;
   const h = c.gridHeight;
   const cellular = new RotMap.Cellular(w, h, { born: [5, 6, 7, 8], survive: [4, 5, 6, 7, 8], topology: 8 });
@@ -53,6 +55,15 @@ export function generateCells(data: GameData, rng: Rng): string[] {
           stack.push([nx, ny]);
         }
       }
+    }
+  }
+  // Gas Giant Edge: a debris band 4-8 cells deep on the top or bottom edge (debris does not block movement).
+  if (template?.band) {
+    const depth = rng.int(template.band[0], template.band[1]);
+    const top = rng.chance(0.5);
+    for (let i = 0; i < depth; i++) {
+      const row = cells[top ? i : h - 1 - i] as string[];
+      for (let x = 0; x < w; x++) if (row[x] === '.') row[x] = ':';
     }
   }
   return cells.map((row) => row.join(''));

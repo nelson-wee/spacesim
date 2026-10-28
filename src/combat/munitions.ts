@@ -176,7 +176,7 @@ export function munitionStep(b: Battle, data: GameData, rng: Rng, effects: Effec
       t.attacked = true;
       if (hit) {
         applyHit(t, w, 'hull', at, data, effects);
-        destroyIfDead(t, effects, b);
+        destroyIfDead(t, effects, b, data);
       }
       continue;
     }

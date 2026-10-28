@@ -6,10 +6,12 @@ import type { GameData } from '../data';
 import { moduleValues } from '../ship/modules';
 import { runAi } from './ai';
 import { cellAt, isActive, lineOfFire, onEdge, pathTo, reachable, shipCells } from './geometry';
+import { reinforcementStep } from './reinforce';
 import { ammoOf, clearMunitionsInArea, inLaunchRange, isGuided, launchMunition, munitionStep } from './munitions';
 import {
   applyHit,
   combatStats,
+  collectPods,
   destroyIfDead,
   hostile,
   fleeFuel,
@@ -35,9 +37,9 @@ export function shipById(b: Battle, id: number): CombatShip | undefined {
   return b.ships.find((s) => s.id === id);
 }
 
-/** True if the ship flees when it reaches an edge cell (the player; retreating ships; traders). */
+/** True if the ship flees when it reaches an edge cell (the player; retreating ships; traders; evaders). */
 function fleesAtEdge(s: CombatShip): boolean {
-  return s.ai === 'human' || s.retreating || s.ai === 'trader';
+  return s.ai === 'human' || s.retreating || s.ai === 'trader' || s.ai === 'evader';
 }
 
 
@@ -59,6 +61,11 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     // The first move of a turn pays the engines' draw (Q-41).
     const noPower = spendPower(s, moveCost(s, data), data, rng, effects);
     if (noPower) return `${noPower} The engines need ${moveCost(s, data)}.`;
+    // Pods under the footprint at each step of the path (Section 13.7).
+    for (const at of path.slice(1)) {
+      s.pos = at;
+      if (b.pods.length > 0) collectPods(b, s, data, effects);
+    }
     s.pos = order.to;
     s.moved += path.length - 1;
     effects.push({ kind: 'move', shipId: s.id, path });
@@ -113,7 +120,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
       o.attacked = true;
       if (rng.chance(w.flatHitChance ?? 0)) {
         applyHit(o, w, 'hull', inArea, data, effects);
-        destroyIfDead(o, effects, b);
+        destroyIfDead(o, effects, b, data);
       }
     }
     return null;
@@ -122,12 +129,12 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   effects.push({ kind: 'shot', shipId: s.id, moduleId: m.moduleId, from: lof.from, to: lof.to, targetId: t.id, hit });
   if (hit) {
     applyHit(t, w, aim, lof.to, data, effects);
-    destroyIfDead(t, effects, b);
+    destroyIfDead(t, effects, b, data);
   }
   return null;
 }
 
-const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack' } as const;
+const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack', patrol: 'patrol', evader: 'evader' } as const;
 
 /** Morale (Section 13.8): one surrender roll when hull falls below moraleHull or the engine value is 0. */
 function moraleStep(b: Battle, s: CombatShip, data: GameData, rng: Rng, effects: Effect[]): void {
@@ -207,10 +214,12 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
   for (const s of b.ships) {
     if (!isActive(s)) continue;
     heatStep(s, data, effects);
-    destroyIfDead(s, effects, b);
+    destroyIfDead(s, effects, b, data);
   }
   for (const s of b.ships) if (isActive(s)) shieldStep(s, data);
   for (const s of b.ships) if (isActive(s)) fuelStep(s, data);
+  // 8. Reinforcements (Section 13.5); 9. morale.
+  if (!b.result) reinforcementStep(b, data, rng, effects);
   for (const s of b.ships) moraleStep(b, s, data, rng, effects);
   b.turn += 1;
   b.result = battleResult(b, data);

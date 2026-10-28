@@ -64,6 +64,17 @@ export const balanceSchema = z.object({
    * firepower uses trackFactor at `trackManeuver` (guided: munition agility), flak `flakTrackFactor`,
    * `ammoFactor` by module id; groupTU = sum x (1 + groupBonus x (count - 1)).
    */
+  /** Section 15 and Q-21: notoriety 0 to max; levels Suspect and Wanted; changes per event and per day. */
+  notoriety: z.object({
+    max: pos,
+    suspect: nonNeg,
+    wanted: nonNeg,
+    attackNonPirate: z.number(),
+    destroyNonPirate: z.number(),
+    aggressorWhenPatrolArrives: z.number(),
+    pirateKilledOrCaptured: z.number(),
+    perDay: z.number(),
+  }),
   threat: z.object({
     referenceLoadout: z.string(),
     referenceTu: pos,
@@ -113,6 +124,8 @@ export const balanceSchema = z.object({
     retreatHull: prob,
     /** Morale (Section 13.8): roll once when hull falls below moraleHull or the engine value is 0. */
     moraleHull: prob,
+    /** A destroyed ship drops this share range of its cargo as one pod (Section 13.7). */
+    podShare: z.tuple([prob, prob]),
     /** A ship that pirates disable keeps this share of its max hull HP (owner, 2026-10-28). */
     disabledHullShare: prob,
     surrenderChance: z.object({ trader: prob, evader: prob, raider: prob, patrol: prob, attack: prob }),
@@ -367,6 +380,24 @@ export const templatesSchema = z.object({
   patrol: z.array(templateSchema).min(1),
 });
 
+/**
+ * Battle map templates (Section 13.1). The nearest location within `nearDistance`
+ * sector cells selects the template by its body type; else `default`. `fill`
+ * is the rot.js cellular fill (0.35: about 3% obstacles; 0.44: 13%; 0.47: 19%).
+ * `band`: a debris band of this depth range on one map edge (Gas Giant Edge).
+ */
+const battleMapTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fill: prob,
+  debrisShare: prob,
+  nearPlanets: z.array(z.string()).optional(),
+  nearStations: z.array(z.string()).optional(),
+  band: z.tuple([z.number().int().positive(), z.number().int().positive()]).optional(),
+});
+export type BattleMapTemplate = z.infer<typeof battleMapTemplateSchema>;
+export const battleMapsSchema = z.object({ nearDistance: pos, default: z.string(), templates: z.array(battleMapTemplateSchema).min(1) });
+
 /** Section 10.4 and Q-15, Q-17. */
 export const encountersSchema = z.object({
   traderChance: prob,
@@ -530,7 +561,8 @@ export const servicesSchema = z.object({
     /** Shipyard trade-in share of hull and module prices (Section 11.1). */
     tradeInShare: prob,
     /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3). */
-    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos }),
+    /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3); they buy all cargo at cargoBuyShare of the local sell price (Q-24). */
+    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos, cargoBuyShare: prob }),
     /** Merchants' Guild live-price range (Section 9.12). */
     guildRangeJumps: z.number().int().nonnegative(),
     /** Days for the trend arrow (Section 9.12). */

@@ -1,13 +1,13 @@
 // Battle state (Section 13). One plain object; the resolver makes a new one
 // each turn (G-13). Ship stats are not stored: they come from the ship copy.
-import type { Ship } from '../core/types';
+import type { CargoLot, Ship } from '../core/types';
 import type { SlotSize, Tier } from '../data';
 import type { RngState } from '../core/rng';
 
 export type Side = 'player' | 'other' | 'neutral';
 
 /** Who decides a ship's orders: the human player, or an AI behavior (Section 13.8, Q-25). */
-export type AiKind = 'human' | 'attack' | 'raider' | 'trader';
+export type AiKind = 'human' | 'attack' | 'raider' | 'trader' | 'patrol' | 'evader';
 
 /** Who a ship belongs to. Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28). */
 export type Faction = 'player' | 'pirate' | 'trader' | 'patrol';
@@ -50,6 +50,8 @@ export interface CombatShip {
   attacked: boolean;
   /** Retreating to the edge (Raider AI below retreatHull). */
   retreating: boolean;
+  /** Patrol AI escort: the id of the trader it guards (stays within 6 cells, Section 13.8). */
+  escortOf: number | null;
   /** Cells moved this turn, and weapons fired this turn ("kind:index"). */
   moved: number;
   fired: string[];
@@ -100,6 +102,20 @@ export interface Battle {
   log: string[];
   munitions: Munition[];
   nextMunitionId: number;
+  /** Cargo pods of destroyed ships (Section 13.7). */
+  pods: CargoPod[];
+  /** The sector of the battle, for reinforcements (null in test battles with no sector). */
+  sectorId: number | null;
+  /** Its security value and development at the battle start (reinforcement budgets, Section 13.5). */
+  sector: { securityValue: number; development: 'core' | 'middle' | 'frontier' } | null;
+  /** Reinforcement groups that arrived (one of each type, Section 13.5). */
+  reinforced: { patrol: boolean; pirate: boolean };
+}
+
+/** A cargo pod ($): a ship collects it when it moves onto it (Section 13.7). */
+export interface CargoPod {
+  pos: Vec2;
+  cargo: Record<string, CargoLot>;
 }
 
 export type Aim = 'hull' | 'engines';
@@ -127,6 +143,9 @@ export type Effect =
   | { kind: 'pd'; shipId: number; munitionId: number; from: Vec2; to: Vec2; hit: boolean }
   | { kind: 'munitionDown'; munitionId: number; at: Vec2 }
   | { kind: 'munitionLost'; munitionId: number; at: Vec2 }
+  | { kind: 'pod'; shipId: number; at: Vec2 }
+  | { kind: 'reinforce'; side: Side; faction: Faction; shipIds: number[] }
+  | { kind: 'collect'; shipId: number; units: number }
   | { kind: 'destroy'; shipId: number }
   | { kind: 'flee'; shipId: number }
   | { kind: 'surrender'; shipId: number };

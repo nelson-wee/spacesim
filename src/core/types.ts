@@ -23,6 +23,8 @@ export interface Sector {
   jumpsFromCore: number;
   securityBaseline: number;
   securityValue: number;
+  /** Security value at the end of each of the last `trendDays` days, oldest first (M5-SEC-03). */
+  securityHistory: number[];
   locationIds: number[];
   jumpPointIds: number[];
 }
