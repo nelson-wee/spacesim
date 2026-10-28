@@ -49,7 +49,7 @@ export class DebugScreen implements Screen {
     const y = 3;
     const w = WIDTH - 8;
     const h = HEIGHT - 6;
-    t.box(x, y, w, h, ui.warning, 'DEBUG (development build only)', ui.warning, 'modal');
+    t.box(x, y, w, h, ui.warning, 'DEBUG (development build or ?debug)', ui.warning, 'modal');
     t.text(x + 2, y + 2, `Seed ${game.state.seed}   World seed used ${game.state.world.generator.seedUsed}`, ui.bright);
     if (this.mode === 'menu') {
       const items = [

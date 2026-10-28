@@ -17,7 +17,7 @@
 | M5-GUIDE-03 | When a munition reaches a cell next to the target footprint, roll `hit = agility / (agility + target.maneuver)`. Hit or miss, remove the munition. | §12.4 | T |
 | M5-GUIDE-04 | When `life` reaches 0, remove the munition. Munitions have HP (missile 1, torpedo 10). | §12.2, §12.4 | T |
 | M5-GUIDE-05 | Ammunition: Missile Rack 8, Torpedo Tube 3. A weapon with 0 ammunition cannot fire. The Mechanic refills ammunition for a price. | §12.2, §7.4 | T |
-| M5-GUIDE-06 | Point defense fires automatically in the point defense step: up to 2 shots per turn at munitions in range 3. Each shot: 50% chance, 10 damage. Heat 1 per shot. | §12.2, §13.3 | T |
+| M5-GUIDE-06 | Point defense fires automatically in the point defense step: up to 2 shots per turn at munitions in range 3. Each shot: 50% chance, 10 damage. Heat 1 per shot. Changed by Q-44: point defense fires during the munition move. When a munition comes within range 3 of a point defense ship, that ship's point defense fires (up to its 2 shots per turn in total) before the hit roll. It fires only at munitions, never at ships. | §12.2, §13.3, Q-44 | T |
 | M5-GUIDE-07 | Flak destroys all munitions in its 3 × 3 area. | §12.2 | T |
 | M5-GUIDE-08 | Effects: missile `o` and torpedo `0` with a `.` trail (30 ms per cell). Point defense: short `'` line, then `*`. | §18.4 | M |
 

@@ -119,7 +119,7 @@ This is the part of `ship/stats.ts` that travel needs. M3 completes it.
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M1-DBG-01 | `F12` or `~` opens the debug panel in development builds only. | §4.3 | M |
+| M1-DBG-01 | `F12` or `~` opens the debug panel in development builds only. Changed by Q-44 (owner): also in any build with `?debug` in the URL. | §4.3, Q-44 | M |
 | M1-DBG-02 | Debug actions: add credits, set fuel, teleport to a location, skip N days, show the seed. | §4.3 | M |
 | M1-DBG-03 | Later milestones add: show all prices (M2), set sector security (M5), start a test battle (M4, M5), spawn a contract (M7). | §4.3 | I |
 

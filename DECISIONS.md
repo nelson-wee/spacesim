@@ -318,6 +318,11 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-28 [§12.2] Pulse Laser damage 5 → 4. Reason: hitscan raised Shuttle vs Raider to 70% (band 40-60%). Damage 4.5: 63%; laser range penalty 0.2: 66%; damage 4: 52% (300 battles).
 - 2026-10-28 `sim-combat` and other tools: `--override` patches items in id lists by id (for example one hull or one module size). Reason: tuning sweeps of one module without a data edit.
 
+## Point defense and the debug flag (owner, 2026-10-28, Q-44)
+
+- 2026-10-28 [owner, §12.2, §13.3] Point defense fires during the munition move (M5): when a munition comes within range 3 of a ship with point defense, the point defense fires (up to 2 shots per turn per module) before the hit roll. It fires only at munitions, not at ships. Reason: with the §13.3 order (munitions move and hit, then point defense), a missile at speed 6 usually hits before point defense can fire. Flak keeps the close anti-ship role.
+- 2026-10-28 [owner, §4.3] The debug panel also opens in a production build when the URL has `?debug` (for example the GitHub Pages site with `?debug`). Reason: owner playtests on the deployed site. Without the flag, the deployed game has no debug panel (§4.3).
+
 ## Cuts
 
 None.

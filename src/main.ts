@@ -32,7 +32,8 @@ async function main(): Promise<void> {
 
   const app = new App(new Term(display, ui.background, style.frame), data);
   app.helpScreen = (a, lines) => new HelpScreen(a, lines);
-  if (import.meta.env.DEV) {
+  // The debug panel: development builds, or any build with "?debug" in the URL (owner, 2026-10-28).
+  if (import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug')) {
     const { DebugScreen } = await import('./ui/screens/debug');
     app.debugScreen = (a) => new DebugScreen(a);
   }
