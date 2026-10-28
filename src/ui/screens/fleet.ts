@@ -12,6 +12,7 @@ import { travelStats } from '../../ship/stats';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { drawStatusBar } from '../widgets/statusBar';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
 
 export class FleetScreen implements Screen {
@@ -34,6 +35,9 @@ export class FleetScreen implements Screen {
     t.text(0, 2, 'Fleet and cargo', ui.title);
     actor.fleet.forEach((s, i) => {
       t.text(20 + i * 22, 2, fit(`${i === actor.flagshipIndex ? '*' : ' '}${s.name}`, 20), i === this.ship ? ui.bright : ui.dim, i === this.ship ? ui.selectBg : undefined);
+      this.app.zones.add(20 + i * 22, 2, 20, () => {
+        this.ship = i;
+      });
     });
     t.hline(3, 0, 99, '─', ui.border);
     const ship = actor.fleet[this.ship] as Ship;
@@ -94,23 +98,19 @@ export class FleetScreen implements Screen {
       t.text(x + 23, y, (lot.units * (com?.massPerUnit ?? 0)).toFixed(1).padStart(6), ui.text);
       t.text(x + 30, y++, String(Math.round(lot.unitCost)).padStart(9), ui.text);
     }
-    let kx = 0;
-    for (const [key, text] of [['[ ]', 'Ship'], ['Esc', 'Back']] as const) {
-      kx = t.key(kx, HEIGHT - 1, key, ui.key, ui.keyBg);
-      kx = t.text(kx, HEIGHT - 1, ` ${text}  `, ui.text);
-    }
+    drawKeyHints(t, this.app.zones, 0, HEIGHT - 1, [['Left/Right', 'Ship', press('ArrowRight')], ['Esc', 'Back', press('Escape')]], ui, this.app.press);
   }
 
   onKey(k: KeyInput): boolean {
     const n = this.game.state.player.fleet.length;
-    if (k.key === '[') this.ship = Math.max(0, this.ship - 1);
-    else if (k.key === ']') this.ship = Math.min(n - 1, this.ship + 1);
+    if (k.key === '[' || k.key === 'ArrowLeft') this.ship = Math.max(0, this.ship - 1);
+    else if (k.key === ']' || k.key === 'ArrowRight') this.ship = Math.min(n - 1, this.ship + 1);
     else if (k.key === 'i') this.app.pop();
     else return false;
     return true;
   }
 
   help(): string[] {
-    return ['FLEET AND CARGO', '', '[ ]   Select a ship', 'Esc   Back', '', 'Select a flagship, move cargo, and sell ships come with fleets (M6).'];
+    return ['FLEET AND CARGO', '', 'Left/Right, [ ]   Select a ship (or click its name)', 'Esc   Back', '', 'Select a flagship, move cargo, and sell ships come with fleets (M6).'];
   }
 }

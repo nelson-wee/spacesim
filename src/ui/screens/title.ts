@@ -41,6 +41,7 @@ export class TitleScreen implements Screen {
       if (active) t.key(30, 18 + i * 2, ` ${key} `, ui.key, ui.keyBg);
       else t.text(30, 18 + i * 2, ` ${key} `, ui.dim);
       t.text(34, 18 + i * 2, text, active ? ui.bright : ui.dim);
+      if (active && !this.seedInput) this.app.zones.add(30, 18 + i * 2, 4 + text.length, () => this.app.press({ key: key.toLowerCase(), shift: false, ctrl: false }));
     });
 
     if (this.seedInput) {

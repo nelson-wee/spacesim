@@ -115,7 +115,7 @@
 
 ## 7. Stretch goal: NPC trade agents (§9.9)
 
-Build this only if all exit checks pass early on Day 2. If not, it is the first item after the MVP (§21, item 1). The code must allow agents later: they are Actors and use the same services (G-07).
+**Parked until after the MVP (owner, 2026-10-28).** Build this only if all exit checks pass early on Day 2. If not, it is the first item after the MVP (§21, item 1). The code must allow agents later: they are Actors and use the same services (G-07).
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|

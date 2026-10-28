@@ -7,7 +7,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
-| M4 Combat core | 4 | Not started | — |
+| M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Not started | — |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
 | M7 Contracts, career, save | 7 | Not started | — |
@@ -210,14 +210,14 @@ Claude Design gave the ship art (`data/art/ships.yaml`) and the style (`data/art
 
 | # | Check | Result | Value |
 |---|---|---|---|
-| 1 | Light Freighter (owner definition, Q-36): median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150. | PASS | Median day 82; 19 of 20 seeds by day 150 (the last at day 138). Report: 11 of 20 in day 60–120 (6 early, days 36–57). |
+| 1 | Light Freighter (owner definition, Q-36): median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150. | PASS | Median day 91; 18 of 20 seeds by day 150. Report: 13 of 20 in day 60–120. (Best routes from producers only, 2026-10-28; before: median 82, 19 of 20.) |
 | 2 | `ship-report` gives the §11.4 values (±1). | PASS | 12 of 12 rows |
 | 3 | All default loadouts are valid. | PASS | 18 of 18 (test and `ship-report`) |
 | 4 | Starting ship range 4–6 jumps. | PASS | 5.00 jumps |
 | 5 | Laden Heavy Freighter about 3× the fuel per jump of an empty Shuttle. | PASS | 18.00 / 6.00 = 3.00 |
 | 6 | `PROGRESS.md` is updated. | PASS | This file |
 
-Monitor (not a gate): Shuttle profit per day in the first 30 days, median 295 cr (20 seeds; §22 target 100–250 on a good raw-goods route). The bot trades raw goods in one sector and small lots of advanced goods; the early limit is mostly cargo, sometimes capital.
+Monitor (not a gate): Shuttle profit per day in the first 30 days, median 189 cr (20 seeds; §22 target 100–250 on a good raw-goods route). It was 295 cr before best routes had to start where the good is made. The bot trades raw goods in one sector and small lots of advanced goods; the early limit is mostly cargo, sometimes capital.
 
 ### Carrier margin and the first upgrade (20 seeds, 130 days)
 
@@ -236,7 +236,90 @@ The bot found that the M2 carrier margin (25% on all goods) left large gaps on g
 - `npm test`: 662 tests pass (19 service tests, 8 knowledge and route tests).
 - `npm run sim-economy -- 1000 20` with the M3 carrier values: all 4 pass/fail checks pass (20 of 20). Reports: 9 commodity-seeds of 240 at the clamp on more than 20% of days (mostly Oxygen); busts on 4 of 20 seeds (Machine Works 73–294 days, a biolab 63 days); gradient 18 of 20; routes 20 of 20; raw-goods band 14 of 20; chain shock Alloys +0% to +14%, back in 2–3 days.
 - `npm run ship-report`: all PASS.
-- `npm run sim-trader -- 20 1 150`: PASS (see the exit checks). Run time 299 s.
+- `npm run sim-trader -- 20 1 150`: PASS (see the exit checks). Run time 116 s.
+
+### Owner feedback (2026-10-28)
+
+- Click zones and arrow keys on all screens (tabs, rows, Ledger cells, key hints, sector and region map lists).
+- Technical names: sector codes and location codes ("SEL-O2") on all trade screens; the Ledger groups its columns by sector.
+- Best routes start only where the good is made, or at a Trade Hub.
+- `npm test`: 666 tests pass.
+
+## M4 Combat core (2026-10-28)
+
+### What works
+
+- **Combat simulation (`src/combat/`, headless):** 70 x 30 grid with asteroid and debris clusters (rot.js `Map.Cellular` with the combat RNG stream), multi-cell ships with footprints from the battle art (mirrored on the right), Chebyshev distance, lines of fire, movement with the full footprint, power toggles (supply rule; shields start at 0; engines OFF stop the ship), heat (Hot, Overheat), hit chance (track, range, heat, debris, clamp; engine shots x 0.85), the damage pipeline (shields, vs shield, vs hull, armor, armor pierce, minimum 1, Armor Plating HP), flak, shield regeneration, fuel per turn and per flee, morale, battle end (win, loss, flee at an edge, draw at 25 turns, surrender).
+- **Resolver:** a pure function of the battle state and the player orders; it returns the new state and the effects, and uses only the battle's combat RNG state. The same seed and orders give the same result (test).
+- **AI:** power use by loadout priority, Raider (most cargo, best range, retreat), Trader (to the edge, fires only if attacked), Attack (the player side in `sim-combat`, Q-25). The AI looks up to 4 turns ahead to go around asteroid fields.
+- **Combat screen:** grid, right panel (hull, shields, armor, engine, move, fuel, heat bar from `style.json`, power list with number keys, module icons and states, hit chance per weapon), target brackets and line of fire, reachable cells, cursor, battle log. Keys and clicks: 1-0 power, arrows and Enter or a click to move, Tab or a click to target, F fire, A Hull/Engines, E end turn, U undo, Space skip effects. Effects from `effects.json` play after each turn (shots, flak, shields, hull, armor, engine, destroy, surrender).
+- **Debug panel:** item 0 starts a test battle of the flagship against 1-3 ships of any loadout (Raider or Trader AI).
+- **Tool:** `npm run sim-combat -- [battles]`.
+
+### What does not work yet
+
+- Guided weapons, point defense, reinforcements, Patrol and Evader AI, map templates, loot, encounters, the hail screen (M5).
+- Fleet rules in combat (M6). Damage and heat display on the ship art (M8).
+- Battles start only from the debug panel until M5.
+
+### Known issues
+
+- Q-38 (accepted): the brief's heat and damage values did not fit the §13.9 checks. The M4 tuning changes them.
+- Heat has small effect in battles of 8-10 turns: with all weapons on, the Shuttle, the Raider, and most ballistic loadouts do not become Hot before turn 14. Only laser loadouts on Gunships and larger ships overheat (turn 8-12). The owner reviews a heat change before M5 tuning.
+- The laser Wasp pairing passes with a small margin (52%; band 50-70%). M5 tunes all pairings again.
+- `sim-combat` takes about 2 minutes for 500 battles of 5 pairings (the AI look-ahead).
+- Patrol Cutter idle heat (5.5) is still above its cooling (4) after `heatScale`; M5 checks it with the patrol pairings.
+
+### Exit checks
+
+| # | Check | Result | Value |
+|---|---|---|---|
+| 1 | The player can win, lose, and flee against 1 to 3 Raiders. | PASS | Browser test battles: a win and losses against 1 Raider, a flee from 2 Raiders (the ship leaves at the map edge; fuel goes down). `sim-combat`: wins and losses against 1 and 2 Raiders; a Laser Gunship wins 18% against 3 Raiders. |
+| 2 | Power and heat rules work. | PASS | `tests/combat.test.ts` (power supply, OFF weapons, shields, engines, heat states, overheat damage and reset, fuel). |
+| 3 | Starting Shuttle vs 1 Pirate Raider: Shuttle wins 40%-60%. | PASS | 55% (500 battles), median 10 turns |
+| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%-70%. | PASS | 52% (500 battles), median 8 turns |
+| 5 | `PROGRESS.md` is updated with the `sim-combat.ts` results. | PASS | This file |
+
+Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the five pairings.
+
+### sim-combat (500 battles per pairing)
+
+| Pairing | Win | Loss | Player fled | Draw | Wins by surrender / enemy fled | Median turns |
+|---|---|---|---|---|---|---|
+| Starting Shuttle vs 1 Pirate Raider | 55% | 45% | 0% | 0% | 62 / 178 | 10 |
+| Laser Wasp vs 2 Pirate Raiders | 52% | 48% | 0% | 0% | 76 / 232 | 8 |
+| Starting Shuttle vs 3 Raiders (report) | 0% | 100% | 0% | 0% | 0 / 0 | 5 |
+| Laser Gunship vs 3 Raiders (report) | 18% | 82% | 0% | 0% | 31 / 32 | 7 |
+| Laser Gunship vs Light Freighter trader (report) | 100% | 0% | 0% | 0% | 0 / 500 | 3 |
+
+### Tuning steps (Q-38)
+
+| Setting | Shuttle vs Raider | Wasp vs 2 Raiders |
+|---|---|---|
+| Brief values (after AI fixes) | 95% (the Raider burns from heat) | 32% |
+| Heat fixed, damage x1 | 9% wins, 91% draws | 0% wins, 94% draws |
+| Heat fixed, damage x3, Raider with 2 autocannons | 57% | 21% |
+| + pulse laser heat 2 (now from heatScale 0.5) | 61% | 48% |
+| + Wasp heat capacity 40, Raider with shield, retreat at 50%, no fire in retreat, damage x2.75 (build) | 55% | 52% |
+
+### Tool results
+
+- `npm test`: 688 tests pass (21 combat tests).
+- `npm run ship-report`: all PASS (the heat column now shows heat x `heatScale`).
+- `npm run sim-combat`: see above.
+
+## After M4: owner changes (2026-10-28)
+
+### Defeat and Clone Insurance (Q-39)
+
+- **Works:**
+  - A loss against pirates only disables the ship. The pirates take all cargo, the ship keeps 10% hull, and a tug tows the fleet. The combat screen shows "disabled", the ship's engines go dark, and there is no explosion.
+  - Other losses destroy the ship. With a policy, the clone wakes at the insuring location with the insured ship; the player keeps the credits. Without a policy, the game ends.
+  - Insurance tab at every dockable location: policy, quote, premium by security level (Secure 2% to Lawless 12%). The status bar shows "Insured" or "Not insured".
+  - Debug test battle: the enemy AI can be Raider, Trader, or Patrol (a hostile patrol destroys).
+- **Browser check:** insure at a Secure station (318 cr for the starting Shuttle), lose to 3 Raiders (disabled, towed, no game over), lose to a patrol (the clone wakes at the station). Owner confirmations of 2026-10-28 (credits do not change, insurance also at planets) are covered by tests. No page errors.
+- **Tool results:** `npm test`: 697 tests pass (9 new in `tests/defeat.test.ts`). `npm run build`: passes.
+- **Open:** Q-40 (heat and combat decisions) waits on the owner.
 
 <!--
 Template for each milestone:

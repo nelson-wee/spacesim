@@ -34,6 +34,7 @@ export function drawStatusBar(t: Term, game: Game): void {
     .map((s) => `${s.fuel.toFixed(1)}/${travelStats(s, data).fuelCapacity}`)
     .join(' ');
   part('Fuel ', fuel);
+  part('', actor.insurance ? 'Insured' : 'Not insured', actor.insurance ? ui.good : ui.warning);
   part('', placeName(game, actor.position), ui.title);
   t.hline(STATUS_Y + 1, 0, WIDTH - 1, '─', ui.border);
 }

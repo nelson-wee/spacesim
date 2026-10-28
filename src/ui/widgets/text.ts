@@ -1,13 +1,13 @@
 // Text for places and plans.
 import type { Game } from '../../core/game';
 import type { Position } from '../../core/types';
+import { locationCode } from '../../world/codes';
 
 export function placeName(game: Game, p: Position): string {
   const { world } = game.state;
   if (p.kind === 'docked') {
     const loc = world.locations[p.locationId];
-    const sector = loc ? world.sectors[loc.sectorId] : undefined;
-    return `Docked at ${loc?.name ?? '?'} (${sector?.name ?? '?'})`;
+    return loc ? `Docked at ${loc.name} (${locationCode(world, loc, game.data)})` : 'Docked';
   }
   if (p.kind === 'jumpPoint') {
     const jp = world.jumpPoints[p.jumpPointId];

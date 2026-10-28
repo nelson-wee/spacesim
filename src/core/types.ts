@@ -4,7 +4,7 @@ import type { Development, SlotSize, Tier } from '../data';
 import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 4;
 
 export interface Vec {
   x: number;
@@ -14,6 +14,8 @@ export interface Vec {
 export interface Sector {
   id: number;
   name: string;
+  /** Unique 3-letter code for technical names (src/world/codes.ts). */
+  code: string;
   /** Cell on the region map. */
   pos: Vec;
   star: string;
@@ -160,6 +162,18 @@ export type Position =
   | { kind: 'jumpPoint'; jumpPointId: number }
   | { kind: 'space'; sectorId: number; x: number; y: number };
 
+/**
+ * Clone Insurance (owner, 2026-10-28). If the last ship is destroyed, the
+ * actor wakes at `locationId` with a new copy of `ship`. Credits do not change.
+ */
+export interface InsurancePolicy {
+  locationId: number;
+  day: number;
+  /** The insured hull and loadout (no cargo). */
+  ship: Ship;
+  premium: number;
+}
+
 export interface Actor {
   id: string;
   name: string;
@@ -170,6 +184,7 @@ export interface Actor {
   position: Position;
   /** Known prices and map knowledge (Section 9.12). */
   knowledge: Knowledge;
+  insurance: InsurancePolicy | null;
 }
 
 export type LogKind = 'info' | 'good' | 'warning' | 'danger';

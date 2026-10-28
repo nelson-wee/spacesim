@@ -18,12 +18,14 @@ import { report } from '../../services/common';
 import { marketRole } from '../../services/market';
 import { quoteRefuel, refuel } from '../../services/refuel';
 import { ringPoint } from '../../world/geometry';
+import { shortCode } from '../../world/codes';
 import { locationTypeName } from '../../world/location';
 import { securityLevelInfo } from '../../world/security';
 import { sectorCenter } from '../../world/bodies';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
 import { LOG_Y, MAP_H, MAP_W, MAP_X, MAP_Y, PANEL_W, PANEL_X } from '../layout';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { drawRecentLog, drawStatusBar, formatCredits } from '../widgets/statusBar';
 import { days, fit, fuelLine } from '../widgets/text';
 import { FleetScreen } from './fleet';
@@ -154,13 +156,17 @@ export class SectorMapScreen implements Screen {
       t.text(x, y, text, fg, undefined, PANEL_W);
       y++;
     };
+    const zones = this.app.zones;
     const keyLine = (key: string, text: string, fg: string = pal.ui.text) => {
+      // A click on the line does the same as its key.
+      const k = key.length === 1 ? press(key.toLowerCase()) : press(key);
+      zones.add(x, y, PANEL_W, () => this.app.press(k));
       t.key(x, y, key, pal.ui.key, pal.ui.keyBg);
       t.text(x + 6, y, text, fg, undefined, PANEL_W - 6);
       y++;
     };
 
-    line(`Sector ${sector.name}`, pal.ui.title);
+    line(`Sector ${sector.name} (${sector.code})`, pal.ui.title);
     const sec = securityLevelInfo(sector.securityValue, data);
     t.text(x, y, `${cap(sector.development)} `, pal.development[sector.development]);
     t.text(x + sector.development.length + 1, y, `Security ${sec.level} ${sec.name} (${Math.round(sector.securityValue)})`, securityColor(data, sec.level));
@@ -169,9 +175,13 @@ export class SectorMapScreen implements Screen {
     line('Locations', pal.ui.dim);
     this.locations().forEach((loc, i) => {
       const sel = this.isSelected({ kind: 'location', locationId: loc.id });
+      zones.add(x, y, PANEL_W, () => {
+        this.selected = { kind: 'location', locationId: loc.id };
+      });
       t.text(x, y, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
-      t.text(x + 2, y, fit(loc.name, 11), sel ? pal.ui.highlight : techColor(data, loc.techLevel));
-      t.text(x + 14, y, locationTypeName(loc, data), pal.ui.dim, undefined, PANEL_W - 14);
+      t.text(x + 2, y, fit(loc.name, 10), sel ? pal.ui.highlight : techColor(data, loc.techLevel));
+      t.text(x + 13, y, fit(shortCode(state.world, loc, data), 4), pal.ui.bright);
+      t.text(x + 17, y, locationTypeName(loc, data), pal.ui.dim, undefined, PANEL_W - 17);
       y++;
     });
     y++;
@@ -180,6 +190,9 @@ export class SectorMapScreen implements Screen {
       const sel = this.isSelected({ kind: 'jumpPoint', jumpPointId: jp.id });
       const to = state.world.sectors[jp.toSectorId];
       const lane = state.world.lanes[jp.laneId];
+      zones.add(x, y, PANEL_W, () => {
+        this.selected = { kind: 'jumpPoint', jumpPointId: jp.id };
+      });
       t.text(x, y, JUMP_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
       t.text(x + 2, y, fit(`to ${to?.name ?? '?'}`, 16), sel ? pal.ui.highlight : pal.ui.text);
       t.text(x + 19, y, `lane ${lane?.length.toFixed(1) ?? '?'}`, pal.ui.dim);
@@ -214,10 +227,10 @@ export class SectorMapScreen implements Screen {
       keyLine('R', q.units > 0 ? `Refuel ${q.units.toFixed(1)} for ${formatCredits(q.cost)}` : 'Refuel (tanks are full)');
     }
     if (player.position.kind === 'docked') keyLine('O', 'Location services');
-    keyLine('I', 'Fleet   T Trade Ledger');
+    drawKeyHints(t, zones, x, y++, [['I', 'Fleet', press('i')], ['T', 'Trade Ledger', press('t')]], pal.ui, this.app.press, 2);
     keyLine('V', 'Route view');
     keyLine('M', 'Region map');
-    keyLine('L', 'Log    ? Help');
+    drawKeyHints(t, zones, x, y++, [['L', 'Log', press('l')], ['?', 'Help', press('?')]], pal.ui, this.app.press, 2);
   }
 
   private planLines(plan: TripPlan, line: (text: string, fg?: string) => void): void {
@@ -268,6 +281,18 @@ export class SectorMapScreen implements Screen {
       case 't':
         this.app.push(new TradeLedgerScreen(this.app));
         return true;
+      case 'ArrowUp':
+      case 'ArrowDown': {
+        // Step through the targets in panel order: locations, then jump points.
+        const targets: Destination[] = [
+          ...this.locations().map((l) => ({ kind: 'location', locationId: l.id }) as Destination),
+          ...this.jumpPoints().map((j) => ({ kind: 'jumpPoint', jumpPointId: j.id }) as Destination),
+        ];
+        const now = targets.findIndex((d) => this.isSelected(d));
+        const step = k.key === 'ArrowDown' ? 1 : targets.length - 1;
+        this.selected = targets[now < 0 ? (k.key === 'ArrowDown' ? 0 : targets.length - 1) : (now + step) % targets.length] ?? null;
+        return true;
+      }
       case 'v': {
         // Route view (Section 17.2): cycle through the commodities, then off.
         const ids = game.data.commodities.map((c) => c.id);
@@ -324,6 +349,8 @@ export class SectorMapScreen implements Screen {
       'SECTOR MAP',
       '',
       'a-f      Select a location',
+      'Up/Down  Step through the locations and jump points',
+      'Click    A location or jump point (map or list), or a key line',
       '1-4      Select a jump point',
       'Click    Select a target on the map',
       'Enter    Travel to the target (and dock at a location)',

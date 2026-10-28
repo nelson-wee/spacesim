@@ -27,7 +27,11 @@ export class HelpScreen implements Screen {
       const heading = l.length > 0 && l === l.toUpperCase() && /[A-Z]/.test(l);
       t.text(x + 2, y + 2 + i, l, heading ? ui.title : ui.text, undefined, w - 4);
     });
-    t.key(x + 2, y + h - 1, ' Any key: close ', ui.key, ui.keyBg);
+    t.key(x + 2, y + h - 1, ' Any key or click: close ', ui.key, ui.keyBg);
+  }
+
+  onClick(): void {
+    this.app.pop();
   }
 
   onKey(_k: KeyInput): boolean {

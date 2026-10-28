@@ -15,8 +15,9 @@ import { palette, styleColor, techColor } from '../../render/palette';
 import { displayDay } from '../../core/clock';
 import { midPrice } from '../../econ/prices';
 import { travelStats } from '../../ship/stats';
+import { startBattle } from '../combatStart';
 
-type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship';
+type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle';
 
 const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
 const MODULE_PAGE = 5;
@@ -29,6 +30,10 @@ export class DebugScreen implements Screen {
   private input = new DigitInput('', 4);
   private artPage = 0;
   private pricePage = 0;
+  private battleLoadout = 0;
+  private battleCount = 1;
+  /** Enemy behavior: Raider (pirates disable), Trader, or a hostile patrol (Attack AI; destroys). */
+  private battleAi: 'raider' | 'trader' | 'patrol' = 'raider';
 
   constructor(private readonly app: App) {}
 
@@ -57,6 +62,7 @@ export class DebugScreen implements Screen {
         ['7', 'Ship art gallery'],
         ['8', 'Show all prices'],
         ['9', 'Flagship derived stats'],
+        ['0', 'Test battle (your flagship against any loadouts)'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -73,6 +79,17 @@ export class DebugScreen implements Screen {
     if (this.mode === 'prices') {
       const pages = this.renderPrices(t, x + 2, y + 4, h - 8);
       t.text(x + 2, y + h - 2, `Page ${this.pricePage + 1}/${pages}   Left/Right: page   Esc: back`, ui.highlight);
+      return;
+    }
+    if (this.mode === 'battle') {
+      // M4-UI-05: a test battle of the player's flagship against 1-3 ships of any loadout.
+      const ids = [...game.data.loadoutById.keys()];
+      const id = ids[this.battleLoadout % ids.length] ?? '';
+      t.text(x + 2, y + 4, 'Test battle: your flagship against:', ui.title);
+      t.text(x + 2, y + 6, `Enemy loadout: < ${game.data.loadoutById.get(id)?.name ?? id} >   (Left/Right)`, ui.text);
+      t.text(x + 2, y + 7, `Number of ships: ${this.battleCount}   (Up/Down, 1-3)`, ui.text);
+      t.text(x + 2, y + 8, `Enemy AI: ${this.battleAi}   (T: Raider/Trader/Patrol)`, ui.text);
+      t.text(x + 2, y + h - 2, 'Enter: start   Esc: back', ui.highlight);
       return;
     }
     if (this.mode === 'ship') {
@@ -117,6 +134,21 @@ export class DebugScreen implements Screen {
     }
     if (this.mode === 'ship') {
       if (k.key === 'Escape') this.mode = 'menu';
+      return true;
+    }
+    if (this.mode === 'battle') {
+      const n = game.data.loadoutById.size;
+      if (k.key === 'ArrowRight') this.battleLoadout = (this.battleLoadout + 1) % n;
+      else if (k.key === 'ArrowLeft') this.battleLoadout = (this.battleLoadout + n - 1) % n;
+      else if (k.key === 'ArrowUp') this.battleCount = Math.min(3, this.battleCount + 1);
+      else if (k.key === 'ArrowDown') this.battleCount = Math.max(1, this.battleCount - 1);
+      else if (k.key === 't') this.battleAi = this.battleAi === 'raider' ? 'trader' : this.battleAi === 'trader' ? 'patrol' : 'raider';
+      else if (k.key === 'Escape') this.mode = 'menu';
+      else if (k.key === 'Enter') {
+        const id = [...game.data.loadoutById.keys()][this.battleLoadout] ?? 'pirate_raider';
+        this.app.pop();
+        startBattle(this.app, Array.from({ length: this.battleCount }, () => (this.battleAi === 'patrol' ? { loadoutId: id, ai: 'attack' as const, faction: 'patrol' as const } : { loadoutId: id, ai: this.battleAi as 'raider' | 'trader' })));
+      }
       return true;
     }
     if (this.mode === 'art') {
@@ -170,6 +202,10 @@ export class DebugScreen implements Screen {
         return true;
       case '9':
         this.mode = 'ship';
+        return true;
+      case '0':
+        this.mode = 'battle';
+        this.battleLoadout = Math.max(0, [...game.data.loadoutById.keys()].indexOf('pirate_raider'));
         return true;
       case 'F12':
       case '`':

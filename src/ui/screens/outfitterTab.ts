@@ -14,6 +14,7 @@ import { buyModule, type ModuleOffer, moduleOffers, moduleSellValue, sellModule,
 import { checkLoadout, type SlotKind, slotSizesOf } from '../../ship/rules';
 import { type ShipStats, travelStats } from '../../ship/stats';
 import type { KeyInput } from '../input';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
 import { type LocationTab, TAB_H, TAB_Y, type TabContext } from './tab';
 
@@ -121,6 +122,10 @@ export class OutfitterTab implements LocationTab {
       const m = moduleIn(ship, s);
       const bg = i === this.slot ? ui.selectBg : undefined;
       if (bg) t.fill(0, y, LEFT_W, 1, bg);
+      ctx.zones.add(0, y, LEFT_W, () => {
+        this.slot = i;
+        this.focus = 'slots';
+      });
       t.text(0, y, `${s.kind === 'hardpoint' ? 'H' : 'I'}${s.index + 1} ${s.size}`, ui.dim, bg);
       if (!m) {
         t.text(6, y, '- empty -', ui.dim, bg);
@@ -142,6 +147,10 @@ export class OutfitterTab implements LocationTab {
       const selected = this.focus === 'shop' && this.shopScroll + i === this.shop;
       const bg = selected ? ui.selectBg : undefined;
       if (bg) t.fill(SHOP_X, y, 100 - SHOP_X, 1, bg);
+      ctx.zones.add(SHOP_X, y, 100 - SHOP_X, () => {
+        this.shop = this.shopScroll + i;
+        this.focus = 'shop';
+      });
       drawModuleIcon(t, data, SHOP_X, y, o);
       t.text(SHOP_X + 6, y, fit(data.moduleById.get(o.moduleId)?.name ?? o.moduleId, 22), ui.text, bg);
       t.text(SHOP_X + 30, y, String(Math.round(o.price)).padStart(7), o.price > game.state.player.credits ? ui.danger : ui.bright, bg);
@@ -167,16 +176,21 @@ export class OutfitterTab implements LocationTab {
     const check = checkLoadout(after ?? ship, data);
     const warn = check.errors[0] ?? check.warnings[0];
     if (warn) t.text(0, STAT_Y + 3, fit(warn, 100), check.errors.length ? ui.danger : ui.warning);
-    let x = 0;
-    for (const [key, text] of [
-      ['Left/Right', 'Slots/Shop'],
-      ['Enter', 'Buy and install'],
-      ['X', 'Sell module'],
-      ['O', 'ON/OFF'],
-    ] as const) {
-      x = t.key(x, STAT_Y + 4, key, ui.key, ui.keyBg);
-      x = t.text(x, STAT_Y + 4, ` ${text}  `, ui.text);
-    }
+    drawKeyHints(
+      t,
+      ctx.zones,
+      0,
+      STAT_Y + 4,
+      [
+        ['Left/Right', 'Slots/Shop', press(this.focus === 'slots' ? 'ArrowRight' : 'ArrowLeft')],
+        ['Enter', 'Buy and install', press('Enter')],
+        ['X', 'Sell module', press('x')],
+        ['O', 'ON/OFF', press('o')],
+      ],
+      ui,
+      ctx.press,
+      2,
+    );
   }
 
   onKey(k: KeyInput, ctx: TabContext): boolean {
@@ -195,10 +209,13 @@ export class OutfitterTab implements LocationTab {
         if (this.focus === 'slots') this.slot = Math.min(slots.length - 1, this.slot + 1);
         else this.shop = Math.min(offers.length - 1, this.shop + 1);
         return true;
+      // At the edge, Left/Right go to the next tab (the Location screen).
       case 'ArrowLeft':
+        if (this.focus === 'slots') return false;
         this.focus = 'slots';
         return true;
       case 'ArrowRight':
+        if (this.focus === 'shop') return false;
         this.focus = 'shop';
         return true;
       case '[':
@@ -238,7 +255,8 @@ export class OutfitterTab implements LocationTab {
       'OUTFITTER',
       '',
       'Up/Down      Select a slot, or a module in the shop',
-      'Left/Right   Slot list / shop',
+      'Left/Right   Slot list / shop (at the edge: the next tab)',
+      'Click        Select a slot or a module',
       'Enter        Buy the module and install it in the empty slot',
       'X            Sell the module in the slot (60% of its price)',
       'O            Switch the module ON or OFF for travel',

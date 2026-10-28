@@ -209,6 +209,14 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 | Q-36 | **First hull upgrade (M3 exit check 1).** **Decided (owner, 2026-10-28): proposed default.** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
 | Q-37 | **Light Freighter slots.** **Decided (owner, 2026-10-28): keep S2 M2 L1.** The brief gives internal S3 M2 L0; the build uses S2 M2 L1, so the trader loadout can fit a Cargo Rack L (`DECISIONS.md`, M3). | Keep S2 M2 L1. | M3 |
 
+### 8.6 Combat checks (M4 results, 2026-10-28)
+
+| ID | Problem | Proposed default | Milestone |
+|---|---|---|---|
+| Q-38 | **Combat data.** **Decided (owner, 2026-10-28): proposed default.** The §11.7 and §12.2 values do not agree with the §13.9 checks: idle heat is above cooling for all default loadouts (ships burn without firing), and two autocannons cannot break a Shield S, so battles go to 25 turns. | Keep the M4 tuning (`DECISIONS.md`, M4): `heatScale` 0.5, `damageScale` 2.75, Wasp heat capacity 40, a Raider with a shield, Raider retreat at 50% (brief: 30%) and no fire in retreat. M5 tunes again with all §13.9 pairings and the threat calibration (§10.9). | M4, M5 |
+| Q-39 | **Early losses.** **Decided (owner, 2026-10-28): pirates disable, Clone Insurance.** The starting Shuttle wins about 55% against one Raider (§13.9 band 40–60%), and a loss was game over (§16). A Raider Pair attacks without a tribute demand. | Pirates disable the ship and take all cargo; other losses destroy the ship. Clone Insurance at every dockable location; it covers only the ship; premium by sector security (Secure 2% to Lawless 12%) (`DECISIONS.md`). Built after M4. | M4, M5 |
+| Q-40 | **Heat and combat decisions.** Heat does not limit most loadouts in battles of 8–10 turns, so "fire all weapons every turn" wins. | Owner review of the combat proposal (heat split, range bands, skill-gap check, auto-resolve) before M5 tuning. | M5 |
+
 ## 9. Risks
 
 | Risk | Effect | Action |
@@ -233,6 +241,8 @@ These items need the repository owner. Claude Code cannot do them.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.
 6. **Economy checks (M2):** done (Q-31 to Q-35 decided, 2026-10-27). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
 7. **Trade checks (M3):** done (Q-36 and Q-37 decided, 2026-10-28).
+8. **Combat data (M4):** done (Q-38 decided, 2026-10-28). Early losses: done (Q-39 decided, 2026-10-28).
+9. **Combat decisions (M5):** answer Q-40 before M5 tuning.
 
 ## 11. After the MVP (owner notes)
 
@@ -243,4 +253,5 @@ These items are not in the MVP. Do not build them before the MVP is done. Keep t
 | No career limit | Remove the hard career end at day 730 (§16), so that the player can see how their actions change the world over a long time. | M7: keep the day-730 end in one place (one value in `balance.json`), and keep the economy and world stable past day 730 (`sim-economy` can run longer). |
 | Demand for manufactured goods | Station building, station upgrades, and research use manufactured goods. Until then, a small population demand outside the Core stands in for them (DECISIONS.md, 2026-10-27). | None. |
 | Money for producers | A full money economy (producers and populations hold credits) is not needed for the MVP. Producers use local prices as signals (K*, carriers). | None. |
+| NPC trade agents | Parked until after the MVP (owner, 2026-10-28). Carriers do all background trade in the MVP. Agents are the first item after the MVP (§21, item 1), best after encounters exist, so that pirates can attack real goods. | Keep services, knowledge, and the route planner usable for any Actor (G-07). `tools/lib/traderBot.ts` is a test bot, not agent code. |
 

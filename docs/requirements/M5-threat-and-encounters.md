@@ -50,6 +50,7 @@
 | M5-ENC-10 | **Battle map templates.** Select the template by the place of the encounter: Open Space, Asteroid Field, Debris Field, Gas Giant Edge (`battleMaps.json`). | §13.1 | T |
 | M5-ENC-11 | **Hunt.** In space on the sector map: pass 1 day, roll for a pirate encounter with chance × `huntMultiplier` (3), use fuel for 1 day of cruise. | §8.8 | T |
 | M5-ENC-12 | Debug panel: start a test battle with any template. Set sector security. | §4.3 | M |
+| M5-ENC-13 | **Defeat (owner, Q-39).** A loss against pirates only disables the ship: all cargo is lost and a tug tows the fleet. Escorts and pursued pirates get the right `faction`. Other losses destroy the ship and use Clone Insurance (built after M4). | Q-39 | T |
 
 ## 4. Reinforcements and AI (REIN)
 

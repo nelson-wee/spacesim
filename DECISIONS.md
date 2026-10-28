@@ -229,6 +229,64 @@ These decisions replace the brief text where they do not agree.
 
 - 2026-10-28 [Q-36] M3 exit check 1 is now: median upgrade day in day 60–120, and 15 of 20 seeds upgrade by day 150. A seed with no upgrade counts as later than all others for the median. The count in day 60–120 is a report. Reason: the worlds differ (a good start earns 600–750 cr per day, a poor start 20–100), so no economy value puts 75% of seeds in a window of 2×.
 - 2026-10-28 [Q-37] Keep the Light Freighter internal slots S2 M2 L1 (owner).
+- 2026-10-28 [§9.9] NPC trade agents are parked until after the MVP (owner). The carriers do all background trade. The trader bot stays a test tool.
+
+### Navigation (owner feedback, 2026-10-28)
+
+- 2026-10-28 [§17.5] Click zones: each screen adds a zone for each item that it draws (tabs, list rows, Ledger cells and heads, sector map list lines, key hints). A click on a key hint does the same as its key (`src/ui/widgets/clicks.ts`). Arrow keys: Left/Right switch Location tabs (in the Outfitter, at the edge of the slot list or shop), Left/Right select the ship on the Fleet screen, Up/Down step through targets on the sector map and lane exits on the region map. A click on a best route in the Ledger opens it in the route planner. Reason: owner asked for mouse and arrow navigation.
+
+### Technical names and best routes (owner, 2026-10-28)
+
+- 2026-10-28 [§17.1, §17.6] Technical names (owner): each sector has a unique 3-letter code (first 3 letters; on a clash, the first letter and two consonants). A location's code is sector code + type code + number: planets one capital letter (T Terran, O Ocean, D Desert, I Ice, V Volcanic, G Gas Giant), stations two small letters (mn Mining, pr Processing, in Industrial, hb Habitat, th Trade Hub, sy Shipyard, mo Military Outpost, ph Pirate Haven, st other station). The number counts from the star outward, only when the sector has more than one location of that type ("SEL-O2", "SEL-pr"). Type codes are in `bodyTypes.json`. Flavour names stay on the sector map; the Location header and the status bar show both. Reason: owner feedback; in 200 sectors, names are up to 8 letters, 117 sectors have repeated types, and 13 have a clash of the first 3 letters.
+- 2026-10-28 [§17.6] The Trade Ledger groups its columns by sector (nearest first; in a sector, from the star outward), with the sector code and jumps in a band above, and the short code in each column head.
+- 2026-10-28 [§17.6] Best routes (Ledger and trader bot) start only where the location makes the good or at a Trade Hub ("Sells" or "Hub" on the Market tab) (owner). A manual route in the planner can start anywhere; the planner shows a warning when the start does not make the good. `bestRoutes(..., { anyStart: true })` gives the old list. Reason: a market that only uses a good has little stock to sell, so those routes were not practical. Result: the bot's median upgrade day moves from 82 to 91, and its Shuttle profit in the first 30 days from 295 to 189 cr per day (inside the §22 band).
+- 2026-10-28 Save version 3 (sectors have `code`).
+
+## M4 Combat core (2026-10-28)
+
+### Open-question defaults used
+
+- 2026-10-28 [Q-19] An engine shot multiplies the hit chance by 0.85 (`engineShotFactor`).
+- 2026-10-28 [Q-20] Engine damage has no effect until the engine value is 0; then move and maneuver are 0, and the ship cannot flee.
+- 2026-10-28 [Q-25] Attack AI for the player side in `sim-combat`: the nearest hostile target, the wanted distance, no retreat.
+- 2026-10-28 [Q-28] The player gives toggles, moves, and shots in any order; the resolver checks the move budget and one shot per weapon.
+
+### Combat data (Q-38, accepted by the owner 2026-10-28)
+
+- 2026-10-28 [§11.6, §11.7] `combat.heatScale` 0.5 on all heat per turn and per shot. Reason: with the §11.7 values, every default loadout except the Light Freighter makes more heat at idle than it cools (Shuttle 5 against 3), so all ships overheated and burned even when they did not fire. With 0.5, idle heat is below cooling for the M4 ships; shots still build heat.
+- 2026-10-28 [§12.2, §13.9] `combat.damageScale` 2.75 on weapon damage against ships (not point defense). Reason: with the §12.2 values, two autocannons could not break a Shield S (regen 4 per turn), and battles went to 25 turns. A uniform scale does not change threat units (the formula is a ratio to the Raider). Median battle length is now 8-10 turns.
+- 2026-10-28 [§11.1] Wasp heat capacity 25 → 40. Reason: a laser Wasp (2 lasers) overheated by turn 3; this was the lever that moved the laser Wasp pairing without moving the Shuttle pairing.
+- 2026-10-28 [§10.5] Pirate Raider loadout: 2 autocannons, engine, reactor, shield (was 2 engines, no shield). Reason: the threat formula then gives Raider/Shuttle 1.07 (§10.5 reference 10/9 = 1.11; the old loadout gave 0.83).
+- 2026-10-28 [§13.8] Raider retreat below 50% hull (`retreatHull`; the brief says 30%), and a retreating Raider does not fire. Reason: needed for the laser Wasp pairing; the brief does not say whether a retreating Raider fires (the Evader rule says so, the Raider rule does not).
+- 2026-10-28 [§13.8] AI ships start with at least 5 fuel (`npcFuelReserve`). Reason: a Wasp has no fuel tank, and a ship with 0 fuel cannot move.
+- 2026-10-28 [§8.5] `kCombat` 0.01 and `kFlee` 0.1 (times mass^0.64): a Shuttle uses about 0.09 fuel per turn and 0.9 for a flee.
+
+### Rules where the brief is not complete
+
+- 2026-10-28 [§12.5] Armor Plating HP takes hull damage after armor and before hull HP. An engine shot goes to the engine value only.
+- 2026-10-28 [§11.6] Overheat at the heat step blocks fire on the next turn (the turn after the step), then clears at the next step.
+- 2026-10-28 [§13.8] Morale: one surrender roll per ship, when hull first falls below 25% or the engine value is 0.
+- 2026-10-28 [§12.2] Flak hits only hostile ships in its 3 x 3 area around the nearest target cell; it always aims at the hull.
+- 2026-10-28 [§12.3, §13.1] The line of fire goes from the nearest attacker cell to the nearest target cell (Bresenham). Asteroids on the line block it; debris on the line gives `debrisFactor`; ships do not block it.
+- 2026-10-28 [§13.2, §13.8] Movement: breadth-first search over anchor cells with the full footprint (the same paths as A* inside the move budget). The AI looks up to 4 turns ahead for a cell with a clear line of fire at its wanted distance (`bestRangeShare` 0.5 of its shortest weapon range), and moves along that path. In the UI, Enter or a click moves the ship as far as it can toward the cursor.
+- 2026-10-28 [§13.8] Power priority: the loadout list; for a ship with no list (the player's), engines, shields, weapons, thrusters, then the rest. AI ships set their power at the start; the player keeps the ship's setting if it is valid. Shields start full.
+- 2026-10-28 [§13.8, Q-25] The Attack AI switches OFF its hottest weapon only when firing all weapons would overheat it this turn; Raider and Trader use the brief rule (switch OFF at Hot).
+- 2026-10-28 [§13.1] Map: rot.js `Map.Cellular` with the random fill from the combat RNG stream (fill 0.42, 3 steps; about 11% obstacles); 35% of clusters are debris clouds. Each side starts at column 18 from its edge; bands of 6 cells around the start columns and the map edges are open.
+- 2026-10-28 [§13.7, §16] M4: a lost battle is game over and goes back to the title screen (the fleet rule is M6). A ship with 0 fuel after a battle is towed. Replaced by "Defeat and Clone Insurance" below.
+- 2026-10-28 [§12.4] Guided weapons and point defense do not fire in M4 (M5).
+- 2026-10-28 [§18.4, G-20] Effects use the frame types line, at, travel, perim, and foot from `effects.json`; the example `cells` lists in the file are not used. A damage effect starts when the shot before it ends. "frac" cells are a fixed pattern (render only, no game randomness).
+
+## Defeat and Clone Insurance (owner, 2026-10-28, Q-39)
+
+The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance) into the MVP.
+
+- 2026-10-28 [owner] Pirates do not fight to kill. If every hostile ship in the battle is a pirate (`faction` 'pirate'), a loss disables the ship: the pirates take all cargo of the fleet, the ship keeps `disabledHullShare` (0.1) of its max hull, and a tug tows the fleet to the nearest location (the §8.6 recovery fee). Reason: owner decision; an early loss to Raiders must not end the career.
+- 2026-10-28 [owner] Any other loss (a patrol, a trader, an escort, or a group with one non-pirate) destroys the ship. Reason: owner decision; death stays a risk for piracy and for a Wanted player.
+- 2026-10-28 Each combat ship has a `faction` (player, pirate, trader, patrol). Default: Raider AI → pirate, Trader AI → trader, other AI → the side (player or patrol). Reason: in M5, escorts use Patrol AI with pirate loadouts and pursued pirates use Evader AI, so the AI kind cannot tell who is a pirate.
+- 2026-10-28 [owner] Clone Insurance at every dockable location, planets and stations (`services.json`, service `insurance`). The premium is `premiumShare[security level] × (hull price + module prices)` of the flagship, with the security level of the sector now. Shares: Lawless 12%, Low 8%, Medium 5%, High 3%, Secure 2%. Reason: the owner asked for cheap insurance in safe sectors and expensive insurance in Lawless sectors. With 5% in Secure, the starting Shuttle (15,900 cr) cost 795 cr of the 2,000 start credits; 2% gives 318 cr.
+- 2026-10-28 [owner] The policy stores the location, the day, the premium, and the flagship (hull and loadout, no cargo). If the last ship is destroyed, the player wakes at that location with a new copy of the ship (full hull, armor, engine value, and fuel). The policy covers only the ship: the player keeps the credits (and any debt) of the moment of the loss. The world and the day continue. Reason: owner decision (confirmed 2026-10-28).
+- 2026-10-28 One policy at a time. A new policy replaces the old one with no refund. A claim uses the policy. A disable by pirates does not use the policy. The service is refused in debt. Reason: simple rules; the brief has no insurance rules.
+- 2026-10-28 A new career starts with no policy; the player can buy one at the start location. The status bar shows "Insured" or "Not insured". Reason: the premium is a real choice from day 1 (318 cr for the starting Shuttle in a Secure sector).
 
 ## Cuts
 

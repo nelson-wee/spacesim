@@ -14,6 +14,7 @@ import type { GameData } from '../data';
 import { econContext } from '../econ/context';
 import { basePrice, buyPrice, midPrice, sellPrice } from '../econ/prices';
 import { recipeOf } from '../econ/recipes';
+import { locationCode } from '../world/codes';
 
 export type Trend = 'up' | 'down' | 'flat';
 
@@ -106,13 +107,13 @@ export function chainAlerts(world: World, data: GameData, sectorIds: number[]): 
         cause = p.inputFactor < 0.05 ? `no ${name}` : `low ${name}`;
       } else if (p.capitalFactor < 1 - 1e-6) cause = 'low Machinery';
       else if (loc.capacity < 1 - 1e-6) cause = 'low capacity';
-      alerts.push({ locationId: loc.id, text: `${loc.name} ${type}: ${cause}, output ${Math.round(p.outputRatio * 100)}%` });
+      alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name} ${type}: ${cause}, output ${Math.round(p.outputRatio * 100)}%` });
     }
     for (const u of ctx.uses[loc.id] ?? []) {
       const entry = loc.market[u.commodity];
       if (!entry || u.amount <= 0) continue;
       if (entry.stock < u.amount * a.deficitDays) {
-        alerts.push({ locationId: loc.id, text: `${loc.name}: short of ${data.commodityById.get(u.commodity)?.name ?? u.commodity}` });
+        alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name}: short of ${data.commodityById.get(u.commodity)?.name ?? u.commodity}` });
       }
     }
   }

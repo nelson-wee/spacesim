@@ -1,31 +1,31 @@
-// Small Location tabs: Refuel, Mechanic, Shipyard, Merchants' Guild, Bounty Guild.
+// Small Location tabs: Refuel, Mechanic, Clone Insurance, Shipyard, Merchants' Guild, Bounty Guild.
 import { observe } from '../../actor/knowledge';
 import { displayDay } from '../../core/clock';
 import type { Term } from '../../render/display';
 import { palette } from '../../render/palette';
 import { report } from '../../services/common';
+import { buyInsurance, quoteInsurance } from '../../services/insurance';
 import { quoteRepair, repair } from '../../services/mechanic';
 import { quoteRefuel, refuel } from '../../services/refuel';
 import { buyHull, hullOffers, quoteHull, tradeInValue } from '../../services/shipyard';
 import { travelStats } from '../../ship/stats';
+import { locationCode } from '../../world/codes';
 import type { KeyInput } from '../input';
+import { drawKeyHints, press } from '../widgets/clicks';
 import { formatCredits } from '../widgets/statusBar';
 import { fit } from '../widgets/text';
 import { type LocationTab, TAB_H, TAB_Y, type TabContext } from './tab';
 
-function keys(t: Term, y: number, list: [string, string][], ui: ReturnType<typeof palette>['ui']): void {
-  let x = 0;
-  for (const [key, text] of list) {
-    x = t.key(x, y, key, ui.key, ui.keyBg);
-    x = t.text(x, y, ` ${text}   `, ui.text);
-  }
+function keys(t: Term, ctx: TabContext, list: [string, string, KeyInput][]): void {
+  drawKeyHints(t, ctx.zones, 0, TAB_Y + TAB_H - 1, list, palette(ctx.game.data).ui, ctx.press);
 }
 
 export class RefuelTab implements LocationTab {
   readonly serviceId = 'refuel';
   readonly title = 'Refuel';
 
-  render(t: Term, { game, location }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
     const ui = palette(game.data).ui;
     const actor = game.state.player;
     const q = quoteRefuel(game, actor, location);
@@ -43,7 +43,7 @@ export class RefuelTab implements LocationTab {
       t.text(0, y++, `Fill all tanks: ${q.units.toFixed(1)} fuel for ${formatCredits(q.cost)}.`, ui.bright);
       if (q.affordable < q.units - 1e-6) t.text(0, y, `You can buy ${q.affordable.toFixed(1)} fuel now.`, ui.warning);
     }
-    keys(t, TAB_Y + TAB_H - 1, [['R', 'Refuel all ships']], ui);
+    keys(t, ctx, [['R', 'Refuel all ships', press('r')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {
@@ -62,7 +62,8 @@ export class MechanicTab implements LocationTab {
   readonly title = 'Mechanic';
   private ship = 0;
 
-  render(t: Term, { game }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game } = ctx;
     const { data } = game;
     const ui = palette(data).ui;
     const actor = game.state.player;
@@ -75,6 +76,9 @@ export class MechanicTab implements LocationTab {
       const q = quoteRepair(ship, data);
       const bg = i === this.ship ? ui.selectBg : undefined;
       if (bg) t.fill(0, y, 100, 1, bg);
+      ctx.zones.add(0, y, 100, () => {
+        this.ship = i;
+      });
       t.text(0, y, fit(ship.name, 20), ui.bright, bg);
       t.text(21, y, `Hull ${Math.round(ship.hullHp)}/${s.maxHullHp}  Engine ${ship.engineValue.toFixed(0)}/${s.maxEngineValue}  Armor ${Math.round(ship.armorHp)}/${s.maxArmorHp}`, ui.text, bg);
       t.text(80, y, q.cost > 0 ? formatCredits(q.cost) : 'No repair', q.cost > 0 ? ui.warning : ui.good, bg);
@@ -82,7 +86,7 @@ export class MechanicTab implements LocationTab {
     });
     y++;
     t.text(0, y, 'Refill of guided munitions comes with combat (M5).', ui.dim);
-    keys(t, TAB_Y + TAB_H - 1, [['Up/Down', 'Select ship'], ['R', 'Repair']], ui);
+    keys(t, ctx, [['Up/Down', 'Select ship', press('ArrowDown')], ['R', 'Repair', press('r')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {
@@ -99,13 +103,82 @@ export class MechanicTab implements LocationTab {
   }
 }
 
+export class InsuranceTab implements LocationTab {
+  readonly serviceId = 'insurance';
+  readonly title = 'Insurance';
+  private confirm = false;
+
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
+    const { data, state } = game;
+    const ui = palette(data).ui;
+    const actor = state.player;
+    const ship = actor.fleet[actor.flagshipIndex];
+    let y = TAB_Y;
+    t.text(0, y++, 'Clone Insurance: if your last ship is destroyed, your clone wakes where you bought the policy.', ui.text);
+    t.text(0, y++, 'You get a new copy of the insured ship (full HP and fuel, no cargo). You keep your credits.', ui.dim);
+    t.text(0, y++, 'Pirates do not destroy ships: they disable your ship and take all cargo. The policy is not used.', ui.dim);
+    y++;
+    const p = actor.insurance;
+    if (p) {
+      const at = state.world.locations[p.locationId];
+      const hull = data.hullById.get(p.ship.hullId)?.name ?? p.ship.hullId;
+      t.text(0, y++, `Your policy: ${hull} "${p.ship.name}", at ${at ? `${at.name} (${locationCode(state.world, at, data)})` : '?'}, day ${displayDay(p.day)}.`, ui.good);
+      if (ship && ship.hullId !== p.ship.hullId) t.text(0, y++, 'Your flagship is not the insured hull. Insure again to cover it.', ui.warning);
+    } else t.text(0, y++, 'You have no policy. If your ship is destroyed, the game ends.', ui.danger);
+    y++;
+    if (ship) {
+      const q = quoteInsurance(game, location, ship);
+      t.text(0, y++, `Insure ${ship.name}: value ${formatCredits(q.value)} (hull and modules) x ${Math.round(q.share * 100)}% (${q.levelName} security) = ${formatCredits(q.premium)}.`, ui.bright);
+      t.text(0, y++, 'A new policy replaces the old one.', ui.dim);
+      y++;
+      const levels = data.security.levels.map((l) => `${l.name} ${Math.round((data.serviceRules.insurance.premiumShare[l.level] ?? 0) * 100)}%`).join(', ');
+      t.text(0, y++, `Premium by sector security: ${levels}.`, ui.dim);
+    }
+    if (this.confirm) t.text(0, y + 1, 'Buy this policy? Press Enter again to confirm, Esc to cancel.', ui.bright);
+    keys(t, ctx, [['Enter', 'Insure flagship', press('Enter')]]);
+  }
+
+  onKey(k: KeyInput, { game, location }: TabContext): boolean {
+    if (k.key === 'Enter') {
+      if (!this.confirm) {
+        this.confirm = true;
+        return true;
+      }
+      report(game, buyInsurance(game, game.state.player, location), 'good');
+      this.confirm = false;
+      return true;
+    }
+    if (k.key === 'Escape' && this.confirm) {
+      this.confirm = false;
+      return true;
+    }
+    return false;
+  }
+
+  help(): string[] {
+    return [
+      'CLONE INSURANCE',
+      '',
+      'Enter   Insure the flagship (press twice)',
+      '',
+      'The premium is a share of the hull and module prices.',
+      'Safe sectors are cheaper; Lawless sectors cost the most.',
+      'If your last ship is destroyed, you wake here with the',
+      'insured ship. You keep your credits. Pirates only',
+      'disable ships and take the cargo.',
+    ];
+  }
+}
+
 export class ShipyardTab implements LocationTab {
   readonly serviceId = 'shipyard';
   readonly title = 'Shipyard';
   private row = 0;
   private confirm: string | null = null;
 
-  render(t: Term, { game, location }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game, location } = ctx;
     const { data } = game;
     const ui = palette(data).ui;
     const actor = game.state.player;
@@ -124,6 +197,10 @@ export class ShipyardTab implements LocationTab {
       if (!h) return;
       const bg = i === this.row ? ui.selectBg : undefined;
       if (bg) t.fill(0, y, 100, 1, bg);
+      ctx.zones.add(0, y, 100, () => {
+        if (this.row !== i) this.confirm = null;
+        this.row = i;
+      });
       const q = quoteHull(actor, actor.flagshipIndex, location, o.hullId, data);
       const v = [h.name, h.role, String(h.hp).padStart(4), String(h.armor).padStart(3), String(h.mass).padStart(4), String(h.basePower).padStart(3),
         `${h.hardpoints.S}/${h.hardpoints.M}/${h.hardpoints.L}`, `${h.internal.S}/${h.internal.M}/${h.internal.L}`, String(h.tech ?? '-'),
@@ -134,7 +211,7 @@ export class ShipyardTab implements LocationTab {
     y++;
     t.text(0, y++, 'A new hull has an empty loadout: fit an engine, a reactor if needed, a fuel tank, and cargo.', ui.warning);
     if (this.confirm) t.text(0, y, this.confirm, ui.bright);
-    keys(t, TAB_Y + TAB_H - 1, [['Up/Down', 'Select'], ['Enter', 'Buy (trade in)']], ui);
+    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Buy (trade in)', press('Enter')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {

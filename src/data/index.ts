@@ -189,6 +189,8 @@ export function checkReferences(data: GameData): string[] {
     if (!data.stationTypeById.has(station)) problems.push(`population.stationUse: unknown station type ${station}`);
     for (const u of uses) if (!data.commodityById.has(u.commodity)) problems.push(`population.stationUse.${station}: unknown commodity ${u.commodity}`);
   }
+  const typeCodes = [...data.bodyTypes.planets, ...data.bodyTypes.stations].map((t) => t.code);
+  if (new Set(typeCodes).size !== typeCodes.length) problems.push('bodyTypes.json: type codes are not unique');
   if (!hostIds.has(data.serviceRules.pirateHaven.bodyType)) problems.push('services.json rules: unknown Pirate Haven body type');
   for (const svc of data.services) {
     for (const clause of svc.where) {
