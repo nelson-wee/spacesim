@@ -80,6 +80,20 @@
       "powerPriority": ["engine", "shield_generator", "pulse_laser", "flak_cannon"]
     },
     {
+      "id": "light_freighter_starter",
+      "name": "Light Freighter (first upgrade)",
+      "hullId": "light_freighter",
+      "hardpoints": [{ "moduleId": "pulse_laser", "size": "S", "tier": 1 }, null],
+      "internal": [
+        { "moduleId": "reactor", "size": "S", "tier": 1 },
+        { "moduleId": "fuel_tank", "size": "S", "tier": 1 },
+        { "moduleId": "engine", "size": "M", "tier": 1 },
+        { "moduleId": "fuel_tank", "size": "M", "tier": 1 },
+        { "moduleId": "cargo_rack", "size": "L", "tier": 1 }
+      ],
+      "powerPriority": ["engine", "shield_generator", "pulse_laser"]
+    },
+    {
       "id": "laser_gunship",
       "name": "Gunship (lasers)",
       "hullId": "gunship",

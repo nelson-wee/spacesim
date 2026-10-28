@@ -8,7 +8,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
 | M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
-| M5 Threat and encounters | 5 | Not started | — |
+| M5 Threat and encounters | 5 | Built. TU calibration and battle length wait on owner review (Q-46). | 3 of 5 pass; check 1 (battle length) and check 2 (TU calibration) fail in part. |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
 | M7 Contracts, career, save | 7 | Not started | — |
 | M8 Polish and release | 8 | Not started | — |
@@ -352,6 +352,64 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 - **Exit checks (500 battles):** Shuttle vs Raider 51% PASS (40-60%); Laser Wasp vs Shuttle 100% PASS (70%+); Laser Wasp vs 1 Raider 98% PASS (71%+). Reports: Laser Wasp vs 2 Raiders 50%; Shuttle vs 3 Raiders 0%; Laser Gunship vs 3 Raiders 88%; Gunship vs trader 100%. Median lengths 10, 9, 7, 9, 5, 7, 3 turns.
 - **Wasp loadouts (300 battles; vs 1 Raider / 2 Raiders / Shuttle):** lasers + engine, reactor, shield 99/70/98% (the default); 2 engines, no shield 77/21/81%; capacitor, no shield 71/12/66%; thrusters, no shield 74/15/68%; laser + autocannon 96/48/94%; 2 autocannons 66/7/50%; 2 shields, no reactor 16/0/7%.
 - **Known issues:** the Laser Gunship is strong against 3 Raiders (88%); M5 TU calibration (§10.9) must check it. Point defense rules need a decision before M5 (interception during the munition move).
+
+## M5 Threat and encounters (2026-10-28)
+
+### What works
+
+- **Threat:** TU from durability and firepower (Raider = 10); group TU with the group bonus; pirate, trader, escort, and patrol templates; pirate and patrol budgets; template selection; threat band on the region map and the hail screen.
+- **Guided munitions:** missiles and torpedoes on the grid, around asteroids; hit roll next to the target; life and HP; ammunition on the module, refill at the Mechanic. Point defense fires during the move (Q-44); flak destroys munitions.
+- **Encounters:** rolls on sector trips (one per trip), jump arrivals, and Hunt (H, 1 day, x3). Pirates judge the odds: attack, tribute, or avoid. Hail screen: Fight, Flee, Pay, Pursue, Ignore, Attack. A failed flee: the enemy acts first. Traders with cargo and escorts; patrols (hostile if Wanted).
+- **Battles from encounters:** battle map templates by place (Open Space, Asteroid Field, Debris Field, Gas Giant Edge); cargo pods and surrender loot; reinforcements (patrol and pirate) from turn 3; Patrol and Evader AI.
+- **Security and notoriety:** security changes after battles, daily drift, 30-day trend arrows; notoriety changes, levels, docking refusal, the tow skips refusing locations; Pirate Havens buy all cargo at 70%.
+- **Debug:** E starts an encounter with any template; S sets the sector security level.
+
+### Exit checks
+
+| # | Check | Result |
+|---|---|---|
+| 1 | All §13.9 pairings pass | Part. Shuttle vs Raider 52% PASS; Laser Wasp vs Shuttle 99% PASS; Laser Wasp vs Raider 98% PASS; lasers vs Wasps 90% vs ballistics 59% PASS; ballistic vs laser Corvette against a Frigate 25% vs 12% PASS; torpedo vs laser Frigate against a Battleship 27% vs 7% PASS. **Median length 4-10: FAIL** (Shuttle vs Raider 11, Cutter vs Raider Pack 12). |
+| 2 | §10.9 | Part. TU reference values within 10%: PASS (9/9). Generated encounter TU: PASS on the mean (15/15, Q-45). **TU calibration: FAIL** (1 of 5 in 35-65%). |
+| 3 | Patrols fight against the aggressor | PASS (tests: a patrol joins against the pirates, or against a player who attacks a trader). |
+| 4 | Pirate kills raise sector security | PASS (test: +3 per pirate destroyed, +2 per surrender). |
+| 5 | `PROGRESS.md` is updated | PASS. |
+
+### sim-combat (300 battles per pairing)
+
+| Pairing | Win | Median turns |
+|---|---|---|
+| Shuttle vs 1 Raider | 52% | 11 |
+| Laser Wasp vs Shuttle | 99% | 9 |
+| Laser Wasp vs 1 Raider | 98% | 7 |
+| Laser Wasp vs 2 Raiders (report) | 50% | 9 |
+| Ballistic Gunship vs 3 Raiders | 59% | 7 |
+| Laser Gunship vs 3 Raiders | 90% | 7 |
+| Laser Corvette vs Pirate Frigate | 12% | 4 |
+| Ballistic Corvette vs Pirate Frigate | 25% | 4 |
+| Laser Frigate vs Battleship | 7% | 4 |
+| Torpedo Frigate vs Battleship | 27% | 4 |
+| TU: Pirate Gunship (35.6) vs Raider Pack (39.0) | 39% | 8 |
+| TU: Patrol Cutter (36.0) vs Raider Pack (39.0) | 82% | 12 |
+| TU: Pirate Corvette (54.0) vs Gunship + Raider (52.4) | 94% | 6 |
+| TU: Pirate Frigate (71.2) vs Gunship Escort (72.3) | 82% | 9 |
+| TU: Battleship (139.3) vs Frigate + Gunship + Raider (151.8) | 27% | 5 |
+
+Why the TU calibration fails: TU is one number, but the combat model now has strong matchups. Heavy armor and big shields take little from many small autocannon hits (Pirate Corvette: its hits do 56 damage each, the group's 21). Torpedoes hit the slow Battleship (maneuver 11) about 65% of the time. `groupBonus` cannot fix both directions (0.15 and 0 tried: 2 of 7 pairs in band each). Options are in Q-46.
+
+### sim-trader (20 seeds, 150 days)
+
+- Encounters OFF: median upgrade day 91, 18/20 by day 150: PASS (M3 check 1).
+- Encounters ON (`--encounters`, careful-trader policy): median day 107, 12/20 by day 150. 1,100 encounters on 1,971 trips; pirates 1 per 17 trips (the bot trades mostly in Core sectors; §22 monitor: 1 per 3-4 trips at security 1-2). 64 flees, 51 battles (28 won, 23 disabled; no ship destroyed).
+
+### Known issues
+
+- Q-46 (TU calibration, battle length) waits on the owner.
+- The `reinforcement_arrival` effect of the art (a "row" frame) is not drawn; the log shows the arrival.
+- `sim-combat` with 17 pairings takes about 13 minutes for 300 battles (large ships and munitions).
+
+### Tool results
+
+- `npm test`: 746 tests pass. `npm run ship-report`: all PASS (TU reference values 9/9). `npm run build`: passes. Browser: debug encounter, hail, battle with torpedoes, disabled loss and tow, region map threat bands; no page errors.
 
 <!--
 Template for each milestone:

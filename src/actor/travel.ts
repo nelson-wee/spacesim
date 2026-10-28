@@ -234,7 +234,10 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination, enco
   const share = completedShare(travelNeed, plan.fuelHave);
 
   // An encounter at a random point of the trip (Section 10.4). The fleet stops there.
-  if (encounters) {
+  // One roll per trip: going on after an encounter to the same destination does not roll again.
+  const tripKey = dest.kind === 'location' ? `l${dest.locationId}` : `j${dest.jumpPointId}`;
+  if (encounters && actor.tripRolled !== tripKey) {
+    actor.tripRolled = tripKey;
     const r = rng(game, 'encounter');
     const at = r.range(0.2, 0.8);
     const point = { x: here.point.x + (there.point.x - here.point.x) * at, y: here.point.y + (there.point.y - here.point.y) * at };
@@ -265,6 +268,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination, enco
   useFuel(actor, travelNeed, 1);
   passTime(game, plan.days);
   observe(game, actor);
+  actor.tripRolled = null;
   if (dest.kind === 'jumpPoint') {
     actor.position = { kind: 'jumpPoint', jumpPointId: dest.jumpPointId };
     const jp = game.state.world.jumpPoints[dest.jumpPointId];

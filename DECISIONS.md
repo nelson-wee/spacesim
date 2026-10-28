@@ -361,6 +361,15 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-28 [§17.2, Q-18] The region map shows each sector's threat band (1-5 `!` under the name, color `sec[5-n]` of `style.json`: the color of security level 5 - n) and a trend arrow; the sector panel shows the band and the TU range. The hail screen shows the group's band (the same limits on the group TU).
 - 2026-10-28 [§4.3, M5-ENC-12] Debug panel: E starts an encounter with any pirate or patrol template, or a trader (through the hail screen); S sets the sector's security level (value = level minimum + 10).
 
+### Tools and checks (M5-F)
+
+- 2026-10-28 [§13.9] `sim-combat` pairings for the family roles: Ballistic and Laser Gunship each against 3 Raiders (the "Wasp-heavy enemy"; lasers must win more often); Laser and Ballistic Corvette each against a Pirate Frigate (ballistics must win more often); Laser and Torpedo Frigate each against a Battleship (torpedoes must win more often). "More often" = at least 1 point more. Reason: §13.9 names the builds and the enemy, not the setup.
+- 2026-10-28 [§10.9] TU calibration pairs (single ship vs a pirate group within 10% TU; both sides use the Attack AI so that the Raider retreat rule does not bias the group): Pirate Gunship vs Raider Pack; Patrol Cutter vs Raider Pack; Pirate Corvette vs Gunship + Raider; Pirate Frigate vs Gunship Escort; Battleship vs Frigate + Gunship + Raider.
+- 2026-10-28 [§10.4, Q-26] One encounter roll per sector trip: a trip that goes on after an encounter to the same destination does not roll again (`Actor.tripRolled`). Reason: without this, each restart rolled again (2,901 encounters on 3,113 trips in `sim-trader`).
+- 2026-10-28 [M5-TOOL-04] `sim-trader --encounters`: the bot is a careful trader (ignore traders, friendly patrols, and pirates that avoid; flee from pirates that demand tribute or attack and from hostile patrols; fight with the Attack AI if the flee fails; `tools/lib/encounterBot.ts`). Reason: paying tribute (half the cargo) loses more on average than a 50% flee and an even fight.
+- 2026-10-28 [M3 exit check 1] The bot's target loadout is `light_freighter_starter` (the old trader loadout: pulse laser, reactor, fuel tanks, engine M, Cargo Rack L). Reason: the NPC trader loadout has a Flak Cannon now (for TU, M5-A); with it, the upgrade cost more and the median day went from 91 to 114.
+- 2026-10-28 The end of a battle (loot, consequences, defeat, tow) is in `src/career/battleEnd.ts`, headless, for the UI and the tools.
+
 ## Cuts
 
 None.

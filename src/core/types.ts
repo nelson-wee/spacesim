@@ -189,6 +189,8 @@ export interface Actor {
   /** Known prices and map knowledge (Section 9.12). */
   knowledge: Knowledge;
   insurance: InsurancePolicy | null;
+  /** The destination of a trip that had its encounter roll (Section 10.4: one roll per trip); null after arrival. */
+  tripRolled?: string | null;
 }
 
 export type LogKind = 'info' | 'good' | 'warning' | 'danger';

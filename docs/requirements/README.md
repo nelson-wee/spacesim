@@ -220,6 +220,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 | Q-43 | **Hitscan lasers.** **Decided (owner, 2026-10-28).** Lasers had no advantage at range. | Lasers have their own range penalty 0.1 (others 0.4, §12.3). Pulse Laser damage 5 → 4 keeps Shuttle vs Raider in 40–60%. | M4, M5 |
 | Q-44 | **Point defense timing.** **Decided (owner, 2026-10-28).** In §13.3, point defense fires after munitions move and hit, so a missile (speed 6) that comes into range 3 and hits in the same move never meets point defense. | Point defense fires during the munition move: when a munition comes within range 3, before the hit roll, up to 2 shots per turn per point defense module. Munitions only, not ships (flak covers ships). | M5 |
 | Q-45 | **Generated encounter TU check (§10.9).** The median group TU of 10,000 encounters is below the §10.5 range for 3 of 15 levels (Lawless Middle, Medium Core, High Frontier), also with the brief's own values: the template ladder has steps (10, 23, 36...). | Gate on the mean group TU (15 of 15 in range); report the median. Option: add filler templates with new loadouts. | M5 |
+| Q-46 | **TU calibration and battle length (M5 exit checks 1 and 2).** Single ship vs a group of equal TU wins 39%, 82%, 94%, 82%, 27% (need 35%-65%). Strong matchups (armor and shields against small autocannon hits; torpedoes against slow ships) are outside one TU number; `groupBonus` cannot fix both directions. Median battle length: Shuttle vs Raider 11 (10 with other seeds), Cutter vs Raider Pack 12 (stalemates). | (a) Keep the TU calibration as a report until the module tuning pass (owner note, §11), as with Q-45. (b) Add matchup terms to TU: armor against a reference weapon, and shields with regeneration against a reference attacker (a formula change). (c) `damageScale` 2.75 → 3.0: Shuttle battle median 9 turns, Shuttle win 49%, Wasp vs 2 Raiders 40%. Proposed: (a) + (c). | M5 |
 | Q-40 | **Heat and combat decisions.** Heat does not limit most loadouts in battles of 8–10 turns, so "fire all weapons every turn" wins. **Partly decided (owner, 2026-10-28):** heat split, overheat takes the ship offline, aimed shots use tracking (built, `DECISIONS.md`). | Open: Heat Dump, plasma weapons, power as an action economy, velocity and inertia, skill-gap check, auto-battle. Scope and costs: `docs/proposals/combat-v2.md`. | M5 |
 
 ## 9. Risks
@@ -249,6 +250,7 @@ These items need the repository owner. Claude Code cannot do them.
 8. **Combat data (M4):** done (Q-38 decided, 2026-10-28). Early losses: done (Q-39 decided, 2026-10-28).
 9. **Combat decisions (M5):** read `docs/proposals/combat-v2.md` and select the items and order for Q-40 before M5 tuning. Heat Dump and plasma weapons are after the MVP (owner, 2026-10-28).
 10. **Capacitor icon:** ask Claude Design for a Capacitor icon in `data/art/modules.json` (the game uses a placeholder until then).
+11. **M5 checks:** answer Q-46 (TU calibration and battle length).
 
 ## 11. After the MVP (owner notes)
 

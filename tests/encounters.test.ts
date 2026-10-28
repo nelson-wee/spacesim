@@ -136,6 +136,17 @@ describe('encounter rolls and groups (M5-ENC-01 to 03, M5-ENC-11)', () => {
       }
     }
     expect(enc).not.toBeNull();
+    // One roll per trip: going on to the same destination does not roll again.
+    for (let i = 0; i < 30; i++) {
+      const copy = fresh();
+      setLevel(startSector(copy), 0);
+      copy.state.rng.encounter = createRngState(100 + i, 'encounter');
+      const first = travelInSector(copy, copy.state.player, { kind: 'location', locationId: dest }, true);
+      if (first.result !== 'encounter') continue;
+      const again = travelInSector(copy, copy.state.player, { kind: 'location', locationId: dest }, true);
+      expect(again.result).not.toBe('encounter');
+      break;
+    }
     actor.position = { kind: 'space', sectorId: s.id, x: 10, y: 10 };
     const day = g.state.day;
     const fuel = actor.fleet[0]!.fuel;

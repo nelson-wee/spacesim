@@ -10,6 +10,8 @@ import { resolveTurn } from '../src/combat/resolver';
 import type { AiKind, Battle } from '../src/combat/types';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { dataWithOverride } from './lib/override';
+import { templateTu } from '../src/encounter/budget';
+import { loadoutTu } from '../src/ship/threat';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const battles = Number(args[0] ?? 500);
@@ -26,6 +28,10 @@ interface Pairing {
   band?: [number, number];
   /** Pass if the win rate is at least this much above the win rate of another pairing. */
   above?: { id: string; by: number };
+  /** AI of the player side (default Attack, Q-25). */
+  playerAi?: AiKind;
+  /** TU calibration (Section 10.9): print the TU of both sides. */
+  tu?: boolean;
 }
 
 const PAIRINGS: Pairing[] = [
@@ -33,8 +39,20 @@ const PAIRINGS: Pairing[] = [
   { id: 'wasp-shuttle', name: 'Laser Wasp vs Starting Shuttle (Attack AI)', player: ['laser_wasp'], other: ['start_shuttle'], otherAi: 'attack', band: [0.7, 1] },
   { id: 'wasp-raider', name: 'Laser Wasp vs 1 Pirate Raider', player: ['laser_wasp'], other: ['pirate_raider'], otherAi: 'raider', above: { id: 'shuttle-raider', by: 0.2 } },
   { id: 'wasp-2raiders', name: 'Laser Wasp vs 2 Pirate Raiders (report; brief band 50%-70%)', player: ['laser_wasp'], other: ['pirate_raider', 'pirate_raider'], otherAi: 'raider' },
+  // Section 13.9: each weapon family has a role (the better build wins more often against the same enemy).
+  { id: 'bgun-wasps', name: 'Ballistic Gunship vs 3 Raiders (Wasp-heavy enemy)', player: ['ballistic_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
+  { id: 'lgun-wasps', name: 'Laser Gunship vs 3 Raiders: lasers win more often', player: ['laser_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider', above: { id: 'bgun-wasps', by: 0.01 } },
+  { id: 'lcor-frig', name: 'Laser Corvette vs Pirate Frigate', player: ['laser_corvette'], other: ['pirate_frigate'], otherAi: 'raider' },
+  { id: 'bcor-frig', name: 'Ballistic Corvette vs Pirate Frigate: ballistics win more often', player: ['ballistic_corvette'], other: ['pirate_frigate'], otherAi: 'raider', above: { id: 'lcor-frig', by: 0.01 } },
+  { id: 'lfrig-bs', name: 'Laser Frigate vs Battleship', player: ['laser_frigate'], other: ['battleship'], otherAi: 'raider' },
+  { id: 'tfrig-bs', name: 'Torpedo Frigate vs Battleship: torpedoes win more often', player: ['torpedo_frigate'], other: ['battleship'], otherAi: 'raider', above: { id: 'lfrig-bs', by: 0.01 } },
+  // Section 10.9 TU calibration: a single ship against a group of equal TU (±10%) wins 35%-65%. Both sides use the Attack AI.
+  { id: 'tu-1', name: 'TU: Pirate Gunship vs Raider Pack', player: ['pirate_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
+  { id: 'tu-2', name: 'TU: Patrol Cutter vs Raider Pack', player: ['patrol_cutter'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
+  { id: 'tu-3', name: 'TU: Pirate Corvette vs Gunship + Raider', player: ['pirate_corvette'], other: ['pirate_gunship', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
+  { id: 'tu-4', name: 'TU: Pirate Frigate vs Gunship Escort', player: ['pirate_frigate'], other: ['pirate_gunship', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
+  { id: 'tu-5', name: 'TU: Battleship vs Frigate + Gunship + Raider', player: ['battleship'], other: ['pirate_frigate', 'pirate_gunship', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
   { id: 'shuttle-3raiders', name: 'Starting Shuttle vs 3 Pirate Raiders (report)', player: ['start_shuttle'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
-  { id: 'gunship-3raiders', name: 'Laser Gunship vs 3 Pirate Raiders (report)', player: ['laser_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
   { id: 'gunship-trader', name: 'Laser Gunship vs Light Freighter trader (report)', player: ['laser_gunship'], other: ['light_freighter_trader'], otherAi: 'trader' },
 ];
 
@@ -43,7 +61,7 @@ const priority = (loadoutId: string) => data.loadoutById.get(loadoutId)?.powerPr
 function run(p: Pairing, n: number, i: number): Battle {
   let b = createBattle(
     {
-      player: p.player.map((l, k) => ({ ship: createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), ai: 'attack', powerPriority: priority(l) })),
+      player: p.player.map((l, k) => ({ ship: createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), ai: p.playerAi ?? 'attack', powerPriority: priority(l) })),
       other: p.other.map((l, k) => ({ ship: createShipFromLoadout(data, l, `o${k}`, `${data.loadoutById.get(l)?.name ?? l} ${k + 1}`), ai: p.otherAi, powerPriority: priority(l) })),
       aggressor: p.otherAi === 'trader' ? 'player' : 'other',
       rng: createRngState(n * 7919 + i, 'combat'),
@@ -88,10 +106,12 @@ for (const p of PAIRINGS) {
   const verdict = p.band ? (win >= p.band[0] && win <= p.band[1] ? 'PASS' : 'FAIL') : p.above ? (win >= base - 1e-9 ? 'PASS' : 'FAIL') : 'NOTE';
   if (verdict === 'FAIL') fails++;
   const need = p.band ? ` (need ${pct(p.band[0])}-${pct(p.band[1])})` : p.above ? ` (need ${pct(base)}+: ${p.above.id} + ${pct(p.above.by)})` : '';
+  const tuText = p.tu ? ` [TU ${loadoutTu(p.player[0] ?? '', data).toFixed(1)} vs ${templateTu({ ships: p.other }, data).toFixed(1)}]` : '';
   console.log(
-    `${verdict}  ${p.name}: win ${pct(win)}${need}, loss ${pct(count.loss / battles)}, player fled ${pct(count.fled / battles)}, draw ${pct(count.draw / battles)}; wins by surrender ${count.surrender}, enemy fled ${count.enemyFled}; median ${median} turns`,
+    `${verdict}  ${p.name}${tuText}: win ${pct(win)}${need}, loss ${pct(count.loss / battles)}, player fled ${pct(count.fled / battles)}, draw ${pct(count.draw / battles)}; wins by surrender ${count.surrender}, enemy fled ${count.enemyFled}; median ${median} turns`,
   );
 }
 const allIn = lengths.every((m) => m >= 4 && m <= 10);
-console.log(`${allIn ? 'NOTE' : 'NOTE'}  Median battle length 4-10 turns (monitor): ${lengths.join(', ')}`);
+if (!allIn) fails++;
+console.log(`${allIn ? 'PASS' : 'FAIL'}  Median battle length 4-10 turns (Section 13.9, any pairing): ${lengths.join(', ')}`);
 console.log(fails === 0 ? 'All checks of this milestone pass.' : `${fails} check(s) fail.`);
