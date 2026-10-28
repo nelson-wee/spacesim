@@ -98,7 +98,7 @@ describe('footprints and movement (M4-FOOT)', () => {
 });
 
 describe('hit chance (M4-WPN-01, M4-WPN-02, Q-19)', () => {
-  it('track x range x heat x debris, clamped; engine shots x 0.85', () => {
+  it('track x range x heat x debris, clamped; engine shots x tracking / (tracking + moduleAimTracking)', () => {
     const b = open();
     const me = P(b);
     const t = E(b);
@@ -108,7 +108,7 @@ describe('hit chance (M4-WPN-01, M4-WPN-02, Q-19)', () => {
     const d = distance(me, t);
     const expected = (w.tracking! / (w.tracking! + man)) * (1 - c.rangePenalty * (d / w.range!));
     expect(hitChance(b, me, w, t, 'hull', data)).toBeCloseTo(Math.min(c.hitMax, Math.max(c.hitMin, expected)));
-    expect(hitChance(b, me, w, t, 'engines', data)).toBeCloseTo(Math.min(c.hitMax, Math.max(c.hitMin, expected * c.engineShotFactor)));
+    expect(hitChance(b, me, w, t, 'engines', data)).toBeCloseTo(Math.min(c.hitMax, Math.max(c.hitMin, expected * (w.tracking! / (w.tracking! + c.moduleAimTracking)))));
     me.heat = combatStats(me, data).heatCapacity * c.hotShare;
     expect(heatState(me, data)).toBe('hot');
     expect(hitChance(b, me, w, t, 'hull', data)).toBeCloseTo(expected * c.hotHitFactor);
@@ -266,6 +266,66 @@ describe('power and heat (M4-PWR)', () => {
     expect(me.overheated).toBe(true);
     const why = applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, new Rng(createRngState(1, 'x')), []);
     expect(why).toMatch(/Overheat/);
+  });
+
+  it('overheat (Q-40): offline (no orders, no move, no shields) until heat is at or below the recover share', () => {
+    const b = open();
+    const me = P(b);
+    const st = combatStats(me, data);
+    me.heat = st.heatCapacity + 2;
+    me.shotHeat = 0;
+    const effects: Effect[] = [];
+    heatStep(me, data, effects);
+    expect(me.overheated).toBe(true);
+    expect(effects.some((e) => e.kind === 'overheat')).toBe(true);
+    // Active modules are offline: no movement, no maneuver, no shields; passive modules still count.
+    const off = combatStats(me, data);
+    expect(moveBudget(me, data)).toBe(0);
+    expect(off.engineCount).toBe(0);
+    expect(off.shieldCapacity).toBe(0);
+    expect(off.cooling).toBe(st.cooling);
+    shieldStep(me, data);
+    expect(me.shield).toBe(0);
+    const rng = new Rng(createRngState(1, 'x'));
+    expect(applyOrder(b, me, { kind: 'move', to: { x: 11, y: 14 } }, data, rng, [])).toMatch(/offline/);
+    expect(applyOrder(b, me, { kind: 'toggle', slot: { kind: 'hardpoint', index: 0 }, on: false }, data, rng, [])).toMatch(/offline/);
+    // Only cooling acts; the ship is back online at or below the recover share.
+    let steps = 0;
+    while (me.overheated && steps < 50) {
+      const before = me.heat;
+      heatStep(me, data, effects);
+      steps++;
+      if (me.overheated) expect(me.heat).toBeCloseTo(before - st.cooling);
+    }
+    expect(me.overheated).toBe(false);
+    expect(me.heat).toBeLessThanOrEqual(c.overheatRecoverShare * st.heatCapacity + 1e-9);
+    expect(steps).toBe(Math.ceil((st.heatCapacity * (1 - c.overheatRecoverShare)) / st.cooling - 1e-9));
+    expect(effects.some((e) => e.kind === 'online')).toBe(true);
+    expect(combatStats(me, data).engineCount).toBeGreaterThan(0);
+  });
+
+  it('the AI does not fire a shot that would overheat it (Q-40)', () => {
+    const b = open('laser_wasp', ['pirate_raider']);
+    const me = P(b);
+    me.ai = 'attack';
+    const st = combatStats(me, data);
+    me.heat = st.heatCapacity - 1;
+    const out = resolveTurn(b, null, data);
+    const after = out.battle.ships[0]!;
+    expect(after.overheated).toBe(false);
+    expect(out.effects.some((e) => e.kind === 'shot' && e.shipId === me.id)).toBe(false);
+  });
+
+  it('aimed shots at the Engines: lasers aim better than heavy guns (Q-40)', () => {
+    const b = open();
+    const me = P(b);
+    const t = E(b);
+    t.pos = { x: 15, y: 13 };
+    const heavy = moduleValues(data, { moduleId: 'heavy_cannon', size: 'L', tier: 1, on: true });
+    const ratio = (w: ReturnType<typeof laser>) => hitChance(b, me, w, t, 'engines', data) / hitChance(b, me, w, t, 'hull', data);
+    expect(ratio(laser())).toBeCloseTo(laser().tracking! / (laser().tracking! + c.moduleAimTracking));
+    expect(ratio(laser())).toBeGreaterThan(ratio(cannon()));
+    expect(ratio(cannon())).toBeGreaterThan(ratio(heavy));
   });
 
   it('fuel: mass^exp x kCombat for a turn with an engine ON (M4-FUEL-01)', () => {

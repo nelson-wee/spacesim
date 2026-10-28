@@ -21,10 +21,10 @@ export function moduleValues(data: GameData, m: InstalledModule): ModuleValues {
     if (typeof value === 'number') v[key] = value * t.main;
   }
   if (v.power !== undefined) v.power *= t.power;
-  // Combat tuning (DECISIONS.md, M4): one scale for all heat, one for weapon damage against ships.
+  // Combat tuning (DECISIONS.md, M4 and Q-40): heat per turn and heat per shot have their own scales; one scale for weapon damage against ships.
   const c = data.balance.combat;
-  if (v.heatPerTurn !== undefined) v.heatPerTurn *= t.heat * c.heatScale;
-  if (v.heatPerShot !== undefined) v.heatPerShot *= t.heat * c.heatScale;
+  if (v.heatPerTurn !== undefined) v.heatPerTurn *= t.heat * c.idleHeatScale;
+  if (v.heatPerShot !== undefined) v.heatPerShot *= t.heat * c.shotHeatScale;
   if (v.damage !== undefined && def.category !== 'pointDefense') v.damage *= c.damageScale;
   v.mass *= t.mass;
   v.price *= t.price;

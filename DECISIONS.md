@@ -246,14 +246,14 @@ These decisions replace the brief text where they do not agree.
 
 ### Open-question defaults used
 
-- 2026-10-28 [Q-19] An engine shot multiplies the hit chance by 0.85 (`engineShotFactor`).
+- 2026-10-28 [Q-19] An engine shot multiplies the hit chance by 0.85 (`engineShotFactor`). Replaced by Q-40 (aimed shots use tracking).
 - 2026-10-28 [Q-20] Engine damage has no effect until the engine value is 0; then move and maneuver are 0, and the ship cannot flee.
 - 2026-10-28 [Q-25] Attack AI for the player side in `sim-combat`: the nearest hostile target, the wanted distance, no retreat.
 - 2026-10-28 [Q-28] The player gives toggles, moves, and shots in any order; the resolver checks the move budget and one shot per weapon.
 
 ### Combat data (Q-38, accepted by the owner 2026-10-28)
 
-- 2026-10-28 [§11.6, §11.7] `combat.heatScale` 0.5 on all heat per turn and per shot. Reason: with the §11.7 values, every default loadout except the Light Freighter makes more heat at idle than it cools (Shuttle 5 against 3), so all ships overheated and burned even when they did not fire. With 0.5, idle heat is below cooling for the M4 ships; shots still build heat.
+- 2026-10-28 [§11.6, §11.7] (Replaced by Q-40: `idleHeatScale` and `shotHeatScale`.) `combat.heatScale` 0.5 on all heat per turn and per shot. Reason: with the §11.7 values, every default loadout except the Light Freighter makes more heat at idle than it cools (Shuttle 5 against 3), so all ships overheated and burned even when they did not fire. With 0.5, idle heat is below cooling for the M4 ships; shots still build heat.
 - 2026-10-28 [§12.2, §13.9] `combat.damageScale` 2.75 on weapon damage against ships (not point defense). Reason: with the §12.2 values, two autocannons could not break a Shield S (regen 4 per turn), and battles went to 25 turns. A uniform scale does not change threat units (the formula is a ratio to the Raider). Median battle length is now 8-10 turns.
 - 2026-10-28 [§11.1] Wasp heat capacity 25 → 40. Reason: a laser Wasp (2 lasers) overheated by turn 3; this was the lever that moved the laser Wasp pairing without moving the Shuttle pairing.
 - 2026-10-28 [§10.5] Pirate Raider loadout: 2 autocannons, engine, reactor, shield (was 2 engines, no shield). Reason: the threat formula then gives Raider/Shuttle 1.07 (§10.5 reference 10/9 = 1.11; the old loadout gave 0.83).
@@ -287,6 +287,14 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-28 [owner] The policy stores the location, the day, the premium, and the flagship (hull and loadout, no cargo). If the last ship is destroyed, the player wakes at that location with a new copy of the ship (full hull, armor, engine value, and fuel). The policy covers only the ship: the player keeps the credits (and any debt) of the moment of the loss. The world and the day continue. Reason: owner decision (confirmed 2026-10-28).
 - 2026-10-28 One policy at a time. A new policy replaces the old one with no refund. A claim uses the policy. A disable by pirates does not use the policy. The service is refused in debt. Reason: simple rules; the brief has no insurance rules.
 - 2026-10-28 A new career starts with no policy; the player can buy one at the start location. The status bar shows "Insured" or "Not insured". Reason: the premium is a real choice from day 1 (318 cr for the starting Shuttle in a Secure sector).
+
+## Heat and aimed shots (owner, 2026-10-28, Q-40)
+
+- 2026-10-28 [owner, §11.6] Two heat scales: `idleHeatScale` 0.3 (heat per turn of modules ON) and `shotHeatScale` 0.6 (heat per shot). Reason: the owner asked for the split. Idle heat is now below cooling for all 18 default loadouts (the Patrol Cutter was above). Shot heat: the laser Wasp pairing (§13.9, 50-70%) sets the limit (1.0: 32%; 0.75: 48-52%; 0.6: 53% at 500 battles). Laser builds on Gunships and larger ships overheat in 7-11 turns of full fire; ballistic builds do not (`docs/proposals/combat-v2.md`).
+- 2026-10-28 [owner, §11.6] Overheat takes the ship offline: hull damage = heat above capacity, then no orders, and active modules (power draw > 0: engines, shields, weapons, thrusters) do not work, so move, maneuver, and shields are 0. Passive modules (armor, heat sinks, radiators, cargo, fuel, reactors) work. While offline, only cooling acts (no idle heat). The ship is back online when heat is at or below `overheatRecoverShare` (0.7) of capacity. Reason: owner decision ("no actions unless it cools down; engines do not move; shields fail"). 0.7 is the Hot line, so "back online" = "back to Normal". A Shuttle that overheats is offline for 3 turns.
+- 2026-10-28 [owner, §13.6] An aimed shot (at the Engines now; at other modules when module damage comes) has hit x tracking / (tracking + `moduleAimTracking`), with `moduleAimTracking` 25. Pulse laser 0.86 (Q-19 was a flat 0.85), autocannon 0.62, mass driver 0.50, heavy cannon 0.32. Reason: owner decision (tracking carries over into module aim).
+- 2026-10-28 [§13.8] No AI fires a shot that would overheat its ship (heat at the end of the turn at or above capacity). The Attack AI no longer switches weapons OFF for heat; Raider and Trader still switch OFF the hottest weapon at Hot. Reason: an overheat is now close to a loss; the AI must respect it as a player does.
+- 2026-10-28 [§17] The combat heat bar shows the heat at the end of this turn with the planned shots ("now>after%"). A plan that overheats the ship shows a warning. An offline ship shows "OFF n t" (turns left). Reason: the forecast makes the heat choice visible (owner wants heat to be fun, not hidden).
 
 ## Cuts
 

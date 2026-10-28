@@ -50,6 +50,7 @@ function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle): void {
  */
 export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameData, rng: Rng, effects: Effect[]): string | null {
   if (!isActive(s)) return 'The ship is not in the battle.';
+  if (s.overheated) return 'Overheat: the ship is offline until it cools down.';
   if (order.kind === 'toggle') return toggleModule(s, order.slot, order.on, data);
   if (order.kind === 'move') {
     const budget = moveBudget(s, data);
@@ -72,7 +73,6 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   const m = moduleAt(s, order.slot);
   if (!m || !isDirectWeapon(m, data)) return 'That is not a weapon that can fire now.';
   if (!m.on) return 'The weapon is OFF.';
-  if (s.overheated) return 'Overheat: weapons cannot fire this turn.';
   if (s.fired.includes(slotKey(order.slot))) return 'The weapon fired this turn.';
   const t = shipById(b, order.target);
   if (!t || !isActive(t) || !hostile(s, t)) return 'No valid target.';

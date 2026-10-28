@@ -8,14 +8,22 @@ import { type ShipStats, shipStats } from '../ship/stats';
 import { lineOfFire } from './geometry';
 import type { Aim, Battle, CombatShip, Effect, SlotRef, Vec2 } from './types';
 
-/** Stats with the combat power setting: only modules that are ON work (Section 11.5). */
+/**
+ * Stats with the combat power setting: only modules that are ON work (Section
+ * 11.5). While the ship is overheated, its active modules (power draw > 0:
+ * engines, shields, weapons, thrusters) are offline; passive modules (armor,
+ * heat sinks, radiators, cargo, fuel, reactors) still work (Q-40).
+ */
 export function combatStats(s: CombatShip, data: GameData): ShipStats {
-  return shipStats(s.ship, data);
+  if (!s.overheated) return shipStats(s.ship, data);
+  const offline = structuredClone(s.ship);
+  for (const m of [...offline.hardpoints, ...offline.internal]) if (m && drawOf(m, data) > 0) m.on = false;
+  return shipStats(offline, data);
 }
 
-/** Cells the ship can move this turn: 0 with no fuel (Section 8.6) or engine value 0 (Q-20). */
+/** Cells the ship can move this turn: 0 with no fuel (Section 8.6), engine value 0 (Q-20), or overheat (Q-40). */
 export function moveBudget(s: CombatShip, data: GameData): number {
-  if (s.ship.fuel <= 1e-9) return 0;
+  if (s.ship.fuel <= 1e-9 || s.overheated) return 0;
   return Math.max(0, combatStats(s, data).move - s.moved);
 }
 
@@ -23,7 +31,7 @@ export type HeatState = 'normal' | 'hot' | 'over';
 
 export function heatState(s: CombatShip, data: GameData, stats: ShipStats = combatStats(s, data)): HeatState {
   const cap = stats.heatCapacity;
-  if (s.heat >= cap) return 'over';
+  if (s.overheated || s.heat >= cap) return 'over';
   return s.heat >= data.balance.combat.hotShare * cap ? 'hot' : 'normal';
 }
 
@@ -78,7 +86,18 @@ export function toggleModule(s: CombatShip, slot: SlotRef, on: boolean, data: Ga
   return null;
 }
 
-/** Hit chance of a lasers or ballistics shot (Section 12.3; engine shots Q-19). */
+/**
+ * Aim factor of a shot at a module (the Engines now; other modules when
+ * module damage comes): tracking / (tracking + moduleAimTracking) (Q-40,
+ * replaces the flat 0.85 of Q-19). Lasers aim well; heavy guns do not.
+ */
+export function moduleAimFactor(w: ModuleValues, data: GameData): number {
+  const k = data.balance.combat.moduleAimTracking;
+  const tracking = w.tracking ?? 0;
+  return tracking + k > 0 ? tracking / (tracking + k) : 0;
+}
+
+/** Hit chance of a lasers or ballistics shot (Section 12.3; module aim Q-40). */
 export function hitChance(b: Battle, a: CombatShip, w: ModuleValues, t: CombatShip, aim: Aim, data: GameData, aAt?: Vec2): number {
   const c = data.balance.combat;
   const lof = lineOfFire(b, a, t, aAt);
@@ -90,7 +109,7 @@ export function hitChance(b: Battle, a: CombatShip, w: ModuleValues, t: CombatSh
   const rangeFactor = 1 - c.rangePenalty * (lof.distance / Math.max(1, w.range ?? 1));
   const heatFactor = heatState(a, data) === 'hot' ? c.hotHitFactor : 1;
   const debrisFactor = lof.debris ? c.debrisFactor : 1;
-  const engine = aim === 'engines' ? c.engineShotFactor : 1;
+  const engine = aim === 'engines' ? moduleAimFactor(w, data) : 1;
   return Math.min(c.hitMax, Math.max(c.hitMin, c.baseAccuracy * trackFactor * rangeFactor * heatFactor * debrisFactor * engine));
 }
 
@@ -134,22 +153,50 @@ export function applyHit(t: CombatShip, w: ModuleValues, aim: Aim, at: Vec2, dat
   effects.push({ kind: 'hull', shipId: t.id, amount: hull, at });
 }
 
+/** Heat at the end of this turn with the shots planned so far (no cap; Section 11.6). */
+export function heatForecast(s: CombatShip, data: GameData): number {
+  const st = combatStats(s, data);
+  return Math.max(0, s.heat + (s.overheated ? 0 : st.heatPerTurn) + s.shotHeat - st.cooling);
+}
+
+/** Heat at or below this value ends an overheat (Q-40). */
+export function recoverHeat(s: CombatShip, data: GameData, stats: ShipStats = combatStats(s, data)): number {
+  return data.balance.combat.overheatRecoverShare * stats.heatCapacity;
+}
+
+/** Heat steps until an overheated ship is back online (0 if it is not overheated). */
+export function overheatTurnsLeft(s: CombatShip, data: GameData): number {
+  if (!s.overheated) return 0;
+  const st = combatStats(s, data);
+  return Math.max(1, Math.ceil((s.heat - recoverHeat(s, data, st)) / Math.max(1e-9, st.cooling)));
+}
+
 /**
  * The heat step (Section 11.6): heat + heat per turn of modules ON + heat of
- * this turn's shots - cooling, at least 0. Overheat: hull damage = heat above
- * capacity (no armor), heat back to capacity, and no fire on the next turn.
+ * this turn's shots - cooling, at least 0. Overheat (Q-40): hull damage = heat
+ * above capacity (no armor), heat back to capacity, and the ship is offline:
+ * no orders, active modules do not work (no movement, no shields), and only
+ * cooling acts. The ship is back online when its heat is at or below
+ * `overheatRecoverShare` of capacity.
  */
 export function heatStep(s: CombatShip, data: GameData, effects: Effect[]): void {
+  if (s.overheated) {
+    const st = combatStats(s, data);
+    s.heat = Math.max(0, s.heat + s.shotHeat - st.cooling);
+    s.shotHeat = 0;
+    if (s.heat <= recoverHeat(s, data, st) + 1e-9) {
+      s.overheated = false;
+      effects.push({ kind: 'online', shipId: s.id });
+    }
+    return;
+  }
   const st = combatStats(s, data);
   s.heat = Math.max(0, s.heat + st.heatPerTurn + s.shotHeat - st.cooling);
   s.shotHeat = 0;
-  s.overheated = false;
   if (s.heat >= st.heatCapacity) {
     const over = s.heat - st.heatCapacity;
-    if (over > 0) {
-      s.ship.hullHp = Math.max(0, s.ship.hullHp - over);
-      effects.push({ kind: 'overheat', shipId: s.id, amount: over });
-    }
+    s.ship.hullHp = Math.max(0, s.ship.hullHp - over);
+    effects.push({ kind: 'overheat', shipId: s.id, amount: over });
     s.heat = st.heatCapacity;
     s.overheated = true;
   }

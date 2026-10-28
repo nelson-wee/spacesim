@@ -45,7 +45,7 @@
 | M4-PWR-03 | Number keys switch modules ON and OFF in combat. | §17.5 | M |
 | M4-PWR-04 | Heat each turn: `heat + sum(heatPerTurn of modules ON) + sum(heatPerShot of shots) − cooling`. Minimum 0. | §11.6 | T |
 | M4-PWR-05 | Hot (70%–99% of capacity): −10% hit chance (`heatFactor` 0.9), shield regeneration × 0.5. | §11.6 | T |
-| M4-PWR-06 | Overheat (100%+): weapons cannot fire this turn. Hull takes damage = heat above capacity (armor does not apply). Heat then goes back to capacity. | §11.6 | T |
+| M4-PWR-06 | Overheat (100%+): weapons cannot fire this turn. Hull takes damage = heat above capacity (armor does not apply). Heat then goes back to capacity. Changed by Q-40: the ship is offline (no orders, no engines, no shields) until heat is at 70% of capacity. | §11.6, Q-40 | T |
 | M4-PWR-07 | Heat goes to 0 after combat. | §11.6 | T |
 
 ## 5. Weapons and damage (WPN)
@@ -57,7 +57,7 @@
 | M4-WPN-03 | Damage: multiply by "vs shield"; shields take it first; convert the rest back (`remaining = leftover / vsShield`); multiply by "vs hull"; subtract `max(0, armor − armorPierce)`; minimum 1 per hit; subtract from hull HP (or engine value). | §12.5 | T |
 | M4-WPN-04 | Flak Cannon: 3 × 3 area, 4 damage to each ship in the area, hit chance 0.6 flat on each ship. (It destroys munitions from M5.) | §12.2 | T |
 | M4-WPN-05 | Shields regenerate each turn by their regen value, up to capacity. | §11.7, §13.3 | T |
-| M4-WPN-06 | **Engine targeting.** The player can target the hull or the engines. An engine shot multiplies hit chance by 0.85 (Q-19). Its hull damage goes to the engine value. | §13.6, Q-19 | T |
+| M4-WPN-06 | **Engine targeting.** The player can target the hull or the engines. An engine shot multiplies hit chance by 0.85 (Q-19; changed by Q-40 to tracking / (tracking + 25)). Its hull damage goes to the engine value. | §13.6, Q-19 | T |
 | M4-WPN-07 | Engine value 0: `move` 0 and `maneuver` 0. The ship cannot flee. Engine value above 0 has no other effect (Q-20). | §13.6, Q-20 | T |
 
 ## 6. Fuel in combat (FUEL)

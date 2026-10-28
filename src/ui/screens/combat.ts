@@ -12,12 +12,14 @@ import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolve
 import {
   combatStats,
   drawOf,
+  heatForecast,
   heatState,
   hitChance,
   isDirectWeapon,
   moduleAt,
   moduleSlots,
   moveBudget,
+  overheatTurnsLeft,
   slotKey,
 } from '../../combat/rules';
 import type { Aim, Battle, CombatShip, Effect, Order, SlotRef, Vec2 } from '../../combat/types';
@@ -120,7 +122,7 @@ export class CombatScreen implements Screen {
     const me = this.me();
     const budget = moveBudget(me, this.game.data);
     if (budget <= 0) {
-      this.notice = me.ship.fuel <= 1e-9 ? 'No fuel: the ship cannot move.' : 'No movement left this turn.';
+      this.notice = me.overheated ? this.offlineText() : me.ship.fuel <= 1e-9 ? 'No fuel: the ship cannot move.' : 'No movement left this turn.';
       return;
     }
     const path = pathTo(reachable(this.preview, me, budget * 8), to);
@@ -139,7 +141,7 @@ export class CombatScreen implements Screen {
     const t = this.target();
     if (!t) return;
     if (me.overheated) {
-      this.notice = 'Overheat: weapons cannot fire this turn.';
+      this.notice = this.offlineText();
       return;
     }
     let n = 0;
@@ -154,6 +156,12 @@ export class CombatScreen implements Screen {
       n++;
     }
     this.notice = n > 0 ? `${n} shot${n === 1 ? '' : 's'} planned at ${t.name}.` : 'No weapon can hit that target now.';
+    if (n > 0 && heatForecast(me, data) >= combatStats(me, data).heatCapacity) this.notice += ' WARNING: this turn overheats the ship (U to undo).';
+  }
+
+  private offlineText(): string {
+    const n = overheatTurnsLeft(this.me(), this.game.data);
+    return `Overheat: the ship is offline (no orders, no engines, no shields) for about ${n} more turn${n === 1 ? '' : 's'}. Press E.`;
   }
 
   private undo(): void {
@@ -345,7 +353,9 @@ export class CombatScreen implements Screen {
     line(`Maneuver ${Math.round(st.maneuver)}  Fuel ${me.ship.fuel.toFixed(1)}`);
     // Heat bar (style.json heat: cells, step, zones).
     const heat = data.art.style.heat;
-    const pct = (100 * (me.heat + me.shotHeat)) / Math.max(1, st.heatCapacity);
+    // The bar shows the heat at the end of this turn with the planned shots (Q-40 forecast).
+    const now = (100 * me.heat) / Math.max(1, st.heatCapacity);
+    const pct = (100 * heatForecast(me, data)) / Math.max(1, st.heatCapacity);
     t.text(x, y, 'Heat ', ui.dim);
     for (let i = 0; i < heat.cells; i++) {
       const lo = i * heat.step;
@@ -355,7 +365,9 @@ export class CombatScreen implements Screen {
       const flash = zone === 'over' && filled && Math.floor((Date.now() * heat.flashHz) / 500) % 2 === 1;
       t.put(x + 5 + i, y, filled && !flash ? '█' : '·', filled ? fg : ui.dim);
     }
-    t.text(x + 18, y++, `${Math.round(pct)}%${me.overheated ? ' OVER' : ''}`, me.overheated ? ui.danger : ui.text);
+    const hotPct = 100 * data.balance.combat.hotShare;
+    const label = me.overheated ? `OFF ${overheatTurnsLeft(me, data)}t` : `${Math.round(now)}>${Math.round(pct)}%`;
+    t.text(x + 18, y++, label, me.overheated || pct >= 100 ? ui.danger : pct >= hotPct ? color(data, 'hot') : ui.text);
     line(`Cooling ${st.cooling}/turn  Power ${st.powerDraw}/${st.powerSupply}`);
     y++;
     // Power list.
@@ -389,7 +401,7 @@ export class CombatScreen implements Screen {
       line(`Engine ${tgt.ship.engineValue.toFixed(0)}/${ts.maxEngineValue}  Maneuver ${Math.round(ts.maneuver)}`);
       const lof = lineOfFire(this.preview, me, tgt);
       line(`Distance ${lof.distance}${lof.clear ? '' : ' (blocked)'}${lof.debris ? ' debris' : ''}`, lof.clear ? ui.text : ui.danger);
-      line(`Aim: ${this.aim === 'hull' ? 'Hull' : 'Engines (x0.85 hit)'}`, ui.dim);
+      line(`Aim: ${this.aim === 'hull' ? 'Hull' : 'Engines (aimed shot)'}`, ui.dim);
     }
     y++;
     line('Ships', ui.dim);
@@ -487,14 +499,16 @@ export class CombatScreen implements Screen {
       '             as it can go toward it this turn',
       'Tab/click    Select the target ship',
       'F            Fire all weapons that can hit the target',
-      'A            Aim at the Hull or the Engines (x0.85 hit chance)',
+      'A            Aim at the Hull or the Engines (an aimed shot: high-',
+      '             tracking weapons such as lasers aim best)',
       'E            End the turn (the enemy moves and fires)',
       'U            Clear the plan for this turn',
       'Space        Skip the effects',
       '',
       'Flee: move onto a map edge cell with an engine ON.',
-      'Heat: Hot (70%+) gives -10% hit and half shield regen. Overheat',
-      '(100%+) hurts the hull, and weapons cannot fire on the next turn.',
+      'Heat: the bar shows the heat after this turn. Hot (70%+) gives -10%',
+      'hit and half shield regen. Overheat (100%+) hurts the hull and takes',
+      'the ship offline: no orders, engines, or shields until heat is 70%.',
       'An engine value of 0 stops the ship. Shots to the Engines lower it.',
     ];
   }
@@ -541,7 +555,10 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         out.push(`  ${name(e.shipId)} engine -${e.amount.toFixed(0)}`);
         break;
       case 'overheat':
-        out.push(`${name(e.shipId)} overheats: hull -${e.amount.toFixed(0)}`);
+        out.push(`${name(e.shipId)} overheats: hull -${e.amount.toFixed(0)}; engines, shields, and weapons offline.`);
+        break;
+      case 'online':
+        out.push(`${name(e.shipId)} cools down and is back online.`);
         break;
       case 'destroy':
         out.push(`${name(e.shipId)} is ${e.shipId === b.playerId && defeatKind(b) === 'disabled' ? 'disabled' : 'destroyed'}.`);

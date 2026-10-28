@@ -37,7 +37,7 @@ export function aiPower(b: Battle, s: CombatShip, data: GameData, rng: Rng, effe
       if (draw <= left + 1e-9) left -= draw;
     }
   }
-  if (heatTooHigh(s, data, st, want)) {
+  if (heatTooHigh(s, data, st)) {
     let worst: SlotRef | null = null;
     let worstHeat = -1;
     for (const slot of slots) {
@@ -64,20 +64,18 @@ function cargoValue(s: CombatShip, data: GameData): number {
 }
 
 /**
- * When the AI switches OFF its hottest weapon. Raider and Trader: when heat is
- * Hot (Section 13.8). Attack AI (the player side, Q-25): only when firing all
- * weapons that stay ON would overheat the ship on this turn, as a player would.
+ * When the AI switches OFF its hottest weapon: Raider and Trader when heat is
+ * Hot (Section 13.8). The Attack AI (the player side, Q-25) keeps its weapons
+ * ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
  */
-function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>, want: Map<string, boolean>): boolean {
-  if (s.ai !== 'attack') return heatState(s, data, st) === 'hot';
-  let heat = s.heat - st.cooling;
-  for (const slot of moduleSlots(s)) {
-    const m = moduleAt(s, slot);
-    if (!m || !want.get(slotKey(slot))) continue;
-    const v = moduleValues(data, m);
-    heat += (v.heatPerTurn ?? 0) + (isDirectWeapon(m, data) ? (v.heatPerShot ?? 0) : 0);
-  }
-  return heat >= st.heatCapacity;
+function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>): boolean {
+  return s.ai !== 'attack' && heatState(s, data, st) === 'hot';
+}
+
+/** Heat at the end of this turn if the ship also fires `w` (Section 11.6). */
+function heatAfterShot(s: CombatShip, w: ReturnType<typeof moduleValues>, data: GameData): number {
+  const st = combatStats(s, data);
+  return s.heat + st.heatPerTurn + s.shotHeat + (w.heatPerShot ?? 0) - st.cooling;
 }
 
 /** The ship that the AI wants to attack. */
@@ -149,6 +147,8 @@ function aiFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
     const m = moduleAt(s, slot);
     if (!m) continue;
     const w = moduleValues(data, m);
+    // An overheat takes the ship offline (Q-40): the AI does not fire a shot that would cause one.
+    if (heatAfterShot(s, w, data) >= combatStats(s, data).heatCapacity) continue;
     const foes = b.ships.filter((o) => isActive(o) && hostile(s, o));
     let pick: CombatShip | null = target && isActive(target) && hitChance(b, s, w, target, 'hull', data) > 0 ? target : null;
     if (!pick) {

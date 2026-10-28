@@ -321,6 +321,18 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 - **Tool results:** `npm test`: 697 tests pass (9 new in `tests/defeat.test.ts`). `npm run build`: passes.
 - **Open:** Q-40 (heat and combat decisions) waits on the owner.
 
+### Heat split, overheat offline, aimed shots (Q-40, part 1)
+
+- **Works:**
+  - Two heat scales: idle 0.3, shot 0.6. Idle heat is below cooling for all default loadouts.
+  - Overheat takes the ship offline (no orders, no engines, no shields) until heat is at 70% of capacity. Only cooling acts.
+  - Aimed shots at the Engines use weapon tracking: lasers aim well, heavy guns badly.
+  - No AI fires a shot that would overheat it.
+  - The heat bar shows the heat after the planned shots; a warning shows if the plan overheats the ship; an offline ship shows the turns left.
+- **Exit checks again (500 battles):** Shuttle vs Raider 55% PASS (40-60%); Laser Wasp vs 2 Raiders 53% PASS (50-70%). Reports: Shuttle vs 3 Raiders 0%; Laser Gunship vs 3 Raiders 18%; Gunship vs trader 100%. Median lengths 10, 8, 5, 7, 3 turns.
+- **Known issues:** the laser Wasp pairing limits the shot heat scale (1.0 gives 32%). Heat has small effect on ships with one weapon. Scope for more combat decisions: `docs/proposals/combat-v2.md`.
+- **Tool results:** `npm test`: 700 tests pass. `npm run ship-report`: all PASS. `npm run build`: passes.
+
 <!--
 Template for each milestone:
 

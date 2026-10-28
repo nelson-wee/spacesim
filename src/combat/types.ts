@@ -40,7 +40,7 @@ export interface CombatShip {
   mirrored: boolean;
   heat: number;
   shield: number;
-  /** Overheated at the last heat step: weapons cannot fire this turn (Section 11.6). */
+  /** Overheated: offline until heat falls to overheatRecoverShare of capacity (Q-40). */
   overheated: boolean;
   status: ShipStatus;
   /** Morale roll done (once, Section 13.8). */
@@ -91,6 +91,7 @@ export type Effect =
   | { kind: 'armor'; shipId: number; at: Vec2 }
   | { kind: 'engine'; shipId: number; amount: number; at: Vec2 }
   | { kind: 'overheat'; shipId: number; amount: number }
+  | { kind: 'online'; shipId: number }
   | { kind: 'destroy'; shipId: number }
   | { kind: 'flee'; shipId: number }
   | { kind: 'surrender'; shipId: number };
