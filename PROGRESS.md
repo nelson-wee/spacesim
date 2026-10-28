@@ -7,7 +7,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M1 Foundation | 1 | Built and deployed. | 7 of 7 pass (Pages: deploy job passed; open the site once in a browser to confirm). |
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
-| M4 Combat core | 4 | Built. Combat data changes wait on owner review (Q-38). | 5 of 5 pass. |
+| M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Not started | — |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
 | M7 Contracts, career, save | 7 | Not started | — |
@@ -264,7 +264,8 @@ The bot found that the M2 carrier margin (25% on all goods) left large gaps on g
 
 ### Known issues
 
-- Q-38: the brief's heat and damage values did not fit the §13.9 checks. The M4 tuning changes them (owner review).
+- Q-38 (accepted): the brief's heat and damage values did not fit the §13.9 checks. The M4 tuning changes them.
+- Heat has small effect in battles of 8-10 turns: with all weapons on, the Shuttle, the Raider, and most ballistic loadouts do not become Hot before turn 14. Only laser loadouts on Gunships and larger ships overheat (turn 8-12). The owner reviews a heat change before M5 tuning.
 - The laser Wasp pairing passes with a small margin (52%; band 50-70%). M5 tunes all pairings again.
 - `sim-combat` takes about 2 minutes for 500 battles of 5 pairings (the AI look-ahead).
 - Patrol Cutter idle heat (5.5) is still above its cooling (4) after `heatScale`; M5 checks it with the patrol pairings.

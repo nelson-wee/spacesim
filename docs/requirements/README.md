@@ -213,7 +213,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 
 | ID | Problem | Proposed default | Milestone |
 |---|---|---|---|
-| Q-38 | **Combat data.** The §11.7 and §12.2 values do not agree with the §13.9 checks: idle heat is above cooling for all default loadouts (ships burn without firing), and two autocannons cannot break a Shield S, so battles go to 25 turns. | Keep the M4 tuning (`DECISIONS.md`, M4): `heatScale` 0.5, `damageScale` 2.75, Wasp heat capacity 40, a Raider with a shield, Raider retreat at 50% (brief: 30%) and no fire in retreat. M5 tunes again with all §13.9 pairings and the threat calibration (§10.9). | M4, M5 |
+| Q-38 | **Combat data.** **Decided (owner, 2026-10-28): proposed default.** The §11.7 and §12.2 values do not agree with the §13.9 checks: idle heat is above cooling for all default loadouts (ships burn without firing), and two autocannons cannot break a Shield S, so battles go to 25 turns. | Keep the M4 tuning (`DECISIONS.md`, M4): `heatScale` 0.5, `damageScale` 2.75, Wasp heat capacity 40, a Raider with a shield, Raider retreat at 50% (brief: 30%) and no fire in retreat. M5 tunes again with all §13.9 pairings and the threat calibration (§10.9). | M4, M5 |
 
 ## 9. Risks
 
@@ -239,7 +239,7 @@ These items need the repository owner. Claude Code cannot do them.
 5. **Security patrols:** rework the patrol budget and groups (Q-04) before or during M5.
 6. **Economy checks (M2):** done (Q-31 to Q-35 decided, 2026-10-27). M3 starts only after the M2 exit checks pass (`CLAUDE.md`), or after you accept the M2 results as they are.
 7. **Trade checks (M3):** done (Q-36 and Q-37 decided, 2026-10-28).
-8. **Combat data (M4):** review Q-38 (changes to the brief's heat, damage, Wasp, and Raider values).
+8. **Combat data (M4):** done (Q-38 decided, 2026-10-28).
 
 ## 11. After the MVP (owner notes)
 

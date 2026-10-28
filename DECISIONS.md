@@ -251,7 +251,7 @@ These decisions replace the brief text where they do not agree.
 - 2026-10-28 [Q-25] Attack AI for the player side in `sim-combat`: the nearest hostile target, the wanted distance, no retreat.
 - 2026-10-28 [Q-28] The player gives toggles, moves, and shots in any order; the resolver checks the move budget and one shot per weapon.
 
-### Combat data (owner review, Q-38)
+### Combat data (Q-38, accepted by the owner 2026-10-28)
 
 - 2026-10-28 [§11.6, §11.7] `combat.heatScale` 0.5 on all heat per turn and per shot. Reason: with the §11.7 values, every default loadout except the Light Freighter makes more heat at idle than it cools (Shuttle 5 against 3), so all ships overheated and burned even when they did not fire. With 0.5, idle heat is below cooling for the M4 ships; shots still build heat.
 - 2026-10-28 [§12.2, §13.9] `combat.damageScale` 2.75 on weapon damage against ships (not point defense). Reason: with the §12.2 values, two autocannons could not break a Shield S (regen 4 per turn), and battles went to 25 turns. A uniform scale does not change threat units (the formula is a ratio to the Raider). Median battle length is now 8-10 turns.
