@@ -115,6 +115,9 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
         moved: 0,
         fired: [],
         shotHeat: 0,
+        spent: 0,
+        stored: 0,
+        unpowered: [],
       };
       return s;
     });
@@ -135,8 +138,11 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     // AI ships come from outside travel: they have at least a combat fuel reserve.
     if (s.ai !== 'human') s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
     const st = combatStats(s, data);
-    if (s.ai !== 'human' || st.powerDraw > st.powerSupply) aiPower(b, s, data, rng, empty);
-    s.shield = combatStats(s, data).shieldCapacity;
+    if (s.ai !== 'human' || st.powerReserve > st.powerSupply) aiPower(b, s, data, rng, empty);
+    const ready = combatStats(s, data);
+    s.shield = ready.shieldCapacity;
+    // Capacitors are charged in travel (Q-41).
+    s.stored = ready.capacitorCapacity;
   }
   return b;
 }

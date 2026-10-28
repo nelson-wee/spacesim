@@ -10,7 +10,7 @@ const pad = (v: string | number, n: number) => String(v).padStart(n);
 
 console.log('Default loadouts (empty; laden = full cargo):');
 console.log(
-  `${'loadout'.padEnd(26)}${pad('mass', 6)}${pad('laden', 7)}${pad('TWR', 6)}${pad('agil', 6)}${pad('man', 5)}${pad('move', 5)}${pad('power', 8)}${pad('allON', 7)}${pad('heat', 6)}${pad('cool', 5)}${pad('fuel', 6)}${pad('f/jump', 8)}${pad('cargo', 6)}${pad('durab', 7)}  rules`,
+  `${'loadout'.padEnd(26)}${pad('mass', 6)}${pad('laden', 7)}${pad('TWR', 6)}${pad('agil', 6)}${pad('man', 5)}${pad('move', 5)}${pad('power', 11)}${pad('mv+all', 7)}${pad('heat', 6)}${pad('cool', 5)}${pad('fuel', 6)}${pad('f/jump', 8)}${pad('cargo', 6)}${pad('durab', 7)}  rules`,
 );
 let invalid = 0;
 for (const l of data.loadoutById.values()) {
@@ -20,7 +20,7 @@ for (const l of data.loadoutById.values()) {
   if (check.errors.length > 0) invalid++;
   const laden = s.mass + s.cargoCapacity;
   console.log(
-    `${l.id.padEnd(26)}${pad(s.mass.toFixed(0), 6)}${pad(laden.toFixed(0), 7)}${pad(s.twr.toFixed(2), 6)}${pad(s.agility.toFixed(2), 6)}${pad(Math.round(s.maneuver), 5)}${pad(s.move, 5)}${pad(`${s.powerDraw}/${s.powerSupply}`, 8)}${pad(s.powerDrawAll, 7)}${pad(s.heatPerTurn.toFixed(0), 6)}${pad(s.cooling, 5)}${pad(s.fuelCapacity, 6)}${pad(s.fuelPerJump.toFixed(1), 8)}${pad(s.cargoCapacity, 6)}${pad(s.durability, 7)}  ${check.errors.length ? `INVALID: ${check.errors.join(' ')}` : check.warnings.length ? 'power warning' : 'ok'}`,
+    `${l.id.padEnd(26)}${pad(s.mass.toFixed(0), 6)}${pad(laden.toFixed(0), 7)}${pad(s.twr.toFixed(2), 6)}${pad(s.agility.toFixed(2), 6)}${pad(Math.round(s.maneuver), 5)}${pad(s.move, 5)}${pad(`${s.powerSupply - s.powerReserve}(${s.powerReserve})/${s.powerSupply}`, 11)}${pad(s.powerMove + s.powerWeapons, 7)}${pad(s.heatPerTurn.toFixed(0), 6)}${pad(s.cooling, 5)}${pad(s.fuelCapacity, 6)}${pad(s.fuelPerJump.toFixed(1), 8)}${pad(s.cargoCapacity, 6)}${pad(s.durability, 7)}  ${check.errors.length ? `INVALID: ${check.errors.join(' ')}` : check.warnings.length ? 'power warning' : 'ok'}`,
   );
 }
 console.log(`${invalid === 0 ? 'PASS' : 'FAIL'}  All default loadouts are valid (${data.loadoutById.size - invalid}/${data.loadoutById.size})`);

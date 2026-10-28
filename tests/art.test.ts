@@ -97,9 +97,9 @@ describe('ship art drawing helpers', () => {
 });
 
 describe('module icons (data/art/modules.json)', () => {
-  it('each game module has an icon of one mark and two glyphs', () => {
+  it('each game module has an icon (or a placeholder until the art comes) of one mark and two glyphs', () => {
     for (const m of data.modules.modules) {
-      const icon = data.art.modules.modules.find((x) => x.id === m.id);
+      const icon = data.art.modules.modules.find((x) => x.id === m.id) ?? m.placeholderIcon;
       expect(icon, m.id).toBeDefined();
       expect(Array.from(icon?.glyph ?? '').length).toBe(2);
       expect(data.art.modules.families[icon?.family ?? '']).toBeDefined();

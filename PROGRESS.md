@@ -321,6 +321,38 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 - **Tool results:** `npm test`: 697 tests pass (9 new in `tests/defeat.test.ts`). `npm run build`: passes.
 - **Open:** Q-40 (heat and combat decisions) waits on the owner.
 
+### Heat split, overheat offline, aimed shots (Q-40, part 1)
+
+- **Works:**
+  - Two heat scales: idle 0.3, shot 0.6. Idle heat is below cooling for all default loadouts.
+  - Overheat takes the ship offline (no orders, no engines, no shields) until heat is at 70% of capacity. Only cooling acts.
+  - Aimed shots at the Engines use weapon tracking: lasers aim well, heavy guns badly.
+  - No AI fires a shot that would overheat it.
+  - The heat bar shows the heat after the planned shots; a warning shows if the plan overheats the ship; an offline ship shows the turns left.
+- **Exit checks again (500 battles):** Shuttle vs Raider 55% PASS (40-60%); Laser Wasp vs 2 Raiders 53% PASS (50-70%). Reports: Shuttle vs 3 Raiders 0%; Laser Gunship vs 3 Raiders 18%; Gunship vs trader 100%. Median lengths 10, 8, 5, 7, 3 turns.
+- **Known issues:** the laser Wasp pairing limits the shot heat scale (1.0 gives 32%). Heat has small effect on ships with one weapon. Scope for more combat decisions: `docs/proposals/combat-v2.md`.
+- **Tool results:** `npm test`: 700 tests pass. `npm run ship-report`: all PASS. `npm run build`: passes.
+
+### Power as actions (Q-41)
+
+- **Works:**
+  - Combat power: "available (reserved) / max + capacitor". Shields, thrusters, and point defense reserve their draw. A move costs the engines' draw (one time a turn); a shot costs the weapon's draw.
+  - An overdraw uses the capacitor, then reserved systems lose power at random until the end of the turn (a shield drops to 0). The player confirms an overdraw (Enter or F again).
+  - Capacitor module (S/M/L: 3/6/12), full at the start of a battle, charged by unused power. Placeholder icon until Claude Design adds one.
+  - The combat panel shows the power line and the cost of each module; the Outfitter and the fleet screen show the power line and "move + fire" power.
+  - AI: never overdraws; stands and fires when it cannot pay for a move and all its shots.
+- **Data:** reactor S 8 → 5; pulse laser power 2 → 1 (back to 2 with Q-42); an S reactor in 5 NPC loadouts.
+- **Exit checks again (500 battles):** Shuttle vs Raider 55% PASS; Laser Wasp vs 2 Raiders 53% PASS. Reports: Shuttle vs 3 Raiders 0%; Laser Gunship vs 3 Raiders 78% (was 18%: the Gunship has a second reactor and fires all weapons when it stands); Gunship vs trader 100%.
+- **Known issues:** the small ships of the two checks (Shuttle, laser Wasp, Raider) have exactly the power to move and fire all weapons, so power gives them no choice until an upgrade. TU (§10.5) does not count power; the M5 TU calibration must check it (the Laser Gunship result above).
+- **Tool results:** `npm test`: 705 tests pass. `npm run ship-report`: all PASS (the power column is now available(reserved)/max). `npm run build`: passes. Browser: combat power line, module costs, Outfitter power rows; no page errors.
+
+### Light fighter check and hitscan lasers (Q-42, Q-43)
+
+- **Works:** lasers are hitscan (range penalty 0.1; others 0.4). New fighter checks in `sim-combat`. Pulse laser damage 4, power 2.
+- **Exit checks (500 battles):** Shuttle vs Raider 51% PASS (40-60%); Laser Wasp vs Shuttle 100% PASS (70%+); Laser Wasp vs 1 Raider 98% PASS (71%+). Reports: Laser Wasp vs 2 Raiders 50%; Shuttle vs 3 Raiders 0%; Laser Gunship vs 3 Raiders 88%; Gunship vs trader 100%. Median lengths 10, 9, 7, 9, 5, 7, 3 turns.
+- **Wasp loadouts (300 battles; vs 1 Raider / 2 Raiders / Shuttle):** lasers + engine, reactor, shield 99/70/98% (the default); 2 engines, no shield 77/21/81%; capacitor, no shield 71/12/66%; thrusters, no shield 74/15/68%; laser + autocannon 96/48/94%; 2 autocannons 66/7/50%; 2 shields, no reactor 16/0/7%.
+- **Known issues:** the Laser Gunship is strong against 3 Raiders (88%); M5 TU calibration (§10.9) must check it. Point defense rules need a decision before M5 (interception during the munition move).
+
 <!--
 Template for each milestone:
 

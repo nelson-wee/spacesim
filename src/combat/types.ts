@@ -40,7 +40,7 @@ export interface CombatShip {
   mirrored: boolean;
   heat: number;
   shield: number;
-  /** Overheated at the last heat step: weapons cannot fire this turn (Section 11.6). */
+  /** Overheated: offline until heat falls to overheatRecoverShare of capacity (Q-40). */
   overheated: boolean;
   status: ShipStatus;
   /** Morale roll done (once, Section 13.8). */
@@ -54,6 +54,12 @@ export interface CombatShip {
   fired: string[];
   /** Heat per shot of the shots this turn (for the heat step). */
   shotHeat: number;
+  /** Power as actions (Q-41): reactor power used this turn (moves and shots). */
+  spent: number;
+  /** Power in the capacitor. */
+  stored: number;
+  /** Reserving modules ("kind:index") that lost power this turn after an overdraw; back at the end of the turn. */
+  unpowered: string[];
 }
 
 export type BattleResult = 'win' | 'loss' | 'fled' | 'draw';
@@ -91,6 +97,8 @@ export type Effect =
   | { kind: 'armor'; shipId: number; at: Vec2 }
   | { kind: 'engine'; shipId: number; amount: number; at: Vec2 }
   | { kind: 'overheat'; shipId: number; amount: number }
+  | { kind: 'online'; shipId: number }
+  | { kind: 'unpowered'; shipId: number; moduleId: string }
   | { kind: 'destroy'; shipId: number }
   | { kind: 'flee'; shipId: number }
   | { kind: 'surrender'; shipId: number };

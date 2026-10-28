@@ -45,10 +45,10 @@ describe('tiers (Section 11.7, M3-SHIP-03)', () => {
     expect(moduleValues(data, mod('beam_laser', 'M', 2)).damage).toBeCloseTo(12 * 1.25 * data.balance.combat.damageScale);
   });
 
-  it('heat scale applies to heat per turn and per shot; not to point defense damage', () => {
-    const h = data.balance.combat.heatScale;
-    expect(moduleValues(data, mod('engine', 'S')).heatPerTurn).toBeCloseTo(2 * h);
-    expect(moduleValues(data, mod('pulse_laser', 'S')).heatPerShot).toBeCloseTo(4 * h);
+  it('idle heat scale applies to heat per turn, shot heat scale to heat per shot; not to point defense damage', () => {
+    const c = data.balance.combat;
+    expect(moduleValues(data, mod('engine', 'S')).heatPerTurn).toBeCloseTo(2 * c.idleHeatScale);
+    expect(moduleValues(data, mod('pulse_laser', 'S')).heatPerShot).toBeCloseTo(4 * c.shotHeatScale);
     expect(moduleValues(data, mod('point_defense', 'S')).damage).toBe(10);
   });
 });
@@ -77,24 +77,34 @@ describe('loadout rules (Sections 11.1, 11.2)', () => {
     expect(checkLoadout(heavy, data).errors.join()).toMatch(/Cargo/);
   });
 
-  it('power warning when all modules ON draw more than the supply (Section 17.3)', () => {
+  it('power warning when the reserve and a move need more than the reactors give (Q-41)', () => {
     const s = shuttle();
     s.internal[3] = mod('maneuvering_thrusters', 'S');
     s.hardpoints[0] = mod('pulse_laser', 'S');
+    // Supply 6: reserve 2 (shield) + 1 (thrusters) + move 2 = 5.
     expect(checkLoadout(s, data).warnings).toEqual([]);
-    const g = createShipFromLoadout(data, 'laser_gunship', 'g', 'Gunship');
-    expect(checkLoadout(g, data).warnings.join()).toMatch(/Combat power if all ON: 16\/10/);
+    s.internal[3] = mod('shield_generator', 'S');
+    s.internal[3]!.on = true;
+    // Reserve 4 + move 2 = 6: still OK; a third shield is over.
+    expect(checkLoadout(s, data).warnings).toEqual([]);
+    s.internal[4] = mod('shield_generator', 'S');
+    s.internal[4]!.on = true;
+    expect(checkLoadout(s, data).warnings.join()).toMatch(/reserved 6 \+ a move 2 is above the reactors' 6/);
   });
 });
 
 describe('derived stats (Sections 10.5, 11.5, 11.6, M3-SHIP-06 to 09)', () => {
-  it('starting Shuttle: power 6/9, heat 5 x heatScale per turn, cooling 3, shields 20, durability 60', () => {
+  it('starting Shuttle: power 6 (reserve 2, move 2, weapons 2), heat 5 x idleHeatScale per turn, cooling 3, shields 20, durability 60', () => {
     const s = travelStats(shuttle(), data);
-    expect(s.powerSupply).toBe(9);
+    expect(s.powerSupply).toBe(6);
     expect(s.powerDraw).toBe(6);
+    expect(s.powerReserve).toBe(2);
+    expect(s.powerMove).toBe(2);
+    expect(s.powerWeapons).toBe(2);
+    expect(s.capacitorCapacity).toBe(0);
     expect(s.heatCapacity).toBe(30);
     expect(s.cooling).toBe(3);
-    expect(s.heatPerTurn).toBeCloseTo(5 * data.balance.combat.heatScale);
+    expect(s.heatPerTurn).toBeCloseTo(5 * data.balance.combat.idleHeatScale);
     expect(s.shieldCapacity).toBe(20);
     expect(s.shieldRegen).toBe(4);
     expect(s.durability).toBe(40 + 0 + 20 + 0);

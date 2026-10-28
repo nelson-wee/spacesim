@@ -291,7 +291,14 @@ function checkModuleArt(data: GameData): string[] {
   for (const m of data.modules.modules) {
     const icon = byId.get(m.id);
     if (!icon) {
-      problems.push(`art/modules.json: no icon for module ${m.id}`);
+      // A new module can use a placeholder icon until Claude Design adds one (Q-41: Capacitor).
+      const p = m.placeholderIcon;
+      if (!p) problems.push(`art/modules.json: no icon for module ${m.id}`);
+      else {
+        if (!art.families[p.family]) problems.push(`modules.json: ${m.id} placeholder icon family ${p.family} is not in art/modules.json`);
+        if (!hasColor(p.fg)) problems.push(`modules.json: ${m.id} placeholder icon color ${p.fg} is not in style.json`);
+        if (Array.from(p.glyph).length !== 2) problems.push(`modules.json: ${m.id} placeholder icon needs two glyphs`);
+      }
       continue;
     }
     if (!(icon.default_size in m.sizes)) problems.push(`art/modules.json: ${m.id} default size ${icon.default_size} is not a size in modules.json`);

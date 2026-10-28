@@ -49,6 +49,14 @@ export interface ShipStats extends Motion {
   powerDrawAll: number;
   /** Draw of all engines (the required-module rule, Section 11.2). */
   enginePowerDraw: number;
+  /** Power as actions (Q-41): draw reserved each turn by modules ON in `reserveCategories` (shields, thrusters, point defense). */
+  powerReserve: number;
+  /** Power of a turn with a move: the draw of the engines that are ON. */
+  powerMove: number;
+  /** Power to fire each weapon that is ON one time. */
+  powerWeapons: number;
+  /** Capacitor capacity (stored power). */
+  capacitorCapacity: number;
   /** Hull + Heat Sinks; hull + Radiators; heat per turn of modules ON (Section 11.6). */
   heatCapacity: number;
   cooling: number;
@@ -94,6 +102,11 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
   let powerDraw = 0;
   let powerDrawAll = 0;
   let enginePowerDraw = 0;
+  let powerReserve = 0;
+  let powerMove = 0;
+  let powerWeapons = 0;
+  let capacitorCapacity = 0;
+  const reserveCategories = data.balance.combat.reserveCategories;
   let heatCapacity = hull.heatCapacity;
   let cooling = hull.baseCooling;
   let heatPerTurn = 0;
@@ -114,8 +127,12 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
     cooling += v.cooling ?? 0;
     armor += v.armor ?? 0;
     maxArmorHp += v.armorHp ?? 0;
+    capacitorCapacity += v.capacitorCapacity ?? 0;
     if (on) {
       powerDraw += v.power ?? 0;
+      if (reserveCategories.includes(category)) powerReserve += v.power ?? 0;
+      else if (category === 'engine') powerMove += v.power ?? 0;
+      else if (category === 'laser' || category === 'ballistic' || category === 'guided') powerWeapons += v.power ?? 0;
       heatPerTurn += v.heatPerTurn ?? 0;
       shieldCapacity += v.shieldCapacity ?? 0;
       shieldRegen += v.shieldRegen ?? 0;
@@ -154,6 +171,10 @@ export function shipStats(ship: Ship, data: GameData, options: StatsOptions = {}
     powerDraw,
     powerDrawAll,
     enginePowerDraw,
+    powerReserve,
+    powerMove,
+    powerWeapons,
+    capacitorCapacity,
     heatCapacity,
     cooling,
     heatPerTurn,

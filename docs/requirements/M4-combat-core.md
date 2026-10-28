@@ -40,12 +40,12 @@
 
 | ID | Requirement | Source | Verify |
 |---|---|---|---|
-| M4-PWR-01 | At the start of each turn, a ship can switch modules ON and OFF. The draw of modules ON must be ≤ supply. | §11.5 | T |
+| M4-PWR-01 | At the start of each turn, a ship can switch modules ON and OFF. The draw of modules ON must be ≤ supply. Changed by Q-41: power is an action budget (reserve, move cost, shot cost, overdraw, capacitor). | §11.5, Q-41 | T |
 | M4-PWR-02 | Weapons that are OFF cannot fire. A shield generator that goes ON starts at 0 shield points. Engines that are OFF give no thrust; `move` and `maneuver` change at once. | §11.5 | T |
 | M4-PWR-03 | Number keys switch modules ON and OFF in combat. | §17.5 | M |
 | M4-PWR-04 | Heat each turn: `heat + sum(heatPerTurn of modules ON) + sum(heatPerShot of shots) − cooling`. Minimum 0. | §11.6 | T |
 | M4-PWR-05 | Hot (70%–99% of capacity): −10% hit chance (`heatFactor` 0.9), shield regeneration × 0.5. | §11.6 | T |
-| M4-PWR-06 | Overheat (100%+): weapons cannot fire this turn. Hull takes damage = heat above capacity (armor does not apply). Heat then goes back to capacity. | §11.6 | T |
+| M4-PWR-06 | Overheat (100%+): weapons cannot fire this turn. Hull takes damage = heat above capacity (armor does not apply). Heat then goes back to capacity. Changed by Q-40: the ship is offline (no orders, no engines, no shields) until heat is at 70% of capacity. | §11.6, Q-40 | T |
 | M4-PWR-07 | Heat goes to 0 after combat. | §11.6 | T |
 
 ## 5. Weapons and damage (WPN)
@@ -57,7 +57,7 @@
 | M4-WPN-03 | Damage: multiply by "vs shield"; shields take it first; convert the rest back (`remaining = leftover / vsShield`); multiply by "vs hull"; subtract `max(0, armor − armorPierce)`; minimum 1 per hit; subtract from hull HP (or engine value). | §12.5 | T |
 | M4-WPN-04 | Flak Cannon: 3 × 3 area, 4 damage to each ship in the area, hit chance 0.6 flat on each ship. (It destroys munitions from M5.) | §12.2 | T |
 | M4-WPN-05 | Shields regenerate each turn by their regen value, up to capacity. | §11.7, §13.3 | T |
-| M4-WPN-06 | **Engine targeting.** The player can target the hull or the engines. An engine shot multiplies hit chance by 0.85 (Q-19). Its hull damage goes to the engine value. | §13.6, Q-19 | T |
+| M4-WPN-06 | **Engine targeting.** The player can target the hull or the engines. An engine shot multiplies hit chance by 0.85 (Q-19; changed by Q-40 to tracking / (tracking + 25)). Its hull damage goes to the engine value. | §13.6, Q-19 | T |
 | M4-WPN-07 | Engine value 0: `move` 0 and `maneuver` 0. The ship cannot flee. Engine value above 0 has no other effect (Q-20). | §13.6, Q-20 | T |
 
 ## 6. Fuel in combat (FUEL)
@@ -124,7 +124,7 @@
 | 1 | The player can win, lose, and flee against 1 to 3 Raiders. | §19 | M, S |
 | 2 | Power and heat rules work. | §19 | T |
 | 3 | Starting Shuttle vs 1 Pirate Raider: Shuttle wins 40%–60%. | §13.9 | S |
-| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%–70%. | §13.9 | S |
+| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%–70%. Changed by Q-42: a dedicated light fighter beats the Shuttle. Laser Wasp vs Starting Shuttle (Attack AI): Wasp wins 70% or more; Laser Wasp vs 1 Raider: win rate at least 20 points above Shuttle vs 1 Raider. Wasp vs 2 Raiders is a report. | §13.9, Q-42 | S |
 | 5 | `PROGRESS.md` is updated with the `sim-combat.ts` results. | §0.9 | I |
 
 **Monitor (not a gate):** median battle length is 4–10 turns (§13.9, §22).

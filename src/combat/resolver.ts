@@ -13,10 +13,14 @@ import {
   fuelStep,
   heatStep,
   hitChance,
+  drawOf,
   isDirectWeapon,
   moduleAt,
   moveBudget,
+  moveCost,
+  powerStep,
   shieldStep,
+  spendPower,
   slotKey,
   toggleModule,
 } from './rules';
@@ -50,6 +54,7 @@ function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle): void {
  */
 export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameData, rng: Rng, effects: Effect[]): string | null {
   if (!isActive(s)) return 'The ship is not in the battle.';
+  if (s.overheated) return 'Overheat: the ship is offline until it cools down.';
   if (order.kind === 'toggle') return toggleModule(s, order.slot, order.on, data);
   if (order.kind === 'move') {
     const budget = moveBudget(s, data);
@@ -57,6 +62,9 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     const path = pathTo(reachable(b, s, budget), order.to);
     if (!path) return 'The ship cannot get there this turn.';
     if (path.length <= 1) return null;
+    // The first move of a turn pays the engines' draw (Q-41).
+    const noPower = spendPower(s, moveCost(s, data), data, rng, effects);
+    if (noPower) return `${noPower} The engines need ${moveCost(s, data)}.`;
     s.pos = order.to;
     s.moved += path.length - 1;
     effects.push({ kind: 'move', shipId: s.id, path });
@@ -72,7 +80,6 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   const m = moduleAt(s, order.slot);
   if (!m || !isDirectWeapon(m, data)) return 'That is not a weapon that can fire now.';
   if (!m.on) return 'The weapon is OFF.';
-  if (s.overheated) return 'Overheat: weapons cannot fire this turn.';
   if (s.fired.includes(slotKey(order.slot))) return 'The weapon fired this turn.';
   const t = shipById(b, order.target);
   if (!t || !isActive(t) || !hostile(s, t)) return 'No valid target.';
@@ -80,6 +87,9 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   const aim = w.area !== undefined ? 'hull' : order.aim;
   const chance = hitChance(b, s, w, t, aim, data);
   if (chance <= 0) return 'Out of range, or no line of fire.';
+  // Each shot costs the weapon's draw (Q-41).
+  const noPower = spendPower(s, drawOf(m, data), data, rng, effects);
+  if (noPower) return `${noPower} The weapon needs ${drawOf(m, data)}.`;
   s.fired.push(slotKey(order.slot));
   s.shotHeat += w.heatPerShot ?? 0;
   t.attacked = true;
@@ -145,7 +155,7 @@ export interface TurnOutput {
 
 /**
  * One turn (Section 13.3): player phase, other ships, (munitions and point
- * defense in M5), heat, shields, fuel, (reinforcements in M5), morale. With
+ * defense in M5), power (Q-41), heat, shields, fuel, (reinforcements in M5), morale. With
  * `orders` null, the player ship uses its AI (sim-combat).
  */
 export function resolveTurn(input: Battle, orders: Order[] | null, data: GameData): TurnOutput {
@@ -157,6 +167,7 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
   for (const s of b.ships) {
     s.moved = 0;
     s.fired = [];
+    s.spent = 0;
   }
   const player = shipById(b, b.playerId);
   // 1. Player phase.
@@ -177,6 +188,8 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
       if (battleResult(b, data) === 'loss') break;
     }
   }
+  // Power (Q-41): unused power charges the capacitor; modules that lost power get it back.
+  for (const s of b.ships) if (isActive(s)) powerStep(s, data);
   // 5-7. Heat, shields, fuel; 9. morale.
   for (const s of b.ships) {
     if (!isActive(s)) continue;

@@ -7,28 +7,47 @@
 //   keeps the best range; does not retreat.
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
-import { moduleValues } from '../ship/modules';
+import { moduleDef, moduleValues } from '../ship/modules';
 import { distance, edgeDistance, isActive, lineOfFire, parseKey, pathTo, reachable } from './geometry';
 import { applyOrder, hostile } from './resolver';
-import { combatStats, drawOf, heatState, hitChance, isDirectWeapon, moduleAt, moduleSlots, moveBudget, slotKey } from './rules';
+import {
+  combatStats,
+  drawOf,
+  heatState,
+  hitChance,
+  isDirectWeapon,
+  isReserving,
+  moduleAt,
+  moduleSlots,
+  moveBudget,
+  moveCost,
+  powerFree,
+  slotKey,
+} from './rules';
 import type { Battle, CombatShip, Effect, SlotRef, Vec2 } from './types';
 
 /**
- * AI power use (Section 13.8): switch ON modules in the loadout priority order
- * until no power is left; modules that do not fit go OFF. Passive modules stay
- * ON. If heat is Hot, switch OFF the weapon with the highest heat per shot.
- * Modules that go OFF go OFF first, so a shield that stays ON keeps its points.
+ * AI power use (Section 13.8, Q-41): engines, weapons, and passive modules go
+ * ON (they use power only when they act). Reserving modules (shields,
+ * thrusters, point defense) go ON in the loadout priority order while the
+ * reserve leaves power for the engines. If heat is Hot, switch OFF the weapon
+ * with the highest heat per shot. Modules that go OFF go OFF first, so a
+ * shield that stays ON keeps its points.
  */
 export function aiPower(b: Battle, s: CombatShip, data: GameData, rng: Rng, effects: Effect[]): void {
   const st = combatStats(s, data);
-  let left = st.powerSupply;
   const want = new Map<string, boolean>();
   const slots = moduleSlots(s);
+  let engines = 0;
   for (const slot of slots) {
     const m = moduleAt(s, slot);
-    if (m && drawOf(m, data) === 0) want.set(slotKey(slot), true);
+    if (!m || isReserving(m, data)) continue;
+    want.set(slotKey(slot), true);
+    if (moduleDef(data, m.moduleId).category === 'engine') engines += drawOf(m, data);
   }
-  for (const id of s.powerPriority) {
+  let left = st.powerSupply - engines;
+  const order = [...s.powerPriority, ...slots.map((slot) => moduleAt(s, slot)?.moduleId ?? '')];
+  for (const id of order) {
     for (const slot of slots) {
       const m = moduleAt(s, slot);
       if (!m || m.moduleId !== id || want.has(slotKey(slot))) continue;
@@ -37,7 +56,7 @@ export function aiPower(b: Battle, s: CombatShip, data: GameData, rng: Rng, effe
       if (draw <= left + 1e-9) left -= draw;
     }
   }
-  if (heatTooHigh(s, data, st, want)) {
+  if (heatTooHigh(s, data, st)) {
     let worst: SlotRef | null = null;
     let worstHeat = -1;
     for (const slot of slots) {
@@ -64,20 +83,18 @@ function cargoValue(s: CombatShip, data: GameData): number {
 }
 
 /**
- * When the AI switches OFF its hottest weapon. Raider and Trader: when heat is
- * Hot (Section 13.8). Attack AI (the player side, Q-25): only when firing all
- * weapons that stay ON would overheat the ship on this turn, as a player would.
+ * When the AI switches OFF its hottest weapon: Raider and Trader when heat is
+ * Hot (Section 13.8). The Attack AI (the player side, Q-25) keeps its weapons
+ * ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
  */
-function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>, want: Map<string, boolean>): boolean {
-  if (s.ai !== 'attack') return heatState(s, data, st) === 'hot';
-  let heat = s.heat - st.cooling;
-  for (const slot of moduleSlots(s)) {
-    const m = moduleAt(s, slot);
-    if (!m || !want.get(slotKey(slot))) continue;
-    const v = moduleValues(data, m);
-    heat += (v.heatPerTurn ?? 0) + (isDirectWeapon(m, data) ? (v.heatPerShot ?? 0) : 0);
-  }
-  return heat >= st.heatCapacity;
+function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>): boolean {
+  return s.ai !== 'attack' && heatState(s, data, st) === 'hot';
+}
+
+/** Heat at the end of this turn if the ship also fires `w` (Section 11.6). */
+function heatAfterShot(s: CombatShip, w: ReturnType<typeof moduleValues>, data: GameData): number {
+  const st = combatStats(s, data);
+  return s.heat + st.heatPerTurn + s.shotHeat + (w.heatPerShot ?? 0) - st.cooling;
 }
 
 /** The ship that the AI wants to attack. */
@@ -111,9 +128,26 @@ export function wantedDistance(s: CombatShip, data: GameData): number {
 /** How far ahead (in turns of movement) the AI looks for a cell with a clear line of fire. */
 const LOOK_AHEAD_TURNS = 4;
 
+/**
+ * True if the ship should stand and fire (Q-41): it has a clear line of fire
+ * to the target in range of all its ready weapons, and it cannot pay for both
+ * a move and all those shots.
+ */
+function standAndFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameData): boolean {
+  if (!target || s.retreating || s.ai === 'trader') return false;
+  const weapons = readyWeapons(s, data).map((slot) => moduleAt(s, slot)).filter((m) => m !== null);
+  if (weapons.length === 0) return false;
+  if (weapons.some((m) => hitChance(b, s, moduleValues(data, m), target, 'hull', data) <= 0)) return false;
+  const shots = weapons.reduce((sum, m) => sum + drawOf(m, data), 0);
+  return moveCost(s, data) + shots > powerFree(s, data) + 1e-9;
+}
+
 function aiMove(b: Battle, s: CombatShip, target: CombatShip | null, data: GameData, rng: Rng, effects: Effect[]): void {
   const budget = moveBudget(s, data);
   if (budget <= 0) return;
+  // The AI does not overdraw power to move (Q-41), and it stands to fire when it cannot pay for both.
+  if (moveCost(s, data) > powerFree(s, data) + 1e-9 && !s.retreating && s.ai !== 'trader') return;
+  if (standAndFire(b, s, target, data)) return;
   const toEdge = s.retreating || s.ai === 'trader';
   const want = wantedDistance(s, data);
   // Look some turns ahead, so that the ship can go around an asteroid field.
@@ -149,6 +183,10 @@ function aiFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
     const m = moduleAt(s, slot);
     if (!m) continue;
     const w = moduleValues(data, m);
+    // An overheat takes the ship offline (Q-40): the AI does not fire a shot that would cause one.
+    if (heatAfterShot(s, w, data) >= combatStats(s, data).heatCapacity) continue;
+    // The AI does not overdraw power (Q-41): it fires only with available or stored power.
+    if (drawOf(m, data) > powerFree(s, data) + 1e-9) continue;
     const foes = b.ships.filter((o) => isActive(o) && hostile(s, o));
     let pick: CombatShip | null = target && isActive(target) && hitChance(b, s, w, target, 'hull', data) > 0 ? target : null;
     if (!pick) {

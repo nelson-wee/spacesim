@@ -11,7 +11,7 @@ export type SlotKind = 'hardpoint' | 'internal';
 export interface LoadoutCheck {
   /** Rules that stop the ship from leaving a location (red warnings). */
   errors: string[];
-  /** Power draw with all modules ON is above supply (yellow warning). */
+  /** Power warnings (yellow), Q-41. */
   warnings: string[];
   stats: ShipStats;
 }
@@ -51,8 +51,10 @@ export function checkLoadout(ship: Ship, data: GameData): LoadoutCheck {
   if (stats.cargoMass > stats.cargoCapacity + 1e-9) {
     errors.push(`Cargo ${stats.cargoMass.toFixed(1)} t is above the capacity ${stats.cargoCapacity} t.`);
   }
-  if (stats.powerDrawAll > stats.powerSupply) {
-    warnings.push(`Combat power if all ON: ${stats.powerDrawAll}/${stats.powerSupply} - switch modules OFF in combat.`);
+  if (stats.powerReserve + stats.powerMove > stats.powerSupply) {
+    warnings.push(
+      `Combat power: reserved ${stats.powerReserve} + a move ${stats.powerMove} is above the reactors' ${stats.powerSupply}. A move in combat takes power from the shields.`,
+    );
   }
   return { errors, warnings, stats };
 }

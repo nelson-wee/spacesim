@@ -64,10 +64,11 @@ export const balanceSchema = z.object({
     gridHeight: z.number().int().positive(),
     /**
      * Multipliers on the Section 11.7 and 12.2 tables (DECISIONS.md, M4): weapon damage against
-     * ships (not point defense), and all heat per turn and per shot. Threat units do not change.
+     * ships (not point defense); heat per turn of modules ON (idle) and heat per shot (Q-40). Threat units do not change.
      */
     damageScale: pos,
-    heatScale: pos,
+    idleHeatScale: pos,
+    shotHeatScale: pos,
     maxTurns: z.number().int().positive(),
     /** Hit chance (Section 12.3): BASE_ACC, range penalty, clamp. */
     baseAccuracy: pos,
@@ -78,9 +79,16 @@ export const balanceSchema = z.object({
     hotShare: prob,
     hotHitFactor: prob,
     hotShieldRegen: prob,
+    /** An overheated ship is back online when its heat is at or below this share of capacity (Q-40). */
+    overheatRecoverShare: prob,
     debrisFactor: prob,
-    /** Engine shot hit factor (Q-19). */
-    engineShotFactor: prob,
+    /**
+     * Power as actions (Q-41): modules of these categories reserve their draw each turn while ON;
+     * engines cost their draw for a turn with a move; each shot costs the weapon's draw.
+     */
+    reserveCategories: z.array(z.string()),
+    /** Shots at a module (the Engines): hit x tracking / (tracking + moduleAimTracking) (Q-40). */
+    moduleAimTracking: pos,
     /** Fuel: mass^fuelMassExponent x kCombat per turn with an engine ON; x kFlee for a flee (Section 8.5). */
     kCombat: nonNeg,
     kFlee: nonNeg,
@@ -364,10 +372,14 @@ export const moduleValuesSchema = z
     damage: nonNeg.optional(),
     range: nonNeg.optional(),
     tracking: nonNeg.optional(),
+    /** Hit chance loss at full range for this weapon (default combat.rangePenalty); lasers are hitscan (Q-43). */
+    rangePenalty: prob.optional(),
     vsShield: nonNeg.optional(),
     vsHull: nonNeg.optional(),
     armorPierce: nonNeg.optional(),
     heatPerShot: nonNeg.optional(),
+    // Capacitor (Q-41): stored power for a later turn.
+    capacitorCapacity: nonNeg.optional(),
     // Flak (Section 12.2): area side in cells and flat hit chance.
     area: z.number().int().positive().optional(),
     flatHitChance: prob.optional(),
@@ -401,6 +413,7 @@ export const modulesSchema = z.object({
         'armor',
         'heatSink',
         'radiator',
+        'capacitor',
         'thrusters',
         'laser',
         'ballistic',
@@ -408,6 +421,8 @@ export const modulesSchema = z.object({
         'pointDefense',
       ]),
       mainStats: z.array(z.string()),
+      /** Icon until Claude Design adds one to data/art/modules.json (same fields as an art icon). */
+      placeholderIcon: z.object({ family: z.string(), glyph: z.string(), fg: z.string() }).optional(),
       sizes: z.object({
         S: moduleValuesSchema.optional(),
         M: moduleValuesSchema.optional(),
