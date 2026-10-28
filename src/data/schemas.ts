@@ -58,6 +58,54 @@ export const balanceSchema = z.object({
     referenceLaneLength: pos,
   }),
   ship: z.object({ mRef: pos, engineStackFalloff: z.number().min(0).max(1), engineValueShare: prob }),
+  /** Tactical combat (Sections 8.5, 11.6, 12.3, 13). */
+  combat: z.object({
+    gridWidth: z.number().int().positive(),
+    gridHeight: z.number().int().positive(),
+    /**
+     * Multipliers on the Section 11.7 and 12.2 tables (DECISIONS.md, M4): weapon damage against
+     * ships (not point defense), and all heat per turn and per shot. Threat units do not change.
+     */
+    damageScale: pos,
+    heatScale: pos,
+    maxTurns: z.number().int().positive(),
+    /** Hit chance (Section 12.3): BASE_ACC, range penalty, clamp. */
+    baseAccuracy: pos,
+    rangePenalty: prob,
+    hitMin: prob,
+    hitMax: prob,
+    /** Heat (Section 11.6): Hot from hotShare of capacity; hit factor and shield regeneration when Hot. */
+    hotShare: prob,
+    hotHitFactor: prob,
+    hotShieldRegen: prob,
+    debrisFactor: prob,
+    /** Engine shot hit factor (Q-19). */
+    engineShotFactor: prob,
+    /** Fuel: mass^fuelMassExponent x kCombat per turn with an engine ON; x kFlee for a flee (Section 8.5). */
+    kCombat: nonNeg,
+    kFlee: nonNeg,
+    /** AI ships start a battle with at least this fuel (a Wasp has no fuel tank). */
+    npcFuelReserve: nonNeg,
+    /** AI: the wanted distance is this share of the shortest range of its weapons that are ON. */
+    bestRangeShare: prob,
+    /** Raider AI retreats below this hull share (Section 13.8). */
+    retreatHull: prob,
+    /** Morale (Section 13.8): roll once when hull falls below moraleHull or the engine value is 0. */
+    moraleHull: prob,
+    surrenderChance: z.object({ trader: prob, evader: prob, raider: prob, patrol: prob, attack: prob }),
+    /**
+     * Map (Section 13.1): random fill and cellular steps (rot.js Map.Cellular; fill 0.42 gives
+     * about 11% obstacles), share of clusters that are debris clouds. Each side starts at
+     * `startColumn` cells from its edge; the band of startAreaHalfWidth cells around it is open.
+     */
+    map: z.object({
+      fill: prob,
+      iterations: z.number().int().min(0),
+      debrisShare: prob,
+      startColumn: z.number().int().min(1),
+      startAreaHalfWidth: z.number().int().min(0),
+    }),
+  }),
   fuel: z.object({ fuelPerHydrogen: pos }),
   recovery: z.object({ base: nonNeg, perDistance: nonNeg, fullTankShare: prob, fuelShareAfterTow: prob }),
   fleet: z.object({ maxFleetSize: z.number().int().min(1) }),

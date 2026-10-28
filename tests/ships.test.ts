@@ -41,8 +41,15 @@ describe('tiers (Section 11.7, M3-SHIP-03)', () => {
     expect(t3.fuelRate).toBe(0.8);
   });
 
-  it('a weapon tier multiplies its damage', () => {
-    expect(moduleValues(data, mod('beam_laser', 'M', 2)).damage).toBeCloseTo(15);
+  it('a weapon tier multiplies its damage (and the combat damage scale applies, DECISIONS.md M4)', () => {
+    expect(moduleValues(data, mod('beam_laser', 'M', 2)).damage).toBeCloseTo(12 * 1.25 * data.balance.combat.damageScale);
+  });
+
+  it('heat scale applies to heat per turn and per shot; not to point defense damage', () => {
+    const h = data.balance.combat.heatScale;
+    expect(moduleValues(data, mod('engine', 'S')).heatPerTurn).toBeCloseTo(2 * h);
+    expect(moduleValues(data, mod('pulse_laser', 'S')).heatPerShot).toBeCloseTo(4 * h);
+    expect(moduleValues(data, mod('point_defense', 'S')).damage).toBe(10);
   });
 });
 
@@ -81,13 +88,13 @@ describe('loadout rules (Sections 11.1, 11.2)', () => {
 });
 
 describe('derived stats (Sections 10.5, 11.5, 11.6, M3-SHIP-06 to 09)', () => {
-  it('starting Shuttle: power 6/9, heat 5 per turn, cooling 3, shields 20, durability 60', () => {
+  it('starting Shuttle: power 6/9, heat 5 x heatScale per turn, cooling 3, shields 20, durability 60', () => {
     const s = travelStats(shuttle(), data);
     expect(s.powerSupply).toBe(9);
     expect(s.powerDraw).toBe(6);
     expect(s.heatCapacity).toBe(30);
     expect(s.cooling).toBe(3);
-    expect(s.heatPerTurn).toBe(5);
+    expect(s.heatPerTurn).toBeCloseTo(5 * data.balance.combat.heatScale);
     expect(s.shieldCapacity).toBe(20);
     expect(s.shieldRegen).toBe(4);
     expect(s.durability).toBe(40 + 0 + 20 + 0);
