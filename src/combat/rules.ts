@@ -191,7 +191,8 @@ export function hitChance(b: Battle, a: CombatShip, w: ModuleValues, t: CombatSh
   const tracking = w.tracking ?? 0;
   const maneuver = combatStats(t, data).maneuver;
   const trackFactor = tracking + maneuver > 0 ? tracking / (tracking + maneuver) : 0;
-  const rangeFactor = 1 - c.rangePenalty * (lof.distance / Math.max(1, w.range ?? 1));
+  // Lasers are hitscan: a small range penalty of their own (Q-43); other weapons use the §12.3 value.
+  const rangeFactor = 1 - (w.rangePenalty ?? c.rangePenalty) * (lof.distance / Math.max(1, w.range ?? 1));
   const heatFactor = heatState(a, data) === 'hot' ? c.hotHitFactor : 1;
   const debrisFactor = lof.debris ? c.debrisFactor : 1;
   const engine = aim === 'engines' ? moduleAimFactor(w, data) : 1;

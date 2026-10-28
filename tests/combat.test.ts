@@ -119,7 +119,7 @@ describe('hit chance (M4-WPN-01, M4-WPN-02, Q-19)', () => {
     const w = laser();
     const man = combatStats(t, data).maneuver;
     const d = distance(me, t);
-    const expected = (w.tracking! / (w.tracking! + man)) * (1 - c.rangePenalty * (d / w.range!));
+    const expected = (w.tracking! / (w.tracking! + man)) * (1 - (w.rangePenalty ?? c.rangePenalty) * (d / w.range!));
     expect(hitChance(b, me, w, t, 'hull', data)).toBeCloseTo(Math.min(c.hitMax, Math.max(c.hitMin, expected)));
     expect(hitChance(b, me, w, t, 'engines', data)).toBeCloseTo(Math.min(c.hitMax, Math.max(c.hitMin, expected * (w.tracking! / (w.tracking! + c.moduleAimTracking)))));
     me.heat = combatStats(me, data).heatCapacity * c.hotShare;
@@ -332,6 +332,21 @@ describe('power and heat (M4-PWR)', () => {
     expect(out.effects.some((e) => e.kind === 'shot' && e.shipId === me.id)).toBe(false);
   });
 
+  it('lasers are hitscan: they lose less hit chance with range than ballistics (Q-43)', () => {
+    const b = open();
+    const me = P(b);
+    const t = E(b);
+    const at = (x: number, w: ReturnType<typeof laser>) => {
+      t.pos = { x, y: 14 };
+      return hitChance(b, me, w, t, 'hull', data);
+    };
+    // Near (distance 2) against the far end of each weapon's range.
+    const laserLoss = at(17, laser()) / at(12, laser());
+    const cannonLoss = at(16, cannon()) / at(12, cannon());
+    expect(laser().rangePenalty).toBeLessThan(c.rangePenalty);
+    expect(laserLoss).toBeGreaterThan(cannonLoss);
+  });
+
   it('aimed shots at the Engines: lasers aim better than heavy guns (Q-40)', () => {
     const b = open();
     const me = P(b);
@@ -366,7 +381,7 @@ describe('power as actions (Q-41)', () => {
     expect(applyOrder(b, me, { kind: 'move', to: { x: 12, y: 14 } }, data, rng(), [])).toBeNull();
     expect(powerState(me, data).available).toBe(2);
     expect(applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, rng(), [])).toBeNull();
-    expect(powerState(me, data).available).toBe(1);
+    expect(powerState(me, data).available).toBe(0);
     expect(me.unpowered).toEqual([]);
   });
 
@@ -380,15 +395,15 @@ describe('power as actions (Q-41)', () => {
     expect(powerState(me, data)).toMatchObject({ max: 6, reserved: 2, available: 4 });
     expect(applyOrder(b, me, { kind: 'move', to: { x: 11, y: 14 } }, data, rng(), effects)).toBeNull();
     expect(me.shield).toBeGreaterThan(0);
-    // Move 4 + laser 1 = 5 > 4: the shield loses power.
+    // Move 4 + laser 2 = 6 > 4: the shield loses power.
     expect(applyOrder(b, me, { kind: 'fire', slot: { kind: 'hardpoint', index: 0 }, target: E(b).id, aim: 'hull' }, data, rng(), effects)).toBeNull();
     expect(me.unpowered).toEqual(['internal:2']);
     expect(me.shield).toBe(0);
     expect(combatStats(me, data).shieldCapacity).toBe(0);
     expect(effects.some((e) => e.kind === 'unpowered')).toBe(true);
-    // The shield's 2 power paid the last 1; 1 is left. More than that is refused.
-    expect(powerState(me, data)).toMatchObject({ reserved: 0, available: 1 });
-    expect(spendPower(me, 2, data, rng(), effects)).toMatch(/power/);
+    // The shield's 2 power paid the last 2; nothing is left. A further order is refused.
+    expect(powerState(me, data)).toMatchObject({ reserved: 0, available: 0 });
+    expect(spendPower(me, 1, data, rng(), effects)).toMatch(/power/);
     // At the end of the turn the shield has power again (it regenerates from 0).
     powerStep(me, data);
     expect(me.unpowered).toEqual([]);

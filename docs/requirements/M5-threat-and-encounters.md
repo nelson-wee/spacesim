@@ -116,7 +116,7 @@
 
 | # | Check | Source | Verify |
 |---|---|---|---|
-| 1 | All pairings in §13.9 pass (Shuttle vs Raider; laser Wasp vs 2 Raiders; ballistic vs laser Gunship; ballistic vs laser Corvette vs Frigate; torpedo vs laser Frigate vs Battleship; single vs equal-TU group; median length 4–10 turns). | §13.9 | S |
+| 1 | All pairings in §13.9 pass (Shuttle vs Raider; laser Wasp beats the Shuttle (Q-42); ballistic vs laser Gunship; ballistic vs laser Corvette vs Frigate; torpedo vs laser Frigate vs Battleship; single vs equal-TU group; median length 4–10 turns). | §13.9 | S |
 | 2 | §10.9 passes: TU reference values ±10%, TU calibration 35%–65%, median generated TU in range. | §10.9 | S, T |
 | 3 | Patrols fight against the aggressor. | §19 | T, M |
 | 4 | Pirate kills raise sector security. | §19 | T |

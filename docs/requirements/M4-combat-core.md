@@ -124,7 +124,7 @@
 | 1 | The player can win, lose, and flee against 1 to 3 Raiders. | §19 | M, S |
 | 2 | Power and heat rules work. | §19 | T |
 | 3 | Starting Shuttle vs 1 Pirate Raider: Shuttle wins 40%–60%. | §13.9 | S |
-| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%–70%. | §13.9 | S |
+| 4 | Laser Wasp vs 2 Pirate Raiders: Wasp wins 50%–70%. Changed by Q-42: a dedicated light fighter beats the Shuttle. Laser Wasp vs Starting Shuttle (Attack AI): Wasp wins 70% or more; Laser Wasp vs 1 Raider: win rate at least 20 points above Shuttle vs 1 Raider. Wasp vs 2 Raiders is a report. | §13.9, Q-42 | S |
 | 5 | `PROGRESS.md` is updated with the `sim-combat.ts` results. | §0.9 | I |
 
 **Monitor (not a gate):** median battle length is 4–10 turns (§13.9, §22).

@@ -372,6 +372,8 @@ export const moduleValuesSchema = z
     damage: nonNeg.optional(),
     range: nonNeg.optional(),
     tracking: nonNeg.optional(),
+    /** Hit chance loss at full range for this weapon (default combat.rangePenalty); lasers are hitscan (Q-43). */
+    rangePenalty: prob.optional(),
     vsShield: nonNeg.optional(),
     vsHull: nonNeg.optional(),
     armorPierce: nonNeg.optional(),

@@ -94,13 +94,13 @@ describe('loadout rules (Sections 11.1, 11.2)', () => {
 });
 
 describe('derived stats (Sections 10.5, 11.5, 11.6, M3-SHIP-06 to 09)', () => {
-  it('starting Shuttle: power 6 (reserve 2, move 2, weapons 1), heat 5 x idleHeatScale per turn, cooling 3, shields 20, durability 60', () => {
+  it('starting Shuttle: power 6 (reserve 2, move 2, weapons 2), heat 5 x idleHeatScale per turn, cooling 3, shields 20, durability 60', () => {
     const s = travelStats(shuttle(), data);
     expect(s.powerSupply).toBe(6);
-    expect(s.powerDraw).toBe(5);
+    expect(s.powerDraw).toBe(6);
     expect(s.powerReserve).toBe(2);
     expect(s.powerMove).toBe(2);
-    expect(s.powerWeapons).toBe(1);
+    expect(s.powerWeapons).toBe(2);
     expect(s.capacitorCapacity).toBe(0);
     expect(s.heatCapacity).toBe(30);
     expect(s.cooling).toBe(3);

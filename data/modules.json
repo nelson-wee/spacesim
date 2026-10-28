@@ -109,7 +109,7 @@
       "slot": "hardpoint",
       "category": "laser",
       "mainStats": ["damage"],
-      "sizes": { "S": { "damage": 5, "range": 8, "tracking": 150, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 1, "heatPerShot": 4, "mass": 1, "price": 2000 } }
+      "sizes": { "S": { "damage": 4, "range": 8, "tracking": 150, "rangePenalty": 0.1, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 2, "heatPerShot": 4, "mass": 1, "price": 2000 } }
     },
     {
       "id": "beam_laser",
@@ -117,7 +117,7 @@
       "slot": "hardpoint",
       "category": "laser",
       "mainStats": ["damage"],
-      "sizes": { "M": { "damage": 12, "range": 10, "tracking": 130, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 4, "heatPerShot": 6, "mass": 4, "price": 6000 } }
+      "sizes": { "M": { "damage": 12, "range": 10, "tracking": 130, "rangePenalty": 0.1, "vsShield": 1.5, "vsHull": 0.6, "armorPierce": 0, "power": 4, "heatPerShot": 6, "mass": 4, "price": 6000 } }
     },
     {
       "id": "autocannon",
