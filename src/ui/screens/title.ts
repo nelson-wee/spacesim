@@ -1,4 +1,6 @@
 // Title screen (Section 17.1): New game with seed input, Continue, Help.
+import { SettingsScreen } from './settings';
+import { loadSettings } from '../settings';
 import { createGame } from '../../core/newGame';
 import type { Term } from '../../render/display';
 import { WIDTH } from '../../render/display';
@@ -35,6 +37,7 @@ export class TitleScreen implements Screen {
     const menu: [string, string, boolean][] = [
       ['N', 'New game', true],
       ['C', 'Continue (save and load come in a later version)', false],
+      ['S', 'Settings', true],
       ['H', 'Help', true],
     ];
     menu.forEach(([key, text, active], i) => {
@@ -71,6 +74,9 @@ export class TitleScreen implements Screen {
       case 'h':
         this.app.push(new HelpScreen(this.app, this.help()));
         return true;
+      case 's':
+        this.app.push(new SettingsScreen(this.app));
+        return true;
       case 'Escape':
         return true;
       default:
@@ -79,7 +85,7 @@ export class TitleScreen implements Screen {
   }
 
   private startGame(seed: number): void {
-    this.app.game = createGame(seed, this.app.data);
+    this.app.game = createGame(seed, this.app.data, { tutorial: loadSettings().tutorial });
     this.app.reset(new SectorMapScreen(this.app));
   }
 
@@ -94,6 +100,7 @@ export class TitleScreen implements Screen {
       '',
       'TITLE SCREEN',
       'N        New game (type a seed, or press Enter for a random seed)',
+      'S        Settings (tutorial tips ON or OFF)',
       'H        Help',
       '',
       'The same seed always gives the same world.',

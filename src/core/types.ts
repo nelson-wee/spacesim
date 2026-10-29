@@ -201,6 +201,26 @@ export interface LogEntry {
   kind: LogKind;
 }
 
+/** The first-trade plan of the tutorial (Q-48): a best route at the career start. */
+export interface TutorialPlan {
+  commodity: string;
+  fromId: number;
+  toId: number;
+  units: number;
+  /** Average price per unit to buy and to sell. */
+  buy: number;
+  sell: number;
+  profit: number;
+}
+
+/** Tutorial progress (Q-48). Only the UI reads it; no simulation rule uses it. */
+export interface TutorialState {
+  on: boolean;
+  /** Ids of the tips that the player has seen. */
+  seen: string[];
+  plan: TutorialPlan | null;
+}
+
 export interface GameState {
   saveVersion: number;
   seed: number;
@@ -211,4 +231,5 @@ export interface GameState {
   player: Actor;
   log: LogEntry[];
   nextId: number;
+  tutorial: TutorialState;
 }

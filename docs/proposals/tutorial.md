@@ -1,6 +1,6 @@
 # Tutorial: scope proposal (Q-48)
 
-Status: proposal (2026-10-29). Nothing in this file is built. The owner selects the scope and the milestone.
+Status: built (owner, 2026-10-29), before M6, with the defaults of Section 4 (b) and (c). Do a text pass in M8 for the M6 and M7 screens. The decisions are in `DECISIONS.md`.
 
 ## 1. Goal
 

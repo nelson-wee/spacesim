@@ -8,7 +8,8 @@ import { type Game, wrapGame } from './game';
 import { createStreams, Rng } from './rng';
 import { type GameState, SAVE_VERSION } from './types';
 
-export function createGame(seed: number, data: GameData = gameData()): Game {
+/** `tutorial`: the title screen setting (Q-48); tools and tests start with it OFF. */
+export function createGame(seed: number, data: GameData = gameData(), options: { tutorial?: boolean } = {}): Game {
   const cleanSeed = seed >>> 0;
   const streams = createStreams(cleanSeed);
   const world = generateWorld(cleanSeed, data, new Rng(streams.world));
@@ -27,6 +28,7 @@ export function createGame(seed: number, data: GameData = gameData()): Game {
     player,
     log: [],
     nextId: 1,
+    tutorial: { on: options.tutorial ?? false, seen: [], plan: null },
   };
   const game = wrapGame(state, data);
   observe(game, player);

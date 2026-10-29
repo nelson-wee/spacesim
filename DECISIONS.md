@@ -383,6 +383,15 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-29 [Q-47] Auto-resolve shows the end map and a summary in the log (turns, the player's hull and armor damage, enemy ships destroyed, surrendered, fled). It uses the battle RNG stream, so it gives the same result as a turn loop with no orders. The win estimate and the other doctrines are not built (proposal Sections 2.3, 2.4).
 - 2026-10-29 [Q-47] The player's plan for the turn is not used by an auto turn. Reason: the AI plans the full turn; a mix of the two plans can overdraw power.
 
+## Tutorial (owner, 2026-10-29, Q-48)
+
+- 2026-10-29 [Q-48] The tutorial is built now, before M6 (owner: "go ahead"). Defaults of Q-48 used: no safe start (encounters do not change with the tutorial); tutorial ON by default. Reason: the proposal defaults; a safe start would make the same seed give a different game.
+- 2026-10-29 [Q-48] 10 tips in `data/tutorial.json` (text in STE), each shown one time per game: welcome and first-trade plan (sector map), location, market, first buy, region map, first sale with a profit, first hail, first battle, first defeat. Enter closes a tip; X turns off the tutorial for this game.
+- 2026-10-29 [Q-48] First-trade plan: the best route from the start location (`bestRoutes`, 3 jumps or fewer); if the start location makes nothing, the best route from a known location near it. The plan is set when its tip shows and is kept in `GameState.tutorial.plan`, so the goal line does not change when prices move.
+- 2026-10-29 [Q-48] The goal line on the sector map panel: "Buy <commodity> at <location>", then "Sell <commodity> at <location>" while the fleet holds it, or "Sell your cargo where it pays more" with other cargo. It goes away after the first sale with a profit.
+- 2026-10-29 [Q-48] Tips show from App.render: the top screen names its triggers (`Screen.tutorialTriggers`), a market buy or sell gives 'bought' or 'sold' (new bus event `traded`), and the end of a lost battle gives 'defeat'. The tutorial writes only `GameState.tutorial` (through `core/tutorial.ts`). Test: the same seed and actions give the same state with the tutorial ON and OFF.
+- 2026-10-29 [Q-48] The setting "Tutorial tips in new games" is on the title screen (S). It is kept in `localStorage` (`spacesim.settings`), not in the game state; with no storage the default (ON) applies. `createGame` starts with the tutorial OFF unless the title screen asks for it, so tools and tests do not change.
+
 ## Cuts
 
 None.

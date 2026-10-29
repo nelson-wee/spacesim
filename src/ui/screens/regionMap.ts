@@ -1,5 +1,6 @@
 // Region map (Sections 17.1 and 17.2): sectors, lanes, security, and the
 // player position. A jump to a connected sector starts here.
+import type { TutorialTrigger } from '../../data/schemas';
 import { actorPlace, jump, planJump, planSectorTrip, travelInSector } from '../../actor/travel';
 import type { Game } from '../../core/game';
 import type { JumpPoint, Sector } from '../../core/types';
@@ -21,6 +22,10 @@ export class RegionMapScreen implements Screen {
   private selectedSectorId: number | null = null;
 
   constructor(private readonly app: App) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['regionMap'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');

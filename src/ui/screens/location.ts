@@ -1,5 +1,6 @@
 // Location screen (Section 17.1): one tab for each service at this location.
 // F opens the fleet screen, T the Trade Ledger, W waits (Section 8.8).
+import type { TutorialTrigger } from '../../data/schemas';
 import type { Game } from '../../core/game';
 import type { Location } from '../../core/types';
 import type { Term } from '../../render/display';
@@ -61,6 +62,10 @@ export class LocationScreen implements Screen {
     private readonly locationId: number,
   ) {
     this.tabs = tabsFor(this.location, this.game);
+  }
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return this.tabs[this.tab]?.serviceId === 'market' ? ['location', 'market'] : ['location'];
   }
 
   private get game(): Game {

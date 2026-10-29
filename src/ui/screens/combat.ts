@@ -5,6 +5,7 @@
 // and fire (F) at the target (Tab or a click), at the Hull or the Engines (A).
 // The plan shows at once; E ends the turn and the resolver runs it. Effects
 // from effects.json play after the turn; Space skips them.
+import type { TutorialTrigger } from '../../data/schemas';
 import { defeatKind } from '../../career/defeat';
 import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from '../../combat/munitions';
 import { Rng } from '../../core/rng';
@@ -92,6 +93,10 @@ export class CombatScreen implements Screen {
     this.targetId = this.foes()[0]?.id ?? null;
     this.log.push('Battle. Plan your turn: 1-0 power, arrows + Enter move, Tab target, F fire, E end turn.');
     if (options.autoResolve) this.resolveAll();
+  }
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['combat'];
   }
 
   private get game(): Game {

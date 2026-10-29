@@ -1,5 +1,7 @@
 // Sector map (Sections 17.1 and 17.2): star, orbit rings, locations, jump
 // points, and the player. Travel in the sector and jumps start here.
+import type { TutorialTrigger } from '../../data/schemas';
+import { goalLine, wrap } from '../tutorial';
 import {
   actorPlace,
   type Destination,
@@ -45,6 +47,10 @@ export class SectorMapScreen implements Screen {
   private routeCommodity: string | null = null;
 
   constructor(private readonly app: App) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['sectorMap'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');
@@ -213,6 +219,14 @@ export class SectorMapScreen implements Screen {
     } else {
       line('Select a target: a-f or 1-4,', pal.ui.dim);
       line('or click it on the map.', pal.ui.dim);
+    }
+
+    // The first-trade goal of the tutorial (Q-48).
+    const goal = goalLine(game);
+    if (goal) {
+      y++;
+      line('Tutorial goal', pal.ui.title);
+      for (const l of wrap(goal, PANEL_W)) line(l, pal.ui.highlight);
     }
 
     y = Math.max(y + 1, LOG_Y - 10);

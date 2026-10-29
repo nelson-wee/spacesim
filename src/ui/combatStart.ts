@@ -86,10 +86,12 @@ export function endBattle(app: App, b: Battle): void {
   const game = app.game;
   if (!game) return;
   if (b.result !== 'loss') game.bus.message(resultText(b), b.result === 'win' ? 'good' : 'warning');
-  if (finishBattle(game, game.state.player, b) === 'gameOver') {
+  const end = finishBattle(game, game.state.player, b);
+  if (end === 'gameOver') {
     app.game = null;
     app.reset(new TitleScreen(app));
     return;
   }
+  if (end === 'disabled' || end === 'cloned') app.tutorial.notify('defeat');
   app.pop();
 }

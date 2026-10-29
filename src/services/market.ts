@@ -102,6 +102,7 @@ export function buy(game: Game, actor: Actor, location: Location, commodity: str
   const n = Math.min(Math.floor(units), limit.units);
   if (n <= 0) return { ...refused(LIMIT_TEXT[limit.limitedBy]), units: 0, total: 0 };
   const q = quoteBuy(entry, basePrice(data, commodity), n, data);
+  game.bus.emit({ type: 'traded', actorId: actor.id, side: 'buy', locationId: location.id, commodity, units: n, total: q.total, profit: 0 });
   entry.stock -= n;
   actor.credits -= q.total;
   const left = addCargo(actor, data, commodity, n, q.average);
@@ -121,7 +122,9 @@ export function sell(game: Game, actor: Actor, location: Location, commodity: st
   if (n <= 1e-9) return { ...refused(`You have no ${commodityName(data, commodity)}.`), units: 0, total: 0 };
   const q = { total: quoteSell(entry, basePrice(data, commodity), n, data).total * sellShare(location, data) };
   const debt = Math.max(0, -actor.credits);
+  const cost = n * fleetUnitCost(actor, commodity);
   removeCargo(actor, commodity, n);
+  game.bus.emit({ type: 'traded', actorId: actor.id, side: 'sell', locationId: location.id, commodity, units: n, total: q.total, profit: q.total - cost });
   entry.stock += n;
   actor.credits += q.total;
   const debtText = debt > 0 ? ` ${Math.round(Math.min(debt, q.total))} cr pays your debt.` : '';

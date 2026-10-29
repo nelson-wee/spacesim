@@ -416,6 +416,13 @@ Why the TU calibration is out of band: TU is one number, but the combat model no
 - **Not built:** the win estimate and the other doctrines (`docs/proposals/auto-battle.md`).
 - **Tool results:** `npm test`: 753 tests pass (7 new in `tests/autoplay.test.ts`). `npm run build`: passes. `ship-report`: all PASS. Browser: auto turn, auto until, auto-resolve in battle and from the hail screen; no page errors. `sim-combat` does not change (its player side uses the Attack AI).
 
+## Between M5 and M6: tutorial (2026-10-29)
+
+- **Works:** title screen S: Settings with "Tutorial tips in new games" (kept in the browser). In a new game, 10 tips show one time each: welcome, first-trade plan, location, market, first buy, region map, first sale, first hail, first battle, first defeat. The sector map panel shows a goal line for the first trade. Enter closes a tip; X turns off the tutorial for the game.
+- **To do in M8:** a text pass for the screens that M6 and M7 change (Market with fleet capacity, Fleet screen, contracts, save).
+- **Known issues:** on the region map, a sector name near the right edge can run into the panel text (seen: "Ullo" + "Jumps from here", seed 11). This was there before the tutorial.
+- **Tool results:** `npm test`: 763 tests pass (10 new in `tests/tutorial.test.ts`, with the check that the same seed and actions give the same state with the tutorial ON and OFF). `npm run build`: passes. Browser: settings (also after a page reload), welcome, first-trade plan, goal line, location, market, first buy, region map, X, hail, battle, auto-resolve, defeat; no page errors.
+
 <!--
 Template for each milestone:
 

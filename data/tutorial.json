@@ -1,0 +1,155 @@
+{
+  "tips": [
+    {
+      "id": "welcome",
+      "trigger": "sectorMap",
+      "title": "Welcome, captain",
+      "lines": [
+        "You have a small ship and a little money. Trade between",
+        "locations, make your ship better, build a fleet, and fight",
+        "or hunt pirates.",
+        "",
+        "Top row: the day, your credits, fuel, and cargo.",
+        "Left: the sector map. Right: the panel with the keys.",
+        "Bottom: the newest log messages (L shows all of them).",
+        "",
+        "Each screen has help: press ?."
+      ]
+    },
+    {
+      "id": "firstTrade",
+      "trigger": "sectorMap",
+      "title": "Your first trade",
+      "lines": [
+        "A good first trade near here:",
+        "",
+        "  Buy:    {commodity} at {buyAt}",
+        "          about {buy} cr for each unit",
+        "  Sell:   at {sellAt}",
+        "          about {sell} cr for each unit",
+        "  Profit: about {profit} cr for {units} units",
+        "",
+        "Go to {buyAt}: select it on the map and press",
+        "Enter. Then open the services (O) and buy on the Market",
+        "tab. The goal line on the panel shows each step.",
+        "The Trade Ledger (T) shows more routes."
+      ],
+      "noPlanLines": [
+        "The Trade Ledger (T) shows the best known routes: what to",
+        "buy, where to sell it, and the profit.",
+        "",
+        "Open the services here (O). Buy on the Market tab. Then",
+        "travel to a location that pays more, and sell."
+      ]
+    },
+    {
+      "id": "location",
+      "trigger": "location",
+      "title": "Location services",
+      "lines": [
+        "Each service of this location has a tab (1-9, or Left and",
+        "Right). Market: buy and sell. Refuel: fill the tanks.",
+        "Mechanic: repair. Insurance: Clone Insurance for your ship.",
+        "Outfitter and Shipyard: modules and hulls.",
+        "",
+        "I shows your fleet and cargo. Esc goes back to the map."
+      ]
+    },
+    {
+      "id": "market",
+      "trigger": "market",
+      "title": "The Market",
+      "lines": [
+        "Up and Down select a commodity.",
+        "B buys 1 unit. Shift+B buys as much as you can.",
+        "S sells 1 unit. Shift+S sells all.",
+        "",
+        "Each unit that you buy makes the next one dearer. Each unit",
+        "that you sell makes the next one cheaper. The last column",
+        "shows the best known sell price at other locations."
+      ]
+    },
+    {
+      "id": "bought",
+      "trigger": "bought",
+      "title": "Cargo on board",
+      "lines": [
+        "Now take the cargo to a location that pays more.",
+        "",
+        "In this sector: select the location on the sector map",
+        "(a-f) and press Enter.",
+        "In another sector: M opens the region map. Select the",
+        "sector and press Enter.",
+        "",
+        "Travel uses time and fuel. Refuel (R) when you dock."
+      ]
+    },
+    {
+      "id": "regionMap",
+      "trigger": "regionMap",
+      "title": "The region map",
+      "lines": [
+        "The number after each sector is its security level, from",
+        "0 (Lawless) to 4 (Secure). The ! row shows the threat band",
+        "(1-5). More ! means stronger pirates.",
+        "",
+        "Pirates disable your ship and take all the cargo. Other",
+        "enemies destroy it. Clone Insurance at any location gives",
+        "you your ship again after a loss."
+      ]
+    },
+    {
+      "id": "sold",
+      "trigger": "sold",
+      "title": "A profit",
+      "lines": [
+        "Good work: you made {profitSold} cr on that sale.",
+        "",
+        "Next steps: trade more, and buy Clone Insurance before you",
+        "go to sectors with low security. The Outfitter sells",
+        "modules, and the Shipyard sells bigger hulls."
+      ]
+    },
+    {
+      "id": "hail",
+      "trigger": "hail",
+      "title": "An encounter",
+      "lines": [
+        "The hail shows the other ships and their threat band.",
+        "",
+        "Fight: start a battle. Flee: try to get away (it can fail).",
+        "Pay: give pirates half the cargo of your fullest ship.",
+        "Ignore, Pursue, Attack: when the other side is not hostile.",
+        "R: fight, and the AI plays the battle for you at once."
+      ]
+    },
+    {
+      "id": "combat",
+      "trigger": "combat",
+      "title": "Your first battle",
+      "lines": [
+        "Each turn: plan, then press E to end the turn.",
+        "1-0 switch modules ON or OFF. The Power line shows the",
+        "available, reserved, and maximum power.",
+        "Arrows and Enter: move. Tab: target. F: fire.",
+        "To flee, move onto a map edge with an engine ON.",
+        "",
+        "T: the AI plays one turn. Shift+T: the AI plays until",
+        "something changes. R, R: the AI plays the full battle."
+      ]
+    },
+    {
+      "id": "defeat",
+      "trigger": "defeat",
+      "title": "A defeat",
+      "lines": [
+        "You lost the battle, but the career goes on.",
+        "",
+        "To lower the risk: flee or pay tribute when pirates are",
+        "much stronger, keep away from sectors with many !, and",
+        "buy Clone Insurance. A better ship (Outfitter, Shipyard)",
+        "also helps."
+      ]
+    }
+  ]
+}

@@ -5,6 +5,8 @@ import type { GameData } from '../data';
 import { Term } from '../render/display';
 import { type KeyInput, isDebugKey } from './input';
 import { ClickZones } from './widgets/clicks';
+import type { TutorialTrigger } from '../data/schemas';
+import { TutorialRunner } from './tutorialRunner';
 
 export interface Screen {
   render(t: Term): void;
@@ -15,6 +17,8 @@ export interface Screen {
   help(): string[];
   /** An overlay draws on top of the screen below it. */
   readonly overlay?: boolean;
+  /** Tutorial triggers while this screen is on top (Q-48). */
+  tutorialTriggers?(): TutorialTrigger[];
 }
 
 export class App {
@@ -25,6 +29,8 @@ export class App {
   /** Click zones of the screens on show; made again at each render. */
   readonly zones = new ClickZones();
   helpScreen: ((app: App, lines: string[]) => Screen) | null = null;
+  /** Tutorial tips (Q-48). */
+  readonly tutorial = new TutorialRunner();
 
   constructor(
     readonly term: Term,
@@ -52,6 +58,8 @@ export class App {
   }
 
   render(): void {
+    // A tutorial tip can be due after any change; it shows on top (Q-48).
+    this.tutorial.check(this);
     this.term.clear();
     this.zones.clear();
     let first = this.stack.length - 1;

@@ -2,7 +2,7 @@
 
 **Goal:** The player owns up to 4 ships. Only the flagship fights. The other ships carry cargo and are backups. Ships come from the Shipyard or as prize ships. Each non-flagship ship costs upkeep. **Feature freeze at the end of this day.**
 
-**Brief sections:** §8.2 (fleets), §8.6 (fleet tow), §11.9, §13.7 (prize ships, flagship loss), §15 (prize notoriety), §17.1 (7), §17.6 (fleet values), Appendix B.1. Owner additions: disabled enemy ships and boarding (Q-49).
+**Brief sections:** §8.2 (fleets), §8.6 (fleet tow), §11.9, §13.7 (prize ships, flagship loss), §15 (prize notoriety), §17.1 (7), §17.6 (fleet values), Appendix B.1. Owner additions: disabled enemy ships and boarding (Q-49); forced surrender and fleet management after a battle (Q-50).
 
 **Depends on:** M3 (Shipyard, Market, Trade Ledger), M5 (encounters, surrender, loot).
 
@@ -41,6 +41,7 @@
 | M6-FCMB-09 | **Boarding.** After a win, the player boards each disabled ship and each surrendered ship. For each ship, the player selects one: **Take as prize** (M6-FCMB-06 and M6-FCMB-07 rules; a disabled ship keeps `disabledHullShare` of its max hull), **Take cargo** (all cargo, as far as it fits in the fleet), or **Leave**. Take as prize also takes the cargo. | Q-49 | T |
 | M6-FCMB-10 | Consequences of a disabled ship are the same as for a destroyed ship: security change for pirates (§10.3), notoriety for non-pirates (§15). A prize from a non-pirate adds +10 more (M6-FCMB-07). | Q-49, §10.3, §15 | T |
 | M6-FCMB-11 | A disabled ship that the player does not take stays behind. It does not come back in later encounters. | Q-49 | T |
+| M6-FCMB-12 | **Forced surrender** (owner, 2026-10-29, Q-50). An NPC ship with engine value 0 (it cannot flee) and hull at or below `combat.forcedSurrenderHull` (20%) of its max hull surrenders at the morale step, with no roll. This applies to all NPC factions, patrols too. The morale roll (§13.8) stays as it is. A surrendered ship takes no more actions. | Q-50, §13.8 | T |
 
 ## 3. Screens (UI)
 
@@ -50,7 +51,8 @@
 | M6-UI-02 | Before a trip, the UI shows the fuel of the ship with the lowest range. | §8.6 | M |
 | M6-UI-03 | **Trade Ledger with fleet values.** Route values use the fleet's total free capacity, the fuel use of all ships, the speed of the slowest ship, daily upkeep, and the player's credits. | §17.6 | T, M |
 | M6-UI-04 | The prize option shows on the battle result screen when a ship surrenders. | §13.7 | M |
-| M6-UI-05 | **Boarding screen** (Q-49). After a win with disabled or surrendered ships: a list of these ships with loadout, hull, cargo, and value. Keys: P take as prize, C take cargo, L leave. The screen shows the free fleet slots and the free cargo space. Auto-resolve (Q-47) opens the same screen. | Q-49 | M |
+| M6-UI-05 | **After-battle screen** (Q-49, Q-50). After a win with disabled or surrendered ships: a list of these ships with loadout, hull, cargo, and value. Keys: P take as prize, C take cargo, L leave. The screen shows the free fleet slots and the free cargo space. Auto-resolve (Q-47) opens the same screen. | Q-49 | M |
+| M6-UI-06 | **Fleet management after a battle** (owner, 2026-10-29, Q-50). On the after-battle screen, the player can: move cargo between all fleet ships and the boarded ships; move modules between fleet ships (prizes included), into free slots of the correct type and size; scuttle a fleet ship (the ship and the cargo and modules still on it are lost; a new flagship is selected if needed). These actions cost no time and no fee. The player can close the screen only when each fleet ship passes the required-module rules (§11.2), or the player scuttles the ship. | Q-50 | T, M |
 
 ## 4. Tools (TOOL)
 
@@ -68,6 +70,8 @@
 - Flagship loss, last ship loss.
 - Flee cargo loss from a random non-flagship ship.
 - Prize ship: loadout, damage, cargo, 25% fuel, notoriety, Battleship rule, full fleet rule.
+- Forced surrender (Q-50): engine value 0 and hull at or below 20% gives a surrender with no roll, also for patrols.
+- After-battle fleet management (Q-50): cargo moves; module moves (slot type and size); scuttle (flagship change); the required-module check before the screen closes.
 - Disabled enemy ship (Q-49): engine value 0 gives a disabled ship; the chance roll uses the combat RNG; no pod; out of the battle; boarding: prize, cargo, leave; consequences as for a destroyed ship.
 - Encounter chance with the fleet factor.
 
@@ -87,4 +91,4 @@
 
 ## 7. Not in this milestone
 
-Fleet combat with all ships on the map (Parked, §21 item 8). Module storage (Parked).
+Fleet combat with all ships on the map (Parked, §21 item 8). Module storage (Parked): a module that is moved must go into a free slot on a fleet ship.

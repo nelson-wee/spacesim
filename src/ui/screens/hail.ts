@@ -1,6 +1,7 @@
 // Hail screen (Section 17.1 (10), M5-ENC-09): the encounter text, the other
 // group with its threat band, and the options with keys (Section 10.7, Q-15,
 // Q-16, Q-17). An option resolves the encounter or starts a battle.
+import type { TutorialTrigger } from '../../data/schemas';
 import { massFactor } from '../../actor/fuel';
 import { attackNonPirate } from '../../career/consequences';
 import type { Game } from '../../core/game';
@@ -34,6 +35,10 @@ export class HailScreen implements Screen {
     private readonly app: App,
     private readonly enc: Encounter,
   ) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['hail'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');

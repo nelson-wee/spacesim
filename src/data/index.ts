@@ -3,6 +3,7 @@
 import type { z } from 'zod';
 import balanceJson from '../../data/balance.json';
 import battleMapsJson from '../../data/battleMaps.json';
+import tutorialJson from '../../data/tutorial.json';
 import bodyTypesJson from '../../data/bodyTypes.json';
 import commoditiesJson from '../../data/commodities.json';
 import contractsJson from '../../data/contracts.json';
@@ -66,6 +67,7 @@ export interface RawData {
   templates: unknown;
   contracts: unknown;
   battleMaps: unknown;
+  tutorial: unknown;
   artShips: unknown;
   artEffects: unknown;
   artIcons: unknown;
@@ -88,6 +90,7 @@ export interface GameData {
   templates: z.infer<typeof S.templatesSchema>;
   encounters: z.infer<typeof S.encountersSchema>;
   battleMaps: z.infer<typeof S.battleMapsSchema>;
+  tutorial: z.infer<typeof S.tutorialSchema>;
   names: z.infer<typeof S.namesSchema>;
   hulls: Hull[];
   hullById: Map<string, Hull>;
@@ -123,6 +126,7 @@ export const RAW_DATA: RawData = {
   templates: templatesJson,
   contracts: contractsJson,
   battleMaps: battleMapsJson,
+  tutorial: tutorialJson,
   artShips: artShipsJson,
   artEffects: artEffectsJson,
   artIcons: artIconsJson,
@@ -297,6 +301,8 @@ function checkModuleArt(data: GameData): string[] {
     data.balance.threat.referenceLoadout,
   ];
   for (const id of loadoutIds) if (!data.loadoutById.has(id)) problems.push(`templates.json or balance.json: no loadout ${id}`);
+  const tipIds = data.tutorial.tips.map((t) => t.id);
+  if (new Set(tipIds).size !== tipIds.length) problems.push('tutorial.json: tip ids are not unique');
   if (!data.battleMaps.templates.some((t) => t.id === data.battleMaps.default)) problems.push(`battleMaps.json: no default template ${data.battleMaps.default}`);
   for (const t of data.battleMaps.templates) {
     for (const p of t.nearPlanets ?? []) if (!data.planetTypeById.has(p)) problems.push(`battleMaps.json: ${t.id} planet type ${p} is not in bodyTypes.json`);
@@ -414,6 +420,7 @@ export function buildGameData(raw: RawData): GameData {
     templates: parse('templates.json', S.templatesSchema, raw.templates),
     encounters: parse('encounters.json', S.encountersSchema, raw.encounters),
     battleMaps: parse('battleMaps.json', S.battleMapsSchema, raw.battleMaps),
+    tutorial: parse('tutorial.json', S.tutorialSchema, raw.tutorial),
     names: parse('names.json', S.namesSchema, raw.names),
     hulls,
     hullById: byId(hulls, (h) => h.id, 'hulls.json'),
