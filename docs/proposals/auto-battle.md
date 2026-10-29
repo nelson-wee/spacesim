@@ -1,6 +1,6 @@
 # Auto-battle and loadout tactics: scope proposal (Q-40, Q-47)
 
-Status: proposal (2026-10-29). Nothing in this file is built. The owner selects the items and the order.
+Status: Section 2 modes A, B, and C with the Balanced doctrine are built (owner, 2026-10-29; `DECISIONS.md`). The win estimate (2.3), the other doctrines (2.4), and Section 3 are proposals.
 
 ## 1. What exists now
 

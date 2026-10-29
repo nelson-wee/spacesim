@@ -2,7 +2,7 @@
 
 **Goal:** The player owns up to 4 ships. Only the flagship fights. The other ships carry cargo and are backups. Ships come from the Shipyard or as prize ships. Each non-flagship ship costs upkeep. **Feature freeze at the end of this day.**
 
-**Brief sections:** §8.2 (fleets), §8.6 (fleet tow), §11.9, §13.7 (prize ships, flagship loss), §15 (prize notoriety), §17.1 (7), §17.6 (fleet values), Appendix B.1.
+**Brief sections:** §8.2 (fleets), §8.6 (fleet tow), §11.9, §13.7 (prize ships, flagship loss), §15 (prize notoriety), §17.1 (7), §17.6 (fleet values), Appendix B.1. Owner additions: disabled enemy ships and boarding (Q-49).
 
 **Depends on:** M3 (Shipyard, Market, Trade Ledger), M5 (encounters, surrender, loot).
 
@@ -37,6 +37,10 @@
 | M6-FCMB-05 | **Last ship destroyed.** Game over (§16). In M6, go to a simple game-over screen. (The career end screen is an M7 item.) | §11.9, §16 | T |
 | M6-FCMB-06 | **Prize ship.** If the fleet has fewer than `maxFleetSize` ships, the player can take a surrendered ship into the fleet, with its loadout, damage, cargo, and 25% fuel. | §13.7 | T |
 | M6-FCMB-07 | A prize ship from a non-pirate adds +10 notoriety. Battleships cannot be prizes. | §13.7, §15 | T |
+| M6-FCMB-08 | **Disabled enemy ships** (owner, 2026-10-29, Q-49). When the hull of an NPC ship falls to 0, the ship is **disabled**, not destroyed, if its engine value is 0 at that time, or else with the chance `combat.disableChance`. A disabled ship is out of the battle (as a destroyed ship for the battle result and for the AI). It keeps all its cargo (no cargo pod) and its loadout. | Q-49 | T |
+| M6-FCMB-09 | **Boarding.** After a win, the player boards each disabled ship and each surrendered ship. For each ship, the player selects one: **Take as prize** (M6-FCMB-06 and M6-FCMB-07 rules; a disabled ship keeps `disabledHullShare` of its max hull), **Take cargo** (all cargo, as far as it fits in the fleet), or **Leave**. Take as prize also takes the cargo. | Q-49 | T |
+| M6-FCMB-10 | Consequences of a disabled ship are the same as for a destroyed ship: security change for pirates (§10.3), notoriety for non-pirates (§15). A prize from a non-pirate adds +10 more (M6-FCMB-07). | Q-49, §10.3, §15 | T |
+| M6-FCMB-11 | A disabled ship that the player does not take stays behind. It does not come back in later encounters. | Q-49 | T |
 
 ## 3. Screens (UI)
 
@@ -46,6 +50,7 @@
 | M6-UI-02 | Before a trip, the UI shows the fuel of the ship with the lowest range. | §8.6 | M |
 | M6-UI-03 | **Trade Ledger with fleet values.** Route values use the fleet's total free capacity, the fuel use of all ships, the speed of the slowest ship, daily upkeep, and the player's credits. | §17.6 | T, M |
 | M6-UI-04 | The prize option shows on the battle result screen when a ship surrenders. | §13.7 | M |
+| M6-UI-05 | **Boarding screen** (Q-49). After a win with disabled or surrendered ships: a list of these ships with loadout, hull, cargo, and value. Keys: P take as prize, C take cargo, L leave. The screen shows the free fleet slots and the free cargo space. Auto-resolve (Q-47) opens the same screen. | Q-49 | M |
 
 ## 4. Tools (TOOL)
 
@@ -63,6 +68,7 @@
 - Flagship loss, last ship loss.
 - Flee cargo loss from a random non-flagship ship.
 - Prize ship: loadout, damage, cargo, 25% fuel, notoriety, Battleship rule, full fleet rule.
+- Disabled enemy ship (Q-49): engine value 0 gives a disabled ship; the chance roll uses the combat RNG; no pod; out of the battle; boarding: prize, cargo, leave; consequences as for a destroyed ship.
 - Encounter chance with the fleet factor.
 
 ## 6. Exit checks
@@ -71,7 +77,7 @@
 |---|---|---|---|
 | 1 | A fleet of 4 ships can travel, trade, and refuel. | §19 | T, M |
 | 2 | Flagship loss gives a new flagship. | §19 | T |
-| 3 | A prize ship joins the fleet. | §19 | T, M |
+| 3 | A prize ship joins the fleet, from a surrendered ship and from a disabled ship (Q-49). | §19 | T, M |
 | 4 | Upkeep is paid. | §19 | T |
 | 5 | `sim-trader.ts` with a 2-ship fleet earns more per day than with 1 ship, after upkeep. | §19 | S |
 | 6 | **Feature freeze.** After this milestone, add no new features. Only balance, bug fixes, and the items in M7 and M8. | §19, §0.10 | I |

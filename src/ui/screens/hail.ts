@@ -84,10 +84,16 @@ export class HailScreen implements Screen {
       const [key, label] = LABEL[o];
       return [key, label, press(key.toLowerCase())] as [string, string, KeyInput];
     });
+    if (hailOptions(this.enc).includes('fight')) keys.splice(1, 0, ['R', 'Auto-resolve', press('r')]);
     drawKeyHints(t, this.app.zones, x + 2, y + h - 2, keys, ui, this.app.press);
   }
 
   onKey(k: KeyInput): boolean {
+    // Auto-resolve (Q-47): Fight, and the AI plays the battle to its end at once.
+    if (k.key === 'r' && hailOptions(this.enc).includes('fight')) {
+      this.choose('fight', true);
+      return true;
+    }
     const option = hailOptions(this.enc).find((o) => LABEL[o][0].toLowerCase() === k.key.toLowerCase());
     // Esc does not close the hail: the player must select an option.
     if (!option) return k.key === 'Escape';
@@ -95,7 +101,7 @@ export class HailScreen implements Screen {
     return true;
   }
 
-  private choose(option: HailOption): void {
+  private choose(option: HailOption, autoResolve = false): void {
     const game = this.game;
     const { data, state } = game;
     const player = state.player;
@@ -108,7 +114,7 @@ export class HailScreen implements Screen {
       startBattle(
         this.app,
         opts.evade ? enemies.map((e) => ({ ...e, ai: 'evader' as const })) : enemies,
-        { aggressor: opts.aggressor, enemyFirst: opts.enemyFirst, map, sectorId: enc.sectorId, intro: `${opts.intro} Map: ${map?.name ?? 'Open Space'}.` },
+        { aggressor: opts.aggressor, enemyFirst: opts.enemyFirst, map, sectorId: enc.sectorId, intro: `${opts.intro} Map: ${map?.name ?? 'Open Space'}.`, autoResolve },
       );
     };
     switch (option) {
@@ -158,6 +164,7 @@ export class HailScreen implements Screen {
       'Flee works if your flagship is faster than all of them;',
       'else it is a 50% chance. If it fails, they act first.',
       'Attack on a trader or patrol: notoriety +15, security -4.',
+      'R: Fight, and the AI plays the battle for you at once (auto-resolve).',
     ];
   }
 }

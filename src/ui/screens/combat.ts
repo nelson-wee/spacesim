@@ -10,6 +10,7 @@ import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from '../../combat/m
 import { Rng } from '../../core/rng';
 import { isActive, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
 import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolver';
+import { AUTO_STOP_TEXT, autoResolve, autoStopReason, autoSummary, autoTurn } from '../../combat/autoplay';
 import {
   combatStats,
   drawOf,
@@ -72,11 +73,17 @@ export class CombatScreen implements Screen {
   private timeline: Timeline | null = null;
   private animStart = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Auto until (Q-47): the AI plays turn after turn until a stop reason or a key. */
+  private auto = false;
+  private autoTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Auto-resolve waits for a second R. */
+  private resolveArmed = false;
 
   constructor(
     private readonly app: App,
     battle: Battle,
     private readonly onEnd: (b: Battle) => void,
+    options: { autoResolve?: boolean } = {},
   ) {
     this.battle = battle;
     this.preview = structuredClone(battle);
@@ -84,6 +91,7 @@ export class CombatScreen implements Screen {
     this.cursor = { ...me.pos };
     this.targetId = this.foes()[0]?.id ?? null;
     this.log.push('Battle. Plan your turn: 1-0 power, arrows + Enter move, Tab target, F fire, E end turn.');
+    if (options.autoResolve) this.resolveAll();
   }
 
   private get game(): Game {
@@ -240,11 +248,65 @@ export class CombatScreen implements Screen {
   }
 
   private endTurn(): void {
+    this.showTurn(this.battle, resolveTurn(this.battle, this.orders, this.game.data));
+  }
+
+  /** Mode A (Q-47): the AI plans this turn for the player's ship; the plan is not used. */
+  private autoTurnOnce(): void {
+    this.showTurn(this.battle, autoTurn(this.battle, this.game.data), ' (auto)');
+  }
+
+  /** Mode B (Q-47): one auto turn, then the next one after its effects, until a stop reason. */
+  private autoStep(): void {
+    this.autoTimer = null;
+    if (!this.auto || this.battle.result) {
+      this.auto = false;
+      return;
+    }
     const { data } = this.game;
     const before = this.battle;
-    const out = resolveTurn(before, this.orders, data);
+    const out = autoTurn(before, data);
+    this.showTurn(before, out, ' (auto)');
+    const reason = autoStopReason(before, out, data);
+    if (reason) {
+      this.auto = false;
+      if (reason !== 'end') {
+        this.notice = AUTO_STOP_TEXT[reason];
+        this.log.push(AUTO_STOP_TEXT[reason]);
+      }
+      return;
+    }
+    this.notice = 'Auto until: press any key to stop.';
+    this.autoTimer = setTimeout(() => {
+      this.autoStep();
+      this.app.render();
+    }, (this.timeline?.duration ?? 0) + data.balance.combat.auto.turnDelayMs);
+  }
+
+  private stopAuto(): void {
+    this.auto = false;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    this.autoTimer = null;
+    this.notice = 'Auto stops. You have control.';
+  }
+
+  /** Mode C (Q-47): the battle resolves at once; the log shows a summary. */
+  private resolveAll(): void {
+    const start = this.battle;
+    const out = autoResolve(start, this.game.data);
+    this.battle = out.battle;
+    this.preview = structuredClone(out.battle);
+    this.orders = [];
+    this.skipEffects();
+    for (const line of autoSummary(start, out.battle)) this.log.push(line);
+    this.notice = '';
+    if (this.battle.result) this.log.push(resultText(this.battle));
+  }
+
+  private showTurn(before: Battle, out: ReturnType<typeof resolveTurn>, tag = ''): void {
+    const { data } = this.game;
     for (const r of out.refused) this.log.push(`Order refused: ${r}`);
-    this.log.push(`Turn ${before.turn + 1}:`);
+    this.log.push(`Turn ${before.turn + 1}${tag}:`);
     for (const line of describe(out.effects, out.battle, data)) this.log.push(`  ${line}`);
     this.battle = out.battle;
     this.preview = structuredClone(out.battle);
@@ -352,7 +414,9 @@ export class CombatScreen implements Screen {
           ['Enter', 'Move', press('Enter')],
           ['Tab', 'Target', press('Tab')],
           ['F', 'Fire', press('f')],
-          ['A', `Aim: ${this.aim === 'hull' ? 'Hull' : 'Engines'}`, press('a')],
+          ['A', `Aim ${this.aim === 'hull' ? 'Hull' : 'Engines'}`, press('a')],
+          ['Space', 'Skip', press(' ')],
+          ['?', 'Help', press('?')],
         ],
         ui,
         this.app.press,
@@ -365,9 +429,10 @@ export class CombatScreen implements Screen {
         HINT_Y + 2,
         [
           ['E', 'End turn', press('e')],
-          ['U', 'Undo plan', press('u')],
-          ['Space', 'Skip effects', press(' ')],
-          ['?', 'Help', press('?')],
+          ['U', 'Undo', press('u')],
+          ['T', 'Auto turn', press('t')],
+          ['Shift+T', 'Auto until', press('t', true)],
+          ['R', 'Resolve', press('r')],
         ],
         ui,
         this.app.press,
@@ -513,6 +578,13 @@ export class CombatScreen implements Screen {
       this.skipEffects();
       return true;
     }
+    // Any other key stops "auto until" (Q-47).
+    if (this.auto) {
+      this.stopAuto();
+      return true;
+    }
+    const resolveArmed = this.resolveArmed;
+    this.resolveArmed = false;
     if (this.battle.result) {
       if (k.key === 'Enter') {
         this.skipEffects();
@@ -561,6 +633,19 @@ export class CombatScreen implements Screen {
       case 'e':
         this.endTurn();
         return true;
+      case 't':
+        if (k.shift) {
+          this.auto = true;
+          this.autoStep();
+        } else this.autoTurnOnce();
+        return true;
+      case 'r':
+        if (resolveArmed) this.resolveAll();
+        else {
+          this.resolveArmed = true;
+          this.notice = 'Auto-resolve: the AI plays the battle to its end at once. Press R again to confirm.';
+        }
+        return true;
       case 'u':
       case 'Backspace':
         this.undo();
@@ -585,6 +670,8 @@ export class CombatScreen implements Screen {
   }
 
   help(): string[] {
+    const auto = this.game.data.balance.combat.auto;
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
     return [
       'COMBAT',
       '',
@@ -599,6 +686,14 @@ export class CombatScreen implements Screen {
       'E            End the turn (the enemy moves and fires)',
       'U            Clear the plan for this turn',
       'Space        Skip the effects',
+      'T            Auto turn: the AI plays this turn for you (your plan',
+      '             is not used)',
+      'Shift+T      Auto until: the AI plays turn after turn. It stops when',
+      `             your hull falls below ${pct(auto.stopHull)}, your ship gets Hot, help`,
+      '             arrives, a munition comes at you, or you press a key',
+      'R, R         Auto-resolve: the AI plays the battle to its end at once',
+      'The AI fights like a careful captain: it keeps the best range, does',
+      `not overheat, and flees to an edge below ${pct(auto.retreatHull)} hull.`,
       '',
       'Power: available (reserved) / max + capacitor. Shields reserve their',
       'draw. A move costs the engines\' draw (one time a turn); a shot costs',

@@ -375,6 +375,14 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-29 [§10.9, Q-46] The TU calibration (single ship vs a group of equal TU, target 35%-65%) is a report in `sim-combat`, not an exit check. TU does not account for loadout matchups (armor and shields against small hits, guided weapons against slow ships). Reason: owner decision; TU only sizes encounter budgets.
 - 2026-10-29 [§13.9, Q-46] The median battle length (target 4-10 turns) is a report in `sim-combat`, not an exit check. `damageScale` stays 2.75. Reason: owner decision; the lengths are near the target (11 and 12 at most).
 
+## Auto-battle (owner, 2026-10-29, Q-47 item 1)
+
+- 2026-10-29 [Q-47] Auto-battle is built before M6, with modes A (T: auto turn), B (Shift+T: auto until), and C (R twice in battle, or R on the hail screen: auto-resolve). Reason: owner decision; no M6 or M8 item blocks it, and the feature freeze is at the end of M6.
+- 2026-10-29 [Q-47] Balanced doctrine: the player's ship uses the Attack AI rules (best range, no shot that overheats, weapons stay ON at Hot) and flees to the nearest edge below `combat.auto.retreatHull` (25%), if it can move. Reason: a careful default that keeps the ship; pirates take all cargo from a disabled ship.
+- 2026-10-29 [Q-47] Auto until stops after a turn in which the hull falls below `combat.auto.stopHull` (50%), the ship becomes Hot, a reinforcement arrives, or a munition is launched at the player; any key except Space also stops it. Each stop is a change in that turn, so the next Shift+T does not stop at once for the same reason.
+- 2026-10-29 [Q-47] Auto-resolve shows the end map and a summary in the log (turns, the player's hull and armor damage, enemy ships destroyed, surrendered, fled). It uses the battle RNG stream, so it gives the same result as a turn loop with no orders. The win estimate and the other doctrines are not built (proposal Sections 2.3, 2.4).
+- 2026-10-29 [Q-47] The player's plan for the turn is not used by an auto turn. Reason: the AI plans the full turn; a mix of the two plans can overdraw power.
+
 ## Cuts
 
 None.

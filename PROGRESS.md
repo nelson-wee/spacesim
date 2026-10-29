@@ -410,6 +410,12 @@ Why the TU calibration is out of band: TU is one number, but the combat model no
 
 - `npm test`: 746 tests pass. `npm run ship-report`: all PASS (TU reference values 9/9). `npm run build`: passes. Browser: debug encounter, hail, battle with torpedoes, disabled loss and tow, region map threat bands; no page errors.
 
+## Between M5 and M6: auto-battle (2026-10-29)
+
+- **Works:** in battle, T plays one turn with the AI, Shift+T plays turns until a stop reason (hull below 50%, Hot, reinforcements, a munition at the player, or a key), and R twice resolves the battle at once with a summary in the log. The hail screen has R (Fight with auto-resolve). The AI uses the Balanced doctrine (`DECISIONS.md`, Q-47).
+- **Not built:** the win estimate and the other doctrines (`docs/proposals/auto-battle.md`).
+- **Tool results:** `npm test`: 753 tests pass (7 new in `tests/autoplay.test.ts`). `npm run build`: passes. `ship-report`: all PASS. Browser: auto turn, auto until, auto-resolve in battle and from the hail screen; no page errors. `sim-combat` does not change (its player side uses the Attack AI).
+
 <!--
 Template for each milestone:
 

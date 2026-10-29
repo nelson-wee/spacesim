@@ -130,6 +130,12 @@ export const balanceSchema = z.object({
     disabledHullShare: prob,
     surrenderChance: z.object({ trader: prob, evader: prob, raider: prob, patrol: prob, attack: prob }),
     /**
+     * Auto-battle (Q-47): the player's ship flees below retreatHull (Balanced doctrine);
+     * "auto until" stops when the hull falls below stopHull, at Hot heat, at a reinforcement,
+     * or at a munition launched at the player; turnDelayMs between auto turns on the screen.
+     */
+    auto: z.object({ retreatHull: prob, stopHull: prob, turnDelayMs: z.number().int().min(0) }),
+    /**
      * Map (Section 13.1): random fill and cellular steps (rot.js Map.Cellular; fill 0.42 gives
      * about 11% obstacles), share of clusters that are debris clouds. Each side starts at
      * `startColumn` cells from its edge; the band of startAreaHalfWidth cells around it is open.

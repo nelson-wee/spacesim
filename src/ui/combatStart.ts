@@ -33,6 +33,8 @@ export interface BattleOptions {
   enemyFirst?: boolean;
   /** The text of the first log line. */
   intro?: string;
+  /** Auto-resolve the battle at once (Q-47): the screen opens on the result. */
+  autoResolve?: boolean;
 }
 
 function sectorOf(sectors: Sector[], id: number | undefined): { securityValue: number; development: Sector['development'] } | undefined {
@@ -76,7 +78,7 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
     battle = resolveTurn(battle, [], data).battle;
     battle.log.push('The enemy acts first.');
   }
-  app.push(new CombatScreen(app, battle, (b) => endBattle(app, b)));
+  app.push(new CombatScreen(app, battle, (b) => endBattle(app, b), { autoResolve: options.autoResolve }));
 }
 
 /** Applies the result (career/battleEnd.ts) and leaves the battle screen; game over goes to the title. */

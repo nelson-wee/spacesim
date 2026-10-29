@@ -10,6 +10,8 @@
 //   trader.
 // - Evader (pursued pirates): moves to the nearest edge; fires at the player
 //   when in range; surrenders when the engine value is 0 (morale).
+// - Balanced (the player's ship in an auto-battle, Q-47): like the Attack AI;
+//   flees to the nearest edge below combat.auto.retreatHull.
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
@@ -90,11 +92,11 @@ function cargoValue(s: CombatShip, data: GameData): number {
 
 /**
  * When the AI switches OFF its hottest weapon: Raider and Trader when heat is
- * Hot (Section 13.8). The Attack AI (the player side, Q-25) keeps its weapons
- * ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
+ * Hot (Section 13.8). The Attack AI (the player side, Q-25) and the Balanced
+ * auto-battle AI (Q-47) keep their weapons ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
  */
 function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>): boolean {
-  return s.ai !== 'attack' && heatState(s, data, st) === 'hot';
+  return s.ai !== 'attack' && s.ai !== 'human' && heatState(s, data, st) === 'hot';
 }
 
 /** Heat at the end of this turn if the ship also fires `w` (Section 11.6). */
@@ -227,6 +229,8 @@ export function runAi(b: Battle, s: CombatShip, data: GameData, rng: Rng, effect
   if (!isActive(s)) return;
   const st = combatStats(s, data);
   if (s.ai === 'raider' && s.ship.hullHp < data.balance.combat.retreatHull * st.maxHullHp) s.retreating = true;
+  // A ship that cannot move does not retreat: it stays and fires.
+  if (s.ai === 'human') s.retreating = s.ship.hullHp < data.balance.combat.auto.retreatHull * st.maxHullHp && moveBudget(s, data) > 0;
   aiPower(b, s, data, rng, effects);
   const target = aiTarget(b, s, data);
   aiMove(b, s, target, data, rng, effects);
