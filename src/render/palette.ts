@@ -29,6 +29,16 @@ export interface Palette {
 }
 
 /** The value of a named color. Throws if the style has no such color. */
+/**
+ * Color of a threat band with n marks (1-5). style.json gives "sec[5-n]": the
+ * color of security level 5 - n (1 mark = Secure color, 5 marks = Lawless).
+ */
+export function threatBandColor(style: Style, n: number): string {
+  const pattern = style.threatBand.color;
+  if (pattern === 'sec[5-n]') return styleColor(style, `sec${Math.max(0, Math.min(4, 5 - n))}`);
+  return styleColor(style, pattern);
+}
+
 export function styleColor(style: Style, name: string): string {
   const value = style.colors[name];
   if (!value) throw new Error(`art/style.json: no color "${name}"`);

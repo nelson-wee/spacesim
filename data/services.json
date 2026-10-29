@@ -3,7 +3,7 @@
     "mechanic": { "hullPerPoint": 20, "armorPerPoint": 15, "enginePerPoint": 25 },
     "moduleSellShare": 0.6,
     "tradeInShare": 0.6,
-    "pirateHaven": { "bodyType": "pirate_haven", "maxTier": 3, "priceMult": 1.3 },
+    "pirateHaven": { "bodyType": "pirate_haven", "maxTier": 3, "priceMult": 1.3, "cargoBuyShare": 0.7 },
     "guildRangeJumps": 2,
     "trendDays": 14,
     "alerts": { "lowOutputRatio": 0.6, "deficitDays": 1 },

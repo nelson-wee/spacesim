@@ -1,1 +1,116 @@
-{}
+{
+  "pirate": [
+    {
+      "id": "lone_raider",
+      "name": "Lone Raider",
+      "ships": ["pirate_raider"],
+      "maxSecurity": 4
+    },
+    {
+      "id": "raider_pair",
+      "name": "Raider Pair",
+      "ships": ["pirate_raider", "pirate_raider"],
+      "maxSecurity": 4
+    },
+    {
+      "id": "gunship",
+      "name": "Gunship",
+      "ships": ["pirate_gunship"],
+      "maxSecurity": 3
+    },
+    {
+      "id": "raider_pack",
+      "name": "Raider Pack",
+      "ships": ["pirate_raider", "pirate_raider", "pirate_raider"],
+      "maxSecurity": 2
+    },
+    {
+      "id": "gunship_escort",
+      "name": "Gunship Escort",
+      "ships": ["pirate_gunship", "pirate_raider", "pirate_raider"],
+      "maxSecurity": 1
+    },
+    {
+      "id": "frigate",
+      "name": "Frigate",
+      "ships": ["pirate_frigate"],
+      "maxSecurity": 1,
+      "notCore": true
+    },
+    {
+      "id": "corvette_pack",
+      "name": "Corvette Pack",
+      "ships": ["pirate_corvette", "pirate_raider", "pirate_raider"],
+      "maxSecurity": 1,
+      "notCore": true
+    },
+    {
+      "id": "frigate_group",
+      "name": "Frigate Group",
+      "ships": ["pirate_frigate", "pirate_gunship", "pirate_raider", "pirate_raider"],
+      "maxSecurity": 4,
+      "namedOnly": true
+    },
+    {
+      "id": "battle_group",
+      "name": "Battle Group",
+      "ships": ["battleship", "pirate_gunship", "pirate_gunship"],
+      "maxSecurity": 1,
+      "namedOnly": true,
+      "development": ["frontier"]
+    }
+  ],
+  "trader": {
+    "core": [
+      {
+        "loadout": "heavy_freighter_trader",
+        "weight": 1
+      }
+    ],
+    "middle": [
+      {
+        "loadout": "light_freighter_trader",
+        "weight": 0.6
+      },
+      {
+        "loadout": "heavy_freighter_trader",
+        "weight": 0.4
+      }
+    ],
+    "frontier": [
+      {
+        "loadout": "light_freighter_trader",
+        "weight": 1
+      }
+    ]
+  },
+  "escort": {
+    "maxSecurity": 2,
+    "budgetShare": 0.5,
+    "loadoutSwap": {
+      "pirate_raider": "escort_wasp"
+    }
+  },
+  "patrol": [
+    {
+      "id": "cutter",
+      "name": "Patrol Cutter",
+      "ships": ["patrol_cutter"]
+    },
+    {
+      "id": "cutter_pair",
+      "name": "Cutter Pair",
+      "ships": ["patrol_cutter", "patrol_cutter"]
+    },
+    {
+      "id": "corvette_cutter",
+      "name": "Corvette and Cutter",
+      "ships": ["ballistic_corvette", "patrol_cutter"]
+    },
+    {
+      "id": "corvette_group",
+      "name": "Corvette Group",
+      "ships": ["ballistic_corvette", "patrol_cutter", "patrol_cutter"]
+    }
+  ]
+}

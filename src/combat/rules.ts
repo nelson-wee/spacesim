@@ -1,12 +1,12 @@
 // Combat rules (Sections 8.5, 11.5, 11.6, 12.3, 12.5, 13.6): stats in combat,
 // power toggles, hit chance, damage, heat, shields, and fuel.
 import { massFactor } from '../actor/fuel';
-import type { InstalledModule } from '../core/types';
+import { Rng } from '../core/rng';
+import type { CargoLot, InstalledModule } from '../core/types';
 import type { GameData, ModuleValues } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
 import { type ShipStats, shipStats } from '../ship/stats';
-import { lineOfFire } from './geometry';
-import type { Rng } from '../core/rng';
+import { lineOfFire, shipCells } from './geometry';
 import type { Aim, Battle, CombatShip, Effect, SlotRef, Vec2 } from './types';
 
 /**
@@ -286,6 +286,57 @@ export function heatStep(s: CombatShip, data: GameData, effects: Effect[]): void
     s.heat = st.heatCapacity;
     s.overheated = true;
   }
+}
+
+export function hostile(a: CombatShip, b: CombatShip): boolean {
+  return a.side !== b.side && a.side !== 'neutral' && b.side !== 'neutral';
+}
+
+/** A ship with hull HP 0 is destroyed. It drops 30%-60% of its cargo as one pod (Section 13.7). */
+export function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle, data: GameData): void {
+  if (s.status === 'active' && s.ship.hullHp <= 0) {
+    s.status = 'destroyed';
+    effects.push({ kind: 'destroy', shipId: s.id });
+    b.log.push(`${s.name} is destroyed.`);
+    const [lo, hi] = data.balance.combat.podShare;
+    const share = new Rng(b.rng).range(lo, hi);
+    const cargo: Record<string, CargoLot> = {};
+    for (const [id, lot] of Object.entries(s.ship.cargo)) {
+      const units = Math.floor(lot.units * share);
+      if (units > 0) cargo[id] = { units, unitCost: lot.unitCost };
+    }
+    s.ship.cargo = {};
+    if (Object.keys(cargo).length > 0) {
+      const at = shipCells(s)[0] ?? s.pos;
+      b.pods.push({ pos: at, cargo });
+      effects.push({ kind: 'pod', shipId: s.id, at });
+    }
+  }
+}
+
+/** A ship collects the pods under its footprint, as far as its hold allows (Section 13.7). */
+export function collectPods(b: Battle, s: CombatShip, data: GameData, effects: Effect[]): void {
+  const cells = new Set(shipCells(s).map((c) => `${c.x},${c.y}`));
+  for (const pod of b.pods) {
+    if (!cells.has(`${pod.pos.x},${pod.pos.y}`)) continue;
+    let units = 0;
+    for (const [id, lot] of Object.entries(pod.cargo)) {
+      const mass = data.commodityById.get(id)?.massPerUnit ?? 1;
+      const st = combatStats(s, data);
+      const free = Math.max(0, st.cargoCapacity - st.cargoMass);
+      const fit = Math.min(lot.units, Math.floor(free / Math.max(1e-9, mass)));
+      if (fit <= 0) continue;
+      const have = s.ship.cargo[id] ?? { units: 0, unitCost: 0 };
+      have.unitCost = (have.units * have.unitCost + fit * lot.unitCost) / (have.units + fit);
+      have.units += fit;
+      s.ship.cargo[id] = have;
+      lot.units -= fit;
+      units += fit;
+      if (lot.units <= 0) delete pod.cargo[id];
+    }
+    if (units > 0) effects.push({ kind: 'collect', shipId: s.id, units });
+  }
+  b.pods = b.pods.filter((p) => Object.keys(p.cargo).length > 0);
 }
 
 /** Shields regenerate by their regen value (x 0.5 when Hot), up to capacity. */

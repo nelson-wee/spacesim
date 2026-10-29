@@ -13,9 +13,10 @@
 //    sector next to a known sector. With nothing to explore: wait 1 day.
 import { fleetUnitCost, fleetUnits } from '../../src/actor/cargo';
 import { knowsLocation } from '../../src/actor/knowledge';
-import { estimatePath, followPath, pathBetween } from '../../src/actor/paths';
+import { type EncounterHandler, estimatePath, followPath, pathBetween } from '../../src/actor/paths';
 import { bestRoutes, type RouteValue } from '../../src/actor/routes';
-import { travelInSector } from '../../src/actor/travel';
+import { nearestLocation } from '../../src/actor/fuel';
+import { actorPlace, travelInSector } from '../../src/actor/travel';
 import type { Game } from '../../src/core/game';
 import type { Actor, Location } from '../../src/core/types';
 import { transitDays, transportCost } from '../../src/econ/carriers';
@@ -36,6 +37,8 @@ export interface BotOptions {
   /** Credits to keep for trade after the upgrade. */
   reserve: number;
   maxJumps: number;
+  /** Encounters ON (M5-TOOL-04): the policy for each encounter. */
+  onEncounter?: EncounterHandler;
 }
 
 export interface BotEvent {
@@ -130,10 +133,12 @@ function nearest(game: Game, actor: Actor, from: Location, match: (l: Location) 
   return best;
 }
 
+let encounterHandler: EncounterHandler | undefined;
+
 function goTo(game: Game, actor: Actor, from: Location, to: Location, stopAfterJumpInto?: number): boolean {
   const p = pathBetween(game.state.world, game.data, from, to);
   if (!p) return false;
-  const out = followPath(game, actor, p, stopAfterJumpInto);
+  const out = followPath(game, actor, p, stopAfterJumpInto, encounterHandler);
   return out.result !== 'refused';
 }
 
@@ -197,10 +202,14 @@ function expectedPerDay(game: Game, r: RouteValue): number {
 
 /** One bot turn at a docked location. */
 export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
+  encounterHandler = opts.onEncounter;
   const actor = game.state.player;
   if (actor.position.kind !== 'docked') {
-    // After a tow or a stop in space the actor is docked; this is a safety net.
-    throw new Error('The bot is not docked');
+    // After an encounter battle the bot is in space or at a jump point: dock at the nearest location.
+    const place = actorPlace(game, actor);
+    const near = nearestLocation(game, place.sectorId, place.point, actor).location;
+    const out = travelInSector(game, actor, { kind: 'location', locationId: near.id });
+    if ((actor.position as { kind: string }).kind !== 'docked') throw new Error(`The bot cannot dock (${out.result})`);
   }
   const loc = here(game, actor);
   sellCargo(game, actor, loc, bot);

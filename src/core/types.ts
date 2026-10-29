@@ -23,6 +23,8 @@ export interface Sector {
   jumpsFromCore: number;
   securityBaseline: number;
   securityValue: number;
+  /** Security value at the end of each of the last `trendDays` days, oldest first (M5-SEC-03). */
+  securityHistory: number[];
   locationIds: number[];
   jumpPointIds: number[];
 }
@@ -134,6 +136,8 @@ export interface InstalledModule {
   size: SlotSize;
   tier: Tier;
   on: boolean;
+  /** Guided weapons (M5-GUIDE-05): rounds left; missing = full. */
+  ammo?: number;
 }
 
 export interface CargoLot {
@@ -185,6 +189,8 @@ export interface Actor {
   /** Known prices and map knowledge (Section 9.12). */
   knowledge: Knowledge;
   insurance: InsurancePolicy | null;
+  /** The destination of a trip that had its encounter roll (Section 10.4: one roll per trip); null after arrival. */
+  tripRolled?: string | null;
 }
 
 export type LogKind = 'info' | 'good' | 'warning' | 'danger';
@@ -193,6 +199,26 @@ export interface LogEntry {
   day: number;
   text: string;
   kind: LogKind;
+}
+
+/** The first-trade plan of the tutorial (Q-48): a best route at the career start. */
+export interface TutorialPlan {
+  commodity: string;
+  fromId: number;
+  toId: number;
+  units: number;
+  /** Average price per unit to buy and to sell. */
+  buy: number;
+  sell: number;
+  profit: number;
+}
+
+/** Tutorial progress (Q-48). Only the UI reads it; no simulation rule uses it. */
+export interface TutorialState {
+  on: boolean;
+  /** Ids of the tips that the player has seen. */
+  seen: string[];
+  plan: TutorialPlan | null;
 }
 
 export interface GameState {
@@ -205,4 +231,5 @@ export interface GameState {
   player: Actor;
   log: LogEntry[];
   nextId: number;
+  tutorial: TutorialState;
 }

@@ -7,7 +7,9 @@ export type GameEvent =
   | { type: 'newDay'; day: number }
   | { type: 'arrived'; actorId: string; locationId: number }
   | { type: 'jumped'; actorId: string; fromSectorId: number; toSectorId: number }
-  | { type: 'towed'; actorId: string; locationId: number; fee: number };
+  | { type: 'towed'; actorId: string; locationId: number; fee: number }
+  /** A market buy or sell; `profit` is the sale value less the purchase cost (0 for a buy). */
+  | { type: 'traded'; actorId: string; side: 'buy' | 'sell'; locationId: number; commodity: string; units: number; total: number; profit: number };
 
 type Handler = (event: GameEvent) => void;
 

@@ -59,6 +59,30 @@ export const balanceSchema = z.object({
   }),
   ship: z.object({ mRef: pos, engineStackFalloff: z.number().min(0).max(1), engineValueShare: prob }),
   /** Tactical combat (Sections 8.5, 11.6, 12.3, 13). */
+  /**
+   * Threat units (Section 10.5): TU = referenceTu x rawThreat / rawThreat(referenceLoadout);
+   * firepower uses trackFactor at `trackManeuver` (guided: munition agility), flak `flakTrackFactor`,
+   * `ammoFactor` by module id; groupTU = sum x (1 + groupBonus x (count - 1)).
+   */
+  /** Section 15 and Q-21: notoriety 0 to max; levels Suspect and Wanted; changes per event and per day. */
+  notoriety: z.object({
+    max: pos,
+    suspect: nonNeg,
+    wanted: nonNeg,
+    attackNonPirate: z.number(),
+    destroyNonPirate: z.number(),
+    aggressorWhenPatrolArrives: z.number(),
+    pirateKilledOrCaptured: z.number(),
+    perDay: z.number(),
+  }),
+  threat: z.object({
+    referenceLoadout: z.string(),
+    referenceTu: pos,
+    trackManeuver: pos,
+    flakTrackFactor: prob,
+    ammoFactor: z.record(z.string(), prob),
+    groupBonus: nonNeg,
+  }),
   combat: z.object({
     gridWidth: z.number().int().positive(),
     gridHeight: z.number().int().positive(),
@@ -100,9 +124,17 @@ export const balanceSchema = z.object({
     retreatHull: prob,
     /** Morale (Section 13.8): roll once when hull falls below moraleHull or the engine value is 0. */
     moraleHull: prob,
+    /** A destroyed ship drops this share range of its cargo as one pod (Section 13.7). */
+    podShare: z.tuple([prob, prob]),
     /** A ship that pirates disable keeps this share of its max hull HP (owner, 2026-10-28). */
     disabledHullShare: prob,
     surrenderChance: z.object({ trader: prob, evader: prob, raider: prob, patrol: prob, attack: prob }),
+    /**
+     * Auto-battle (Q-47): the player's ship flees below retreatHull (Balanced doctrine);
+     * "auto until" stops when the hull falls below stopHull, at Hot heat, at a reinforcement,
+     * or at a munition launched at the player; turnDelayMs between auto turns on the screen.
+     */
+    auto: z.object({ retreatHull: prob, stopHull: prob, turnDelayMs: z.number().int().min(0) }),
     /**
      * Map (Section 13.1): random fill and cellular steps (rot.js Map.Cellular; fill 0.42 gives
      * about 11% obstacles), share of clusters that are debris clouds. Each side starts at
@@ -312,6 +344,91 @@ export const securitySchema = z.object({
       }),
     )
     .length(5),
+  /** Section 10.5: securityBase[level] x devMult[development] x random, minimum `min`. */
+  pirateBudget: z.object({
+    securityBase: z.array(nonNeg).length(5),
+    devMult: z.object({ core: pos, middle: pos, frontier: pos }),
+    random: z.tuple([pos, pos]),
+    min: nonNeg,
+  }),
+  /** Section 10.7: odds multiplier by security level; ratio limits for Attack and Tribute. */
+  boldness: z.array(pos).length(5),
+  odds: z.object({ attack: pos, tribute: pos }),
+  /** Section 10.8 and Q-04 (interim): patrolBase[level] x random. */
+  patrolBudget: z.object({ base: z.array(nonNeg).length(5), random: z.tuple([pos, pos]) }),
+  /** Q-18: budget midpoint limits for 1 to 4 skulls (more = 5). */
+  threatBand: z.object({ limits: z.array(pos).length(4) }),
+  /** Section 13.5. */
+  reinforcement: z.object({ startTurn: z.number().int().positive(), pirateBudgetShare: prob }),
+  /** Section 10.3: changes of value and baseline. */
+  changes: z.record(z.string(), z.object({ value: z.number(), baseline: z.number() })),
+  dailyDrift: prob,
+  trendDays: z.number().int().positive(),
+});
+
+const templateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  /** Loadout ids (loadouts.json). TU is calculated, not typed (Section 10.6). */
+  ships: z.array(z.string()).min(1),
+  maxSecurity: z.number().int().min(0).max(4).optional(),
+  notCore: z.boolean().optional(),
+  namedOnly: z.boolean().optional(),
+  development: z.array(developmentSchema).optional(),
+});
+export type TemplateDef = z.infer<typeof templateSchema>;
+const weightedLoadout = z.object({ loadout: z.string(), weight: pos });
+export const templatesSchema = z.object({
+  pirate: z.array(templateSchema).min(1),
+  trader: z.object({ core: z.array(weightedLoadout).min(1), middle: z.array(weightedLoadout).min(1), frontier: z.array(weightedLoadout).min(1) }),
+  /** Section 10.8: trader escort in sectors with security level <= maxSecurity; budget share of the pirate budget; loadout swaps (Raiders become Escort Wasps). */
+  escort: z.object({ maxSecurity: z.number().int(), budgetShare: prob, loadoutSwap: z.record(z.string(), z.string()) }),
+  patrol: z.array(templateSchema).min(1),
+});
+
+/**
+ * Battle map templates (Section 13.1). The nearest location within `nearDistance`
+ * sector cells selects the template by its body type; else `default`. `fill`
+ * is the rot.js cellular fill (0.35: about 3% obstacles; 0.44: 13%; 0.47: 19%).
+ * `band`: a debris band of this depth range on one map edge (Gas Giant Edge).
+ */
+const battleMapTemplateSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  fill: prob,
+  debrisShare: prob,
+  nearPlanets: z.array(z.string()).optional(),
+  nearStations: z.array(z.string()).optional(),
+  band: z.tuple([z.number().int().positive(), z.number().int().positive()]).optional(),
+});
+export type BattleMapTemplate = z.infer<typeof battleMapTemplateSchema>;
+export const battleMapsSchema = z.object({ nearDistance: pos, default: z.string(), templates: z.array(battleMapTemplateSchema).min(1) });
+
+/** Tutorial tips (Q-48). A tip shows one time, when its trigger occurs. Text fields: {commodity}, {buyAt}, {sellAt}, {buy}, {sell}, {units}, {profit}, {profitSold}. */
+export const tutorialTriggerSchema = z.enum(['sectorMap', 'location', 'market', 'bought', 'regionMap', 'sold', 'hail', 'combat', 'defeat']);
+export const tutorialSchema = z.object({
+  tips: z.array(
+    z.object({
+      id: z.string(),
+      trigger: tutorialTriggerSchema,
+      title: z.string(),
+      lines: z.array(z.string()).min(1),
+      /** Lines to show when there is no first-trade plan. */
+      noPlanLines: z.array(z.string()).optional(),
+    }),
+  ),
+});
+export type TutorialTrigger = z.infer<typeof tutorialTriggerSchema>;
+export type TutorialTip = z.infer<typeof tutorialSchema>['tips'][number];
+
+/** Section 10.4 and Q-15, Q-17. */
+export const encountersSchema = z.object({
+  traderChance: prob,
+  patrolChance: prob,
+  patrolMinSecurity: z.number().int(),
+  huntMultiplier: pos,
+  fleeChance: prob,
+  tributeShare: prob,
 });
 
 const syllablesSchema = z.object({
@@ -385,6 +502,8 @@ export const moduleValuesSchema = z
     flatHitChance: prob.optional(),
     // Guided weapons (Section 12.4): ammunition and munition values.
     ammo: z.number().int().positive().optional(),
+    /** Mechanic price of one round (M5-GUIDE-05). */
+    ammoPrice: nonNeg.optional(),
     munitionSpeed: pos.optional(),
     munitionAgility: pos.optional(),
     munitionLife: z.number().int().positive().optional(),
@@ -465,7 +584,8 @@ export const servicesSchema = z.object({
     /** Shipyard trade-in share of hull and module prices (Section 11.1). */
     tradeInShare: prob,
     /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3). */
-    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos }),
+    /** Pirate Havens sell tiers up to maxTier at priceMult (Section 7.3); they buy all cargo at cargoBuyShare of the local sell price (Q-24). */
+    pirateHaven: z.object({ bodyType: z.string(), maxTier: z.number().int().min(1).max(3), priceMult: pos, cargoBuyShare: prob }),
     /** Merchants' Guild live-price range (Section 9.12). */
     guildRangeJumps: z.number().int().nonnegative(),
     /** Days for the trend arrow (Section 9.12). */

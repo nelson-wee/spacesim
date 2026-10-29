@@ -1,1 +1,8 @@
-{}
+{
+  "traderChance": 0.3,
+  "patrolChance": 0.2,
+  "patrolMinSecurity": 2,
+  "huntMultiplier": 3,
+  "fleeChance": 0.5,
+  "tributeShare": 0.5
+}

@@ -1,1 +1,16 @@
-{}
+{
+  "nearDistance": 6,
+  "default": "open_space",
+  "templates": [
+    { "id": "open_space", "name": "Open Space", "fill": 0.35, "debrisShare": 0.35 },
+    { "id": "asteroid_field", "name": "Asteroid Field", "fill": 0.47, "debrisShare": 0, "nearPlanets": ["desert", "volcanic", "ice"], "nearStations": ["mining_station"] },
+    {
+      "id": "debris_field",
+      "name": "Debris Field",
+      "fill": 0.44,
+      "debrisShare": 1,
+      "nearStations": ["station_slot", "processing_station", "industrial_station", "habitat", "trade_hub", "shipyard_station", "military_outpost", "pirate_haven"]
+    },
+    { "id": "gas_giant_edge", "name": "Gas Giant Edge", "fill": 0.35, "debrisShare": 0.35, "nearPlanets": ["gas_giant"], "band": [4, 8] }
+  ]
+}

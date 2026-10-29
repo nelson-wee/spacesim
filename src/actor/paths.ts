@@ -12,6 +12,7 @@ import { mapDistance } from '../world/geometry';
 import { addCargo } from './cargo';
 import { massFactor } from './fuel';
 import { observe } from './knowledge';
+import type { Encounter } from '../encounter/encounter';
 import { type Destination, travelInSector, jump, type TripOutcome } from './travel';
 
 export type PathStep = { kind: 'go'; dest: Destination } | { kind: 'jump'; jumpPointId: number };
@@ -176,10 +177,23 @@ export function fleetWithCargo(actor: Actor, data: GameData, commodity: string, 
  * (a tow or a refusal). `stopAfterJumpInto` stops after the jump into that
  * sector (exploration: the locations of a new sector become known there).
  */
-export function followPath(game: Game, actor: Actor, path: Path, stopAfterJumpInto?: number): TripOutcome {
+/**
+ * What a path follower does with an encounter (tools: an automatic policy).
+ * 'continue' goes on with the path; 'stop' ends the trip where the actor is.
+ */
+export type EncounterHandler = (enc: Encounter) => 'continue' | 'stop';
+
+export function followPath(game: Game, actor: Actor, path: Path, stopAfterJumpInto?: number, onEncounter?: EncounterHandler): TripOutcome {
   let days = 0;
+  const encounters = onEncounter !== undefined;
   for (const step of path.steps) {
-    const out = step.kind === 'go' ? travelInSector(game, actor, step.dest) : jump(game, actor);
+    let out = step.kind === 'go' ? travelInSector(game, actor, step.dest, encounters) : jump(game, actor, encounters);
+    // An encounter stops the trip; if the handler goes on, a sector trip starts again from the encounter point.
+    for (let i = 0; out.result === 'encounter' && i < 5; i++) {
+      days += out.days;
+      if (!onEncounter || onEncounter(out.encounter) === 'stop') return out;
+      out = step.kind === 'go' ? travelInSector(game, actor, step.dest, encounters) : { result: 'arrived', days: 0 };
+    }
     if (out.result !== 'arrived') return out;
     days += out.days;
     if (step.kind === 'jump' && stopAfterJumpInto !== undefined) {

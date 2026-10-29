@@ -1,5 +1,6 @@
 // Fuel use, fuel price, tow, and recovery fee (Sections 8.2 to 8.6).
 // Fuel uses mass ^ fuelMassExponent (Q-01).
+import { dockingRefusal } from '../career/notoriety';
 import type { Game } from '../core/game';
 import type { Actor, Location, Ship, Vec } from '../core/types';
 import { type GameData, hydrogenBasePrice } from '../data';
@@ -54,8 +55,8 @@ export function isEmpty(ship: Ship): boolean {
   return ship.fuel <= EMPTY;
 }
 
-/** Nearest location in a sector to a point, by travel distance (Q-12). */
-export function nearestLocation(game: Game, sectorId: number, point: Vec): { location: Location; distance: number } {
+/** Nearest location in a sector to a point, by travel distance (Q-12). It skips locations that refuse docking (M5-NOT-04). */
+export function nearestLocation(game: Game, sectorId: number, point: Vec, actor?: Actor): { location: Location; distance: number } {
   const { world } = game.state;
   const aspect = game.data.balance.world.cellAspect;
   const sector = world.sectors[sectorId];
@@ -64,12 +65,15 @@ export function nearestLocation(game: Game, sectorId: number, point: Vec): { loc
   let bestDist = Infinity;
   for (const id of sector.locationIds) {
     const loc = world.locations[id] as Location;
+    if (actor && dockingRefusal(actor, loc, sector, game.data)) continue;
     const d = mapDistance(point, loc.pos, aspect);
     if (d < bestDist) {
       best = loc;
       bestDist = d;
     }
   }
+  // If all locations refuse docking, the tug goes to the nearest one anyway (an emergency tow).
+  if (!best && actor) return nearestLocation(game, sectorId, point);
   if (!best) throw new Error(`Sector ${sector.name} has no locations`);
   return { location: best, distance: bestDist };
 }
@@ -127,7 +131,7 @@ export interface TowResult {
  */
 export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: Vec, extraDistance = 0, disabled = false): TowResult {
   const { data } = game;
-  const { location, distance: nearDistance } = nearestLocation(game, sectorId, fromPoint);
+  const { location, distance: nearDistance } = nearestLocation(game, sectorId, fromPoint, actor);
   const distance = nearDistance + extraDistance;
   let fee = 0;
   let towedShips = 0;

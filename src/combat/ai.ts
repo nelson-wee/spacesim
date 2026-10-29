@@ -5,10 +5,18 @@
 // - Trader: moves to the nearest edge; fires only if attacked.
 // - Attack (the player side in sim-combat): attacks the nearest hostile ship;
 //   keeps the best range; does not retreat.
+// - Patrol (patrols, trader escorts): attacks the nearest hostile ship; keeps
+//   the best range; does not retreat; an escort stays within 6 cells of its
+//   trader.
+// - Evader (pursued pirates): moves to the nearest edge; fires at the player
+//   when in range; surrenders when the engine value is 0 (morale).
+// - Balanced (the player's ship in an auto-battle, Q-47): like the Attack AI;
+//   flees to the nearest edge below combat.auto.retreatHull.
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
 import { distance, edgeDistance, isActive, lineOfFire, parseKey, pathTo, reachable } from './geometry';
+import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from './munitions';
 import { applyOrder, hostile } from './resolver';
 import {
   combatStats,
@@ -84,11 +92,11 @@ function cargoValue(s: CombatShip, data: GameData): number {
 
 /**
  * When the AI switches OFF its hottest weapon: Raider and Trader when heat is
- * Hot (Section 13.8). The Attack AI (the player side, Q-25) keeps its weapons
- * ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
+ * Hot (Section 13.8). The Attack AI (the player side, Q-25) and the Balanced
+ * auto-battle AI (Q-47) keep their weapons ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
  */
 function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>): boolean {
-  return s.ai !== 'attack' && heatState(s, data, st) === 'hot';
+  return s.ai !== 'attack' && s.ai !== 'human' && heatState(s, data, st) === 'hot';
 }
 
 /** Heat at the end of this turn if the ship also fires `w` (Section 11.6). */
@@ -106,13 +114,21 @@ export function aiTarget(b: Battle, s: CombatShip, data: GameData): CombatShip |
   return [...foes].sort(byDistance)[0] ?? null;
 }
 
-/** Weapons that are ON and can fire this turn. */
+/** Weapons that are ON and can fire this turn (guided weapons need ammunition). */
 function readyWeapons(s: CombatShip, data: GameData): SlotRef[] {
   if (s.overheated) return [];
   return moduleSlots(s).filter((slot) => {
     const m = moduleAt(s, slot);
-    return m !== null && m.on && isDirectWeapon(m, data) && !s.fired.includes(slotKey(slot));
+    if (!m || !m.on || s.fired.includes(slotKey(slot))) return false;
+    return isDirectWeapon(m, data) || (isGuided(m, data) && ammoOf(m, data) > 0);
   });
+}
+
+/** Chance that the weapon can hurt `t` this turn: hit chance, or for guided weapons 1 if in launch range. */
+function canReach(b: Battle, s: CombatShip, m: NonNullable<ReturnType<typeof moduleAt>>, t: CombatShip, data: GameData): number {
+  const w = moduleValues(data, m);
+  if (isGuided(m, data)) return inLaunchRange(s, w, t) ? guidedHitChance(w, t, data) : 0;
+  return hitChance(b, s, w, t, 'hull', data);
 }
 
 /** The wanted distance: bestRangeShare of the shortest range of the weapons that are ON (Section 13.8). */
@@ -125,6 +141,8 @@ export function wantedDistance(s: CombatShip, data: GameData): number {
   return Math.max(1, Math.round(Math.min(...ranges) * data.balance.combat.bestRangeShare));
 }
 
+const ESCORT_RANGE = 6;
+
 /** How far ahead (in turns of movement) the AI looks for a cell with a clear line of fire. */
 const LOOK_AHEAD_TURNS = 4;
 
@@ -134,10 +152,10 @@ const LOOK_AHEAD_TURNS = 4;
  * a move and all those shots.
  */
 function standAndFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameData): boolean {
-  if (!target || s.retreating || s.ai === 'trader') return false;
+  if (!target || s.retreating || s.ai === 'trader' || s.ai === 'evader') return false;
   const weapons = readyWeapons(s, data).map((slot) => moduleAt(s, slot)).filter((m) => m !== null);
   if (weapons.length === 0) return false;
-  if (weapons.some((m) => hitChance(b, s, moduleValues(data, m), target, 'hull', data) <= 0)) return false;
+  if (weapons.some((m) => canReach(b, s, m, target, data) <= 0)) return false;
   const shots = weapons.reduce((sum, m) => sum + drawOf(m, data), 0);
   return moveCost(s, data) + shots > powerFree(s, data) + 1e-9;
 }
@@ -146,16 +164,19 @@ function aiMove(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
   const budget = moveBudget(s, data);
   if (budget <= 0) return;
   // The AI does not overdraw power to move (Q-41), and it stands to fire when it cannot pay for both.
-  if (moveCost(s, data) > powerFree(s, data) + 1e-9 && !s.retreating && s.ai !== 'trader') return;
+  if (moveCost(s, data) > powerFree(s, data) + 1e-9 && !s.retreating && s.ai !== 'trader' && s.ai !== 'evader') return;
   if (standAndFire(b, s, target, data)) return;
-  const toEdge = s.retreating || s.ai === 'trader';
+  const toEdge = s.retreating || s.ai === 'trader' || s.ai === 'evader';
   const want = wantedDistance(s, data);
+  const guarded = s.escortOf === null ? undefined : b.ships.find((o) => o.id === s.escortOf && isActive(o));
   // Look some turns ahead, so that the ship can go around an asteroid field.
   const reach = reachable(b, s, toEdge ? budget : budget * LOOK_AHEAD_TURNS);
   let goal: Vec2 = s.pos;
   let bestScore = Number.POSITIVE_INFINITY;
   for (const [key, steps] of reach.steps) {
     const at = parseKey(key);
+    // An escort stays within 6 cells of its trader (Section 13.8).
+    if (guarded && distance(s, guarded, at) > ESCORT_RANGE) continue;
     let score: number;
     if (toEdge) score = edgeDistance(b, s, at) * 100 + steps;
     else if (target) {
@@ -188,11 +209,11 @@ function aiFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
     // The AI does not overdraw power (Q-41): it fires only with available or stored power.
     if (drawOf(m, data) > powerFree(s, data) + 1e-9) continue;
     const foes = b.ships.filter((o) => isActive(o) && hostile(s, o));
-    let pick: CombatShip | null = target && isActive(target) && hitChance(b, s, w, target, 'hull', data) > 0 ? target : null;
+    let pick: CombatShip | null = target && isActive(target) && canReach(b, s, m, target, data) > 0 ? target : null;
     if (!pick) {
       let bestChance = 0;
       for (const o of foes) {
-        const c = hitChance(b, s, w, o, 'hull', data);
+        const c = canReach(b, s, m, o, data);
         if (c > bestChance) {
           bestChance = c;
           pick = o;
@@ -208,6 +229,8 @@ export function runAi(b: Battle, s: CombatShip, data: GameData, rng: Rng, effect
   if (!isActive(s)) return;
   const st = combatStats(s, data);
   if (s.ai === 'raider' && s.ship.hullHp < data.balance.combat.retreatHull * st.maxHullHp) s.retreating = true;
+  // A ship that cannot move does not retreat: it stays and fires.
+  if (s.ai === 'human') s.retreating = s.ship.hullHp < data.balance.combat.auto.retreatHull * st.maxHullHp && moveBudget(s, data) > 0;
   aiPower(b, s, data, rng, effects);
   const target = aiTarget(b, s, data);
   aiMove(b, s, target, data, rng, effects);

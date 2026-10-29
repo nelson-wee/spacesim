@@ -5,10 +5,13 @@
 // and fire (F) at the target (Tab or a click), at the Hull or the Engines (A).
 // The plan shows at once; E ends the turn and the resolver runs it. Effects
 // from effects.json play after the turn; Space skips them.
+import type { TutorialTrigger } from '../../data/schemas';
 import { defeatKind } from '../../career/defeat';
+import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from '../../combat/munitions';
 import { Rng } from '../../core/rng';
 import { isActive, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
 import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolver';
+import { AUTO_STOP_TEXT, autoResolve, autoStopReason, autoSummary, autoTurn } from '../../combat/autoplay';
 import {
   combatStats,
   drawOf,
@@ -49,9 +52,10 @@ const LOG_ROWS = 5;
 const POWER_KEYS = '1234567890';
 
 /** Side color by AI kind (style.json `sides`). */
+/** Art side colors by faction: player, pirate, trader (escorts too), patrol. Allies of the player keep their faction color. */
 function sideOf(s: CombatShip): string {
-  if (s.side === 'player') return 'player';
-  return s.ai === 'trader' ? 'trader' : 'pirate';
+  if (s.ai === 'human') return 'player';
+  return s.faction === 'player' ? 'player' : s.faction;
 }
 
 export class CombatScreen implements Screen {
@@ -70,11 +74,17 @@ export class CombatScreen implements Screen {
   private timeline: Timeline | null = null;
   private animStart = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
+  /** Auto until (Q-47): the AI plays turn after turn until a stop reason or a key. */
+  private auto = false;
+  private autoTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Auto-resolve waits for a second R. */
+  private resolveArmed = false;
 
   constructor(
     private readonly app: App,
     battle: Battle,
     private readonly onEnd: (b: Battle) => void,
+    options: { autoResolve?: boolean } = {},
   ) {
     this.battle = battle;
     this.preview = structuredClone(battle);
@@ -82,6 +92,11 @@ export class CombatScreen implements Screen {
     this.cursor = { ...me.pos };
     this.targetId = this.foes()[0]?.id ?? null;
     this.log.push('Battle. Plan your turn: 1-0 power, arrows + Enter move, Tab target, F fire, E end turn.');
+    if (options.autoResolve) this.resolveAll();
+  }
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['combat'];
   }
 
   private get game(): Game {
@@ -185,9 +200,8 @@ export class CombatScreen implements Screen {
     }
     const ready = moduleSlots(me).filter((slot) => {
       const m = moduleAt(me, slot);
-      if (!m || !m.on || !isDirectWeapon(m, data) || me.fired.includes(slotKey(slot))) return false;
-      const w = moduleValues(data, m);
-      return hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data) > 0;
+      if (!m || !m.on || me.fired.includes(slotKey(slot))) return false;
+      return this.weaponChance(m, t) > 0;
     });
     // Shots pay power (Q-41): with no confirmation, only the shots that free power pays for.
     const allCost = ready.reduce((sum, slot) => sum + drawOf(moduleAt(me, slot) as NonNullable<ReturnType<typeof moduleAt>>, data), 0);
@@ -217,6 +231,16 @@ export class CombatScreen implements Screen {
     if (n > 0 && heatForecast(me, data) >= combatStats(me, data).heatCapacity) this.notice += ' WARNING: this turn overheats the ship (U to undo).';
   }
 
+  /** Hit chance of a weapon against `t` now; guided weapons: in launch range with ammunition, the munition hit roll. */
+  private weaponChance(m: NonNullable<ReturnType<typeof moduleAt>>, t: CombatShip): number {
+    const data = this.game.data;
+    const me = this.me();
+    const w = moduleValues(data, m);
+    if (isGuided(m, data)) return ammoOf(m, data) > 0 && inLaunchRange(me, w, t) ? guidedHitChance(w, t, data) : 0;
+    if (!isDirectWeapon(m, data)) return 0;
+    return hitChance(this.preview, me, w, t, w.area !== undefined ? 'hull' : this.aim, data);
+  }
+
   private offlineText(): string {
     const n = overheatTurnsLeft(this.me(), this.game.data);
     return `Overheat: the ship is offline (no orders, no engines, no shields) for about ${n} more turn${n === 1 ? '' : 's'}. Press E.`;
@@ -229,11 +253,65 @@ export class CombatScreen implements Screen {
   }
 
   private endTurn(): void {
+    this.showTurn(this.battle, resolveTurn(this.battle, this.orders, this.game.data));
+  }
+
+  /** Mode A (Q-47): the AI plans this turn for the player's ship; the plan is not used. */
+  private autoTurnOnce(): void {
+    this.showTurn(this.battle, autoTurn(this.battle, this.game.data), ' (auto)');
+  }
+
+  /** Mode B (Q-47): one auto turn, then the next one after its effects, until a stop reason. */
+  private autoStep(): void {
+    this.autoTimer = null;
+    if (!this.auto || this.battle.result) {
+      this.auto = false;
+      return;
+    }
     const { data } = this.game;
     const before = this.battle;
-    const out = resolveTurn(before, this.orders, data);
+    const out = autoTurn(before, data);
+    this.showTurn(before, out, ' (auto)');
+    const reason = autoStopReason(before, out, data);
+    if (reason) {
+      this.auto = false;
+      if (reason !== 'end') {
+        this.notice = AUTO_STOP_TEXT[reason];
+        this.log.push(AUTO_STOP_TEXT[reason]);
+      }
+      return;
+    }
+    this.notice = 'Auto until: press any key to stop.';
+    this.autoTimer = setTimeout(() => {
+      this.autoStep();
+      this.app.render();
+    }, (this.timeline?.duration ?? 0) + data.balance.combat.auto.turnDelayMs);
+  }
+
+  private stopAuto(): void {
+    this.auto = false;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    this.autoTimer = null;
+    this.notice = 'Auto stops. You have control.';
+  }
+
+  /** Mode C (Q-47): the battle resolves at once; the log shows a summary. */
+  private resolveAll(): void {
+    const start = this.battle;
+    const out = autoResolve(start, this.game.data);
+    this.battle = out.battle;
+    this.preview = structuredClone(out.battle);
+    this.orders = [];
+    this.skipEffects();
+    for (const line of autoSummary(start, out.battle)) this.log.push(line);
+    this.notice = '';
+    if (this.battle.result) this.log.push(resultText(this.battle));
+  }
+
+  private showTurn(before: Battle, out: ReturnType<typeof resolveTurn>, tag = ''): void {
+    const { data } = this.game;
     for (const r of out.refused) this.log.push(`Order refused: ${r}`);
-    this.log.push(`Turn ${before.turn + 1}:`);
+    this.log.push(`Turn ${before.turn + 1}${tag}:`);
     for (const line of describe(out.effects, out.battle, data)) this.log.push(`  ${line}`);
     this.battle = out.battle;
     this.preview = structuredClone(out.battle);
@@ -287,8 +365,20 @@ export class CombatScreen implements Screen {
         t.put(x, y, '·', ui.dim, ui.raised);
       }
     }
-    // Ships.
+    // Cargo pods (Section 13.7).
+    for (const pod of b.pods) t.put(pod.pos.x, pod.pos.y, '$', color(data, 'cargoPod'));
+    // Ships, then guided munitions (the glyph of effects.json "persist", turned toward the target).
     for (const s of b.ships) this.drawShip(t, s);
+    for (const mu of b.munitions) {
+      const def = data.art.effects.effects[mu.moduleId === 'torpedo_tube' ? 'torpedo_move' : 'missile_move'];
+      const proj = (def as { persist?: { proj?: { g?: string; fg?: string } } } | undefined)?.persist?.proj;
+      const target = b.ships.find((s) => s.id === mu.targetId);
+      const left = target ? target.pos.x < mu.pos.x : mu.side !== 'player';
+      const glyphs = Array.from(proj?.g ?? '►').map((g) => (left ? g.replace('►', '◄') : g));
+      const fg = color(data, proj?.fg ?? 'guided');
+      // The head is on the munition cell; a body glyph (torpedo) is behind it.
+      glyphs.reverse().forEach((g, k) => t.put(mu.pos.x + (left ? k : -k), mu.pos.y, g, fg));
+    }
     // Target brackets and line of fire.
     const tgt = this.target();
     if (tgt && isActive(me)) {
@@ -329,7 +419,9 @@ export class CombatScreen implements Screen {
           ['Enter', 'Move', press('Enter')],
           ['Tab', 'Target', press('Tab')],
           ['F', 'Fire', press('f')],
-          ['A', `Aim: ${this.aim === 'hull' ? 'Hull' : 'Engines'}`, press('a')],
+          ['A', `Aim ${this.aim === 'hull' ? 'Hull' : 'Engines'}`, press('a')],
+          ['Space', 'Skip', press(' ')],
+          ['?', 'Help', press('?')],
         ],
         ui,
         this.app.press,
@@ -342,9 +434,10 @@ export class CombatScreen implements Screen {
         HINT_Y + 2,
         [
           ['E', 'End turn', press('e')],
-          ['U', 'Undo plan', press('u')],
-          ['Space', 'Skip effects', press(' ')],
-          ['?', 'Help', press('?')],
+          ['U', 'Undo', press('u')],
+          ['T', 'Auto turn', press('t')],
+          ['Shift+T', 'Auto until', press('t', true)],
+          ['R', 'Resolve', press('r')],
         ],
         ui,
         this.app.press,
@@ -440,11 +533,12 @@ export class CombatScreen implements Screen {
       const m = moduleAt(me, slot);
       if (!m) return;
       const key = POWER_KEYS[i] ?? ' ';
-      const weapon = isDirectWeapon(m, data);
-      const w = moduleValues(data, m);
-      const chance = weapon && tgt ? hitChance(this.preview, me, w, tgt, w.area !== undefined ? 'hull' : this.aim, data) : 0;
+      const guided = isGuided(m, data);
+      const weapon = isDirectWeapon(m, data) || guided;
+      const chance = weapon && tgt ? this.weaponChance(m, tgt) : 0;
+      const noAmmo = guided && ammoOf(m, data) <= 0;
       const cannot = weapon && m.on && (me.overheated || chance <= 0);
-      const state = !m.on ? states.off : cannot ? states.cannot_fire : states.on;
+      const state = !m.on ? states.off : noAmmo ? states.no_ammo : cannot ? states.cannot_fire : states.on;
       const rowY = y++;
       t.key(x, rowY, key, ui.key, ui.keyBg);
       t.put(x + 2, rowY, state?.glyph ?? '?', styleColor(data.art.style, state?.fg ?? 'hi'));
@@ -454,7 +548,8 @@ export class CombatScreen implements Screen {
       const unpowered = me.unpowered.includes(slotKey(slot));
       const draw = drawOf(m, data);
       const kind = isReserving(m, data) ? 'res' : moduleValues(data, m).thrust !== undefined ? 'mv' : '';
-      const info = unpowered ? 'no pwr' : weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}% ${draw}p` : `-- ${draw}p`) : `${draw}p ${kind}`;
+      const ammo = guided ? ` a${ammoOf(m, data)}` : ` ${draw}p`;
+      const info = unpowered ? 'no pwr' : noAmmo ? 'no ammo' : weapon ? (fired ? 'planned' : m.on && chance > 0 ? `${Math.round(chance * 100)}%${ammo}` : `--${ammo}`) : `${draw}p ${kind}`;
       t.text(x + 22, rowY, fit(info, 8), unpowered ? ui.danger : weapon && chance > 0 && !fired ? ui.good : ui.dim);
       zones.add(x, rowY, WIDTH - x, () => this.app.press(press(key)));
     });
@@ -488,6 +583,13 @@ export class CombatScreen implements Screen {
       this.skipEffects();
       return true;
     }
+    // Any other key stops "auto until" (Q-47).
+    if (this.auto) {
+      this.stopAuto();
+      return true;
+    }
+    const resolveArmed = this.resolveArmed;
+    this.resolveArmed = false;
     if (this.battle.result) {
       if (k.key === 'Enter') {
         this.skipEffects();
@@ -536,6 +638,19 @@ export class CombatScreen implements Screen {
       case 'e':
         this.endTurn();
         return true;
+      case 't':
+        if (k.shift) {
+          this.auto = true;
+          this.autoStep();
+        } else this.autoTurnOnce();
+        return true;
+      case 'r':
+        if (resolveArmed) this.resolveAll();
+        else {
+          this.resolveArmed = true;
+          this.notice = 'Auto-resolve: the AI plays the battle to its end at once. Press R again to confirm.';
+        }
+        return true;
       case 'u':
       case 'Backspace':
         this.undo();
@@ -560,6 +675,8 @@ export class CombatScreen implements Screen {
   }
 
   help(): string[] {
+    const auto = this.game.data.balance.combat.auto;
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
     return [
       'COMBAT',
       '',
@@ -574,6 +691,14 @@ export class CombatScreen implements Screen {
       'E            End the turn (the enemy moves and fires)',
       'U            Clear the plan for this turn',
       'Space        Skip the effects',
+      'T            Auto turn: the AI plays this turn for you (your plan',
+      '             is not used)',
+      'Shift+T      Auto until: the AI plays turn after turn. It stops when',
+      `             your hull falls below ${pct(auto.stopHull)}, your ship gets Hot, help`,
+      '             arrives, a munition comes at you, or you press a key',
+      'R, R         Auto-resolve: the AI plays the battle to its end at once',
+      'The AI fights like a careful captain: it keeps the best range, does',
+      `not overheat, and flees to an edge below ${pct(auto.retreatHull)} hull.`,
       '',
       'Power: available (reserved) / max + capacitor. Shields reserve their',
       'draw. A move costs the engines\' draw (one time a turn); a shot costs',
@@ -633,6 +758,30 @@ function describe(effects: Effect[], b: Battle, data: import('../../data').GameD
         break;
       case 'online':
         out.push(`${name(e.shipId)} cools down and is back online.`);
+        break;
+      case 'launch':
+        out.push(`${name(e.shipId)} launches a ${moduleShort(data, e.moduleId)} munition.`);
+        break;
+      case 'munitionHit':
+        out.push(`${moduleShort(data, e.moduleId)} munition -> ${name(e.targetId)}: ${e.hit ? 'hit' : 'miss'}`);
+        break;
+      case 'pd':
+        out.push(`${name(e.shipId)} point defense: ${e.hit ? 'hit' : 'miss'}`);
+        break;
+      case 'reinforce':
+        out.push(`${e.faction === 'patrol' ? 'A patrol' : 'Pirate reinforcements'} arrive${e.faction === 'patrol' ? 's' : ''}: ${e.shipIds.length} ship${e.shipIds.length === 1 ? '' : 's'} on the ${e.side === 'player' ? 'your' : 'enemy'} side.`);
+        break;
+      case 'pod':
+        out.push(`  ${name(e.shipId)} drops a cargo pod ($).`);
+        break;
+      case 'collect':
+        out.push(`${name(e.shipId)} collects ${e.units} units of cargo.`);
+        break;
+      case 'munitionDown':
+        out.push('  A munition is destroyed.');
+        break;
+      case 'munitionLost':
+        out.push('  A munition burns out.');
         break;
       case 'unpowered':
         out.push(`${name(e.shipId)} overdraws power: ${moduleShort(data, e.moduleId)} has no power until the end of the turn.`);

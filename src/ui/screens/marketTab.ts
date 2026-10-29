@@ -12,7 +12,8 @@ import type { Term } from '../../render/display';
 import { byTier, tierMark } from '../../render/icons';
 import { palette } from '../../render/palette';
 import { report } from '../../services/common';
-import { buy, buyLimit, commodityName, formatUnits, marketRole, sell } from '../../services/market';
+import { isPirateHaven } from '../../services/common';
+import { buy, buyLimit, commodityName, formatUnits, marketRole, sell, sellEntryOf, sellShare } from '../../services/market';
 import type { KeyInput } from '../input';
 import { drawKeyHints, press } from '../widgets/clicks';
 import { fit } from '../widgets/text';
@@ -41,7 +42,10 @@ export class MarketTab implements LocationTab {
   private scroll = 0;
 
   private rows(ctx: TabContext): string[] {
-    return byTier(ctx.game.data, Object.keys(ctx.location.market));
+    const { game, location } = ctx;
+    // A Pirate Haven buys all cargo (Q-24): held goods that it does not trade get a row too.
+    const held = isPirateHaven(location, game.data) ? game.data.commodities.map((c) => c.id).filter((id) => !location.market[id] && fleetUnits(game.state.player, id) > 0) : [];
+    return byTier(game.data, [...Object.keys(location.market), ...held]);
   }
 
   render(t: Term, ctx: TabContext): void {
@@ -65,22 +69,23 @@ export class MarketTab implements LocationTab {
       ctx.zones.add(0, y, 100, () => {
         this.row = this.scroll + i;
       });
-      const entry = location.market[c];
+      const real = location.market[c];
+      const entry = sellEntryOf(location, c, data);
       const com = data.commodityById.get(c);
       if (!entry || !com) return;
       const base = basePrice(data, c);
       const mark = tierMark(data, com.tier);
       const role = marketRole(location, c, data);
-      const b = buyPrice(entry, base, data);
-      const s = sellPrice(entry, base, data);
+      const b = real ? buyPrice(real, base, data) : NaN;
+      const s = sellPrice(entry, base, data) * sellShare(location, data);
       const held = fleetUnits(actor, c);
       t.text(0, y, mark.letter, mark.color, bg);
       t.text(2, y, fit(com.name, 13), mark.color, bg);
       t.text(16, y, role === 'sells' ? 'Sells' : role === 'buys' ? 'Buys' : 'Hub', role === 'sells' ? ui.good : role === 'buys' ? ui.warning : ui.text, bg);
-      t.text(22, y, String(Math.round(b)).padStart(6), ui.bright, bg);
+      t.text(22, y, (real ? String(Math.round(b)) : '-').padStart(6), ui.bright, bg);
       t.text(30, y, String(Math.round(s)).padStart(6), ui.bright, bg);
-      t.text(38, y, String(Math.round(b / com.massPerUnit)).padStart(6), ui.text, bg);
-      t.text(46, y, String(Math.floor(entry.stock)).padStart(7), ui.text, bg);
+      t.text(38, y, (real ? String(Math.round(b / com.massPerUnit)) : '-').padStart(6), ui.text, bg);
+      t.text(46, y, (real ? String(Math.floor(real.stock)) : '-').padStart(7), ui.text, bg);
       t.text(55, y, (held > 0 ? formatUnits(Number(held.toFixed(1))) : '-').padStart(7), held > 0 ? ui.bright : ui.dim, bg);
       t.text(64, y, (held > 0 ? String(Math.round(fleetUnitCost(actor, c))) : '').padStart(5), ui.text, bg);
       const best = bestKnownSell(game, location, c);

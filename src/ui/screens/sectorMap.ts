@@ -1,5 +1,7 @@
 // Sector map (Sections 17.1 and 17.2): star, orbit rings, locations, jump
 // points, and the player. Travel in the sector and jumps start here.
+import type { TutorialTrigger } from '../../data/schemas';
+import { goalLine, wrap } from '../tutorial';
 import {
   actorPlace,
   type Destination,
@@ -7,6 +9,7 @@ import {
   planJump,
   planSectorTrip,
   type TripPlan,
+  hunt,
   travelInSector,
 } from '../../actor/travel';
 import { knowsLocation, priceView } from '../../actor/knowledge';
@@ -33,6 +36,7 @@ import { LocationScreen } from './location';
 import { LogScreen } from './log';
 import { TradeLedgerScreen } from './tradeLedger';
 import { RegionMapScreen } from './regionMap';
+import { HailScreen } from './hail';
 
 const LOCATION_KEYS = 'abcdef';
 const JUMP_KEYS = '1234';
@@ -43,6 +47,10 @@ export class SectorMapScreen implements Screen {
   private routeCommodity: string | null = null;
 
   constructor(private readonly app: App) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['sectorMap'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');
@@ -213,6 +221,14 @@ export class SectorMapScreen implements Screen {
       line('or click it on the map.', pal.ui.dim);
     }
 
+    // The first-trade goal of the tutorial (Q-48).
+    const goal = goalLine(game);
+    if (goal) {
+      y++;
+      line('Tutorial goal', pal.ui.title);
+      for (const l of wrap(goal, PANEL_W)) line(l, pal.ui.highlight);
+    }
+
     y = Math.max(y + 1, LOG_Y - 10);
     if (player.position.kind === 'jumpPoint') {
       const jplan = planJump(game, player);
@@ -227,6 +243,7 @@ export class SectorMapScreen implements Screen {
       keyLine('R', q.units > 0 ? `Refuel ${q.units.toFixed(1)} for ${formatCredits(q.cost)}` : 'Refuel (tanks are full)');
     }
     if (player.position.kind === 'docked') keyLine('O', 'Location services');
+    else keyLine('H', 'Hunt pirates (1 day)');
     drawKeyHints(t, zones, x, y++, [['I', 'Fleet', press('i')], ['T', 'Trade Ledger', press('t')]], pal.ui, this.app.press, 2);
     keyLine('V', 'Route view');
     keyLine('M', 'Region map');
@@ -265,8 +282,13 @@ export class SectorMapScreen implements Screen {
     switch (k.key) {
       case 'Enter':
         if (this.selected) {
-          const out = travelInSector(game, player, this.selected);
+          const out = travelInSector(game, player, this.selected, true);
           if (out.result === 'refused') game.bus.message(out.reason, 'warning');
+          if (out.result === 'encounter') {
+            // Keep the target: after the encounter, Enter goes on with the trip.
+            this.app.push(new HailScreen(this.app, out.encounter));
+            return true;
+          }
           this.selected = null;
         }
         if (player.position.kind === 'docked') this.app.push(new LocationScreen(this.app, player.position.locationId));
@@ -305,9 +327,17 @@ export class SectorMapScreen implements Screen {
           game.bus.message('Go to a jump point first.', 'warning');
           return true;
         }
-        const out = jump(game, player);
+        const out = jump(game, player, true);
         if (out.result === 'refused') game.bus.message(out.reason, 'warning');
+        if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
         this.selected = null;
+        return true;
+      }
+      case 'h': {
+        // Hunt (Section 8.8): 1 day in space, pirates come 3 times as often.
+        const out = hunt(game, player);
+        if (out.result === 'refused') game.bus.message(out.reason, 'warning');
+        if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
         return true;
       }
       case 'r':
@@ -355,6 +385,7 @@ export class SectorMapScreen implements Screen {
       'Click    Select a target on the map',
       'Enter    Travel to the target (and dock at a location)',
       'J        Jump to the next sector (at a jump point)',
+      'H        Hunt: wait 1 day in space; pirates come 3 times as often',
       'R        Refuel all ships (when docked)',
       'O        Location services (when docked); Enter also opens them',
       'I        Fleet and cargo',

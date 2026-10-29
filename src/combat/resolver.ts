@@ -6,9 +6,14 @@ import type { GameData } from '../data';
 import { moduleValues } from '../ship/modules';
 import { runAi } from './ai';
 import { cellAt, isActive, lineOfFire, onEdge, pathTo, reachable, shipCells } from './geometry';
+import { reinforcementStep } from './reinforce';
+import { ammoOf, clearMunitionsInArea, inLaunchRange, isGuided, launchMunition, munitionStep } from './munitions';
 import {
   applyHit,
   combatStats,
+  collectPods,
+  destroyIfDead,
+  hostile,
   fleeFuel,
   fuelStep,
   heatStep,
@@ -26,26 +31,17 @@ import {
 } from './rules';
 import type { Battle, CombatShip, Effect, Order } from './types';
 
-export function hostile(a: CombatShip, b: CombatShip): boolean {
-  return a.side !== b.side && a.side !== 'neutral' && b.side !== 'neutral';
-}
+export { hostile } from './rules';
 
 export function shipById(b: Battle, id: number): CombatShip | undefined {
   return b.ships.find((s) => s.id === id);
 }
 
-/** True if the ship flees when it reaches an edge cell (the player; retreating ships; traders). */
+/** True if the ship flees when it reaches an edge cell (the player; retreating ships; traders; evaders). */
 function fleesAtEdge(s: CombatShip): boolean {
-  return s.ai === 'human' || s.retreating || s.ai === 'trader';
+  return s.ai === 'human' || s.retreating || s.ai === 'trader' || s.ai === 'evader';
 }
 
-function destroyIfDead(s: CombatShip, effects: Effect[], b: Battle): void {
-  if (s.status === 'active' && s.ship.hullHp <= 0) {
-    s.status = 'destroyed';
-    effects.push({ kind: 'destroy', shipId: s.id });
-    b.log.push(`${s.name} is destroyed.`);
-  }
-}
 
 /**
  * Applies one order of one ship, with the rules of Sections 11.5, 12.3, and
@@ -65,6 +61,11 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     // The first move of a turn pays the engines' draw (Q-41).
     const noPower = spendPower(s, moveCost(s, data), data, rng, effects);
     if (noPower) return `${noPower} The engines need ${moveCost(s, data)}.`;
+    // Pods under the footprint at each step of the path (Section 13.7).
+    for (const at of path.slice(1)) {
+      s.pos = at;
+      if (b.pods.length > 0) collectPods(b, s, data, effects);
+    }
     s.pos = order.to;
     s.moved += path.length - 1;
     effects.push({ kind: 'move', shipId: s.id, path });
@@ -78,12 +79,24 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   }
   // Fire.
   const m = moduleAt(s, order.slot);
-  if (!m || !isDirectWeapon(m, data)) return 'That is not a weapon that can fire now.';
+  const guided = m !== null && isGuided(m, data);
+  if (!m || (!isDirectWeapon(m, data) && !guided)) return 'That is not a weapon that can fire now.';
   if (!m.on) return 'The weapon is OFF.';
   if (s.fired.includes(slotKey(order.slot))) return 'The weapon fired this turn.';
   const t = shipById(b, order.target);
   if (!t || !isActive(t) || !hostile(s, t)) return 'No valid target.';
   const w = moduleValues(data, m);
+  if (guided) {
+    // A guided weapon launches a munition (Section 12.4, M5-GUIDE-01, M5-GUIDE-05).
+    if (ammoOf(m, data) <= 0) return 'No ammunition.';
+    if (!inLaunchRange(s, w, t)) return 'Out of range.';
+    const noPower = spendPower(s, drawOf(m, data), data, rng, effects);
+    if (noPower) return `${noPower} The weapon needs ${drawOf(m, data)}.`;
+    s.fired.push(slotKey(order.slot));
+    s.shotHeat += w.heatPerShot ?? 0;
+    launchMunition(b, s, order.slot, t, data, effects);
+    return null;
+  }
   const aim = w.area !== undefined ? 'hull' : order.aim;
   const chance = hitChance(b, s, w, t, aim, data);
   if (chance <= 0) return 'Out of range, or no line of fire.';
@@ -99,6 +112,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     const half = Math.floor(w.area / 2);
     const center = lof.to;
     effects.push({ kind: 'flak', shipId: s.id, from: lof.from, center });
+    clearMunitionsInArea(b, s, center, half, effects);
     for (const o of b.ships) {
       if (!isActive(o) || !hostile(s, o)) continue;
       const inArea = shipCells(o).find((c) => Math.abs(c.x - center.x) <= half && Math.abs(c.y - center.y) <= half);
@@ -106,7 +120,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
       o.attacked = true;
       if (rng.chance(w.flatHitChance ?? 0)) {
         applyHit(o, w, 'hull', inArea, data, effects);
-        destroyIfDead(o, effects, b);
+        destroyIfDead(o, effects, b, data);
       }
     }
     return null;
@@ -115,12 +129,12 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
   effects.push({ kind: 'shot', shipId: s.id, moduleId: m.moduleId, from: lof.from, to: lof.to, targetId: t.id, hit });
   if (hit) {
     applyHit(t, w, aim, lof.to, data, effects);
-    destroyIfDead(t, effects, b);
+    destroyIfDead(t, effects, b, data);
   }
   return null;
 }
 
-const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack' } as const;
+const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack', patrol: 'patrol', evader: 'evader' } as const;
 
 /** Morale (Section 13.8): one surrender roll when hull falls below moraleHull or the engine value is 0. */
 function moraleStep(b: Battle, s: CombatShip, data: GameData, rng: Rng, effects: Effect[]): void {
@@ -168,6 +182,7 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
     s.moved = 0;
     s.fired = [];
     s.spent = 0;
+    s.pdShots = {};
   }
   const player = shipById(b, b.playerId);
   // 1. Player phase.
@@ -188,16 +203,23 @@ export function resolveTurn(input: Battle, orders: Order[] | null, data: GameDat
       if (battleResult(b, data) === 'loss') break;
     }
   }
+  // 3-4. Munitions move and resolve; point defense fires during the move (Q-44).
+  if (!b.result) {
+    munitionStep(b, data, rng, effects);
+    b.result = battleResult(b, data);
+  }
   // Power (Q-41): unused power charges the capacitor; modules that lost power get it back.
   for (const s of b.ships) if (isActive(s)) powerStep(s, data);
   // 5-7. Heat, shields, fuel; 9. morale.
   for (const s of b.ships) {
     if (!isActive(s)) continue;
     heatStep(s, data, effects);
-    destroyIfDead(s, effects, b);
+    destroyIfDead(s, effects, b, data);
   }
   for (const s of b.ships) if (isActive(s)) shieldStep(s, data);
   for (const s of b.ships) if (isActive(s)) fuelStep(s, data);
+  // 8. Reinforcements (Section 13.5); 9. morale.
+  if (!b.result) reinforcementStep(b, data, rng, effects);
   for (const s of b.ships) moraleStep(b, s, data, rng, effects);
   b.turn += 1;
   b.result = battleResult(b, data);
