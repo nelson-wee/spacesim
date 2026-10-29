@@ -370,6 +370,11 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-28 [M3 exit check 1] The bot's target loadout is `light_freighter_starter` (the old trader loadout: pulse laser, reactor, fuel tanks, engine M, Cargo Rack L). Reason: the NPC trader loadout has a Flak Cannon now (for TU, M5-A); with it, the upgrade cost more and the median day went from 91 to 114.
 - 2026-10-28 The end of a battle (loot, consequences, defeat, tow) is in `src/career/battleEnd.ts`, headless, for the UI and the tools.
 
+### TU calibration and battle length (owner, 2026-10-29, Q-46)
+
+- 2026-10-29 [§10.9, Q-46] The TU calibration (single ship vs a group of equal TU, target 35%-65%) is a report in `sim-combat`, not an exit check. TU does not account for loadout matchups (armor and shields against small hits, guided weapons against slow ships). Reason: owner decision; TU only sizes encounter budgets.
+- 2026-10-29 [§13.9, Q-46] The median battle length (target 4-10 turns) is a report in `sim-combat`, not an exit check. `damageScale` stays 2.75. Reason: owner decision; the lengths are near the target (11 and 12 at most).
+
 ## Cuts
 
 None.

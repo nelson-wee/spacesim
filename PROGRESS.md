@@ -8,7 +8,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M2 Economy | 2 | Done (owner check definitions of 2026-10-27). Closed economy: carriers, K*, capacity from output and input prices. | 7 of 7 checks pass; 4 items are reports (gradient, route margins, raw-goods margins, chain shock). |
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
 | M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
-| M5 Threat and encounters | 5 | Built. TU calibration and battle length wait on owner review (Q-46). | 3 of 5 pass; check 1 (battle length) and check 2 (TU calibration) fail in part. |
+| M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
 | M6 Fleet (feature freeze) | 6 | Not started | — |
 | M7 Contracts, career, save | 7 | Not started | — |
 | M8 Polish and release | 8 | Not started | — |
@@ -368,8 +368,8 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 
 | # | Check | Result |
 |---|---|---|
-| 1 | All §13.9 pairings pass | Part. Shuttle vs Raider 52% PASS; Laser Wasp vs Shuttle 99% PASS; Laser Wasp vs Raider 98% PASS; lasers vs Wasps 90% vs ballistics 59% PASS; ballistic vs laser Corvette against a Frigate 25% vs 12% PASS; torpedo vs laser Frigate against a Battleship 27% vs 7% PASS. **Median length 4-10: FAIL** (Shuttle vs Raider 11, Cutter vs Raider Pack 12). |
-| 2 | §10.9 | Part. TU reference values within 10%: PASS (9/9). Generated encounter TU: PASS on the mean (15/15, Q-45). **TU calibration: FAIL** (1 of 5 in 35-65%). |
+| 1 | All §13.9 pairings pass | PASS. Shuttle vs Raider 52% PASS; Laser Wasp vs Shuttle 99% PASS; Laser Wasp vs Raider 98% PASS; lasers vs Wasps 90% vs ballistics 59% PASS; ballistic vs laser Corvette against a Frigate 25% vs 12% PASS; torpedo vs laser Frigate against a Battleship 27% vs 7% PASS. Median length 4-10 turns is a report (Q-46): Shuttle vs Raider 11, Cutter vs Raider Pack 12. |
+| 2 | §10.9 | PASS. TU reference values within 10%: PASS (9/9). Generated encounter TU: PASS on the mean (15/15, Q-45). TU calibration is a report (Q-46): 1 of 5 in 35-65%. |
 | 3 | Patrols fight against the aggressor | PASS (tests: a patrol joins against the pirates, or against a player who attacks a trader). |
 | 4 | Pirate kills raise sector security | PASS (test: +3 per pirate destroyed, +2 per surrender). |
 | 5 | `PROGRESS.md` is updated | PASS. |
@@ -394,7 +394,7 @@ Monitor (not a gate): median battle length 4-10 turns: 10, 8, 5, 7, 3 for the fi
 | TU: Pirate Frigate (71.2) vs Gunship Escort (72.3) | 82% | 9 |
 | TU: Battleship (139.3) vs Frigate + Gunship + Raider (151.8) | 27% | 5 |
 
-Why the TU calibration fails: TU is one number, but the combat model now has strong matchups. Heavy armor and big shields take little from many small autocannon hits (Pirate Corvette: its hits do 56 damage each, the group's 21). Torpedoes hit the slow Battleship (maneuver 11) about 65% of the time. `groupBonus` cannot fix both directions (0.15 and 0 tried: 2 of 7 pairs in band each). Options are in Q-46.
+Why the TU calibration is out of band: TU is one number, but the combat model now has strong matchups. Heavy armor and big shields take little from many small autocannon hits (Pirate Corvette: its hits do 56 damage each, the group's 21). Torpedoes hit the slow Battleship (maneuver 11) about 65% of the time. `groupBonus` cannot fix both directions (0.15 and 0 tried: 2 of 7 pairs in band each). Owner decision (Q-46, 2026-10-29): TU does not account for loadout; the calibration and the battle length are reports.
 
 ### sim-trader (20 seeds, 150 days)
 
@@ -403,7 +403,6 @@ Why the TU calibration fails: TU is one number, but the combat model now has str
 
 ### Known issues
 
-- Q-46 (TU calibration, battle length) waits on the owner.
 - The `reinforcement_arrival` effect of the art (a "row" frame) is not drawn; the log shows the arrival.
 - `sim-combat` with 17 pairings takes about 13 minutes for 300 battles (large ships and munitions).
 

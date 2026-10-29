@@ -3,6 +3,8 @@
 // Q-42 (owner, 2026-10-28): the laser Wasp check now shows that a dedicated
 // light fighter beats the multipurpose Shuttle (head to head, and against a
 // Raider by a margin); Laser Wasp vs 2 Raiders is a report.
+// Q-46 (owner, 2026-10-29): the TU calibration and the median battle length
+// are reports, not checks (TU does not account for loadout matchups).
 // Usage: npm run sim-combat -- [battles] [--override=json] [--trace=pairing]
 import { createRngState } from '../src/core/rng';
 import { createBattle } from '../src/combat/battle';
@@ -26,6 +28,8 @@ interface Pairing {
   otherAi: AiKind;
   /** Pass band for the player win rate, if this milestone checks it. */
   band?: [number, number];
+  /** Target band that is only reported (Q-46): it does not fail the run. */
+  reportBand?: [number, number];
   /** Pass if the win rate is at least this much above the win rate of another pairing. */
   above?: { id: string; by: number };
   /** AI of the player side (default Attack, Q-25). */
@@ -46,12 +50,12 @@ const PAIRINGS: Pairing[] = [
   { id: 'bcor-frig', name: 'Ballistic Corvette vs Pirate Frigate: ballistics win more often', player: ['ballistic_corvette'], other: ['pirate_frigate'], otherAi: 'raider', above: { id: 'lcor-frig', by: 0.01 } },
   { id: 'lfrig-bs', name: 'Laser Frigate vs Battleship', player: ['laser_frigate'], other: ['battleship'], otherAi: 'raider' },
   { id: 'tfrig-bs', name: 'Torpedo Frigate vs Battleship: torpedoes win more often', player: ['torpedo_frigate'], other: ['battleship'], otherAi: 'raider', above: { id: 'lfrig-bs', by: 0.01 } },
-  // Section 10.9 TU calibration: a single ship against a group of equal TU (±10%) wins 35%-65%. Both sides use the Attack AI.
-  { id: 'tu-1', name: 'TU: Pirate Gunship vs Raider Pack', player: ['pirate_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
-  { id: 'tu-2', name: 'TU: Patrol Cutter vs Raider Pack', player: ['patrol_cutter'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
-  { id: 'tu-3', name: 'TU: Pirate Corvette vs Gunship + Raider', player: ['pirate_corvette'], other: ['pirate_gunship', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
-  { id: 'tu-4', name: 'TU: Pirate Frigate vs Gunship Escort', player: ['pirate_frigate'], other: ['pirate_gunship', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
-  { id: 'tu-5', name: 'TU: Battleship vs Frigate + Gunship + Raider', player: ['battleship'], other: ['pirate_frigate', 'pirate_gunship', 'pirate_raider'], otherAi: 'attack', band: [0.35, 0.65], tu: true },
+  // Section 10.9 TU calibration (report, Q-46): a single ship against a group of equal TU (±10%); target 35%-65%. Both sides use the Attack AI.
+  { id: 'tu-1', name: 'TU: Pirate Gunship vs Raider Pack', player: ['pirate_gunship'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', reportBand: [0.35, 0.65], tu: true },
+  { id: 'tu-2', name: 'TU: Patrol Cutter vs Raider Pack', player: ['patrol_cutter'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', reportBand: [0.35, 0.65], tu: true },
+  { id: 'tu-3', name: 'TU: Pirate Corvette vs Gunship + Raider', player: ['pirate_corvette'], other: ['pirate_gunship', 'pirate_raider'], otherAi: 'attack', reportBand: [0.35, 0.65], tu: true },
+  { id: 'tu-4', name: 'TU: Pirate Frigate vs Gunship Escort', player: ['pirate_frigate'], other: ['pirate_gunship', 'pirate_raider', 'pirate_raider'], otherAi: 'attack', reportBand: [0.35, 0.65], tu: true },
+  { id: 'tu-5', name: 'TU: Battleship vs Frigate + Gunship + Raider', player: ['battleship'], other: ['pirate_frigate', 'pirate_gunship', 'pirate_raider'], otherAi: 'attack', reportBand: [0.35, 0.65], tu: true },
   { id: 'shuttle-3raiders', name: 'Starting Shuttle vs 3 Pirate Raiders (report)', player: ['start_shuttle'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider' },
   { id: 'gunship-trader', name: 'Laser Gunship vs Light Freighter trader (report)', player: ['laser_gunship'], other: ['light_freighter_trader'], otherAi: 'trader' },
 ];
@@ -103,15 +107,22 @@ for (const p of PAIRINGS) {
   const win = count.win / battles;
   winRates.set(p.id, win);
   const base = p.above ? (winRates.get(p.above.id) ?? 0) + p.above.by : 0;
-  const verdict = p.band ? (win >= p.band[0] && win <= p.band[1] ? 'PASS' : 'FAIL') : p.above ? (win >= base - 1e-9 ? 'PASS' : 'FAIL') : 'NOTE';
+  const inBand = (r: [number, number]) => win >= r[0] && win <= r[1];
+  const verdict = p.band ? (inBand(p.band) ? 'PASS' : 'FAIL') : p.above ? (win >= base - 1e-9 ? 'PASS' : 'FAIL') : 'NOTE';
   if (verdict === 'FAIL') fails++;
-  const need = p.band ? ` (need ${pct(p.band[0])}-${pct(p.band[1])})` : p.above ? ` (need ${pct(base)}+: ${p.above.id} + ${pct(p.above.by)})` : '';
+  const need = p.band
+    ? ` (need ${pct(p.band[0])}-${pct(p.band[1])})`
+    : p.above
+      ? ` (need ${pct(base)}+: ${p.above.id} + ${pct(p.above.by)})`
+      : p.reportBand
+        ? ` (target ${pct(p.reportBand[0])}-${pct(p.reportBand[1])}: ${inBand(p.reportBand) ? 'in' : 'out of'} band)`
+        : '';
   const tuText = p.tu ? ` [TU ${loadoutTu(p.player[0] ?? '', data).toFixed(1)} vs ${templateTu({ ships: p.other }, data).toFixed(1)}]` : '';
   console.log(
     `${verdict}  ${p.name}${tuText}: win ${pct(win)}${need}, loss ${pct(count.loss / battles)}, player fled ${pct(count.fled / battles)}, draw ${pct(count.draw / battles)}; wins by surrender ${count.surrender}, enemy fled ${count.enemyFled}; median ${median} turns`,
   );
 }
-const allIn = lengths.every((m) => m >= 4 && m <= 10);
-if (!allIn) fails++;
-console.log(`${allIn ? 'PASS' : 'FAIL'}  Median battle length 4-10 turns (Section 13.9, any pairing): ${lengths.join(', ')}`);
+// Q-46: the median battle length is a report (target 4-10 turns, Section 13.9).
+const outside = lengths.filter((m) => m < 4 || m > 10).length;
+console.log(`NOTE  Median battle length (target 4-10 turns, Section 13.9; report, Q-46): ${lengths.join(', ')}; ${outside} pairing(s) outside the target`);
 console.log(fails === 0 ? 'All checks of this milestone pass.' : `${fails} check(s) fail.`);
