@@ -9,6 +9,7 @@
 import type { Game } from '../core/game';
 import type { Actor, InsurancePolicy, Location, Ship } from '../core/types';
 import type { GameData } from '../data';
+import { accrueUpkeep, payUpkeep } from '../actor/fleet';
 import { observe } from '../actor/knowledge';
 import { hullDef } from '../ship/hull';
 import { installedModules } from '../ship/loadout';
@@ -87,10 +88,13 @@ export function claimInsurance(game: Game, actor: Actor): ServiceResult | null {
   const policy = actor.insurance;
   if (!policy) return null;
   const location = game.state.world.locations[policy.locationId] as Location;
+  accrueUpkeep(game, actor);
   actor.fleet = [freshCopy(policy.ship, game.data)];
   actor.flagshipIndex = 0;
   actor.position = { kind: 'docked', locationId: location.id };
   actor.insurance = null;
+  // The lost fleet's upkeep up to now is still owed; the new ship is the flagship (no upkeep).
+  payUpkeep(game, actor);
   observe(game, actor);
   return done(`Your clone wakes at ${location.name} with a new ${hullDef(game.data, policy.ship.hullId).name}. The policy is used.`);
 }

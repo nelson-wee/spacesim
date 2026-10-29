@@ -136,18 +136,30 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
 
 const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack', patrol: 'patrol', evader: 'evader' } as const;
 
-/** Morale (Section 13.8): one surrender roll when hull falls below moraleHull or the engine value is 0. */
+/**
+ * Morale (Section 13.8): one surrender roll when hull falls below moraleHull or
+ * the engine value is 0. Forced surrender (Q-50): a ship that cannot flee
+ * (engine value 0) with hull at or below forcedSurrenderHull surrenders with
+ * no roll, also a patrol.
+ */
 function moraleStep(b: Battle, s: CombatShip, data: GameData, rng: Rng, effects: Effect[]): void {
-  if (s.ai === 'human' || s.moraleRolled || !isActive(s)) return;
+  if (s.ai === 'human' || !isActive(s)) return;
   const c = data.balance.combat;
   const st = combatStats(s, data);
+  if (s.ship.engineValue <= 0 && s.ship.hullHp <= c.forcedSurrenderHull * st.maxHullHp) {
+    surrender(b, s, effects);
+    return;
+  }
+  if (s.moraleRolled) return;
   if (s.ship.hullHp >= c.moraleHull * st.maxHullHp && s.ship.engineValue > 0) return;
   s.moraleRolled = true;
-  if (rng.chance(c.surrenderChance[MORALE_KEY[s.ai]])) {
-    s.status = 'surrendered';
-    effects.push({ kind: 'surrender', shipId: s.id });
-    b.log.push(`${s.name} surrenders.`);
-  }
+  if (rng.chance(c.surrenderChance[MORALE_KEY[s.ai]])) surrender(b, s, effects);
+}
+
+function surrender(b: Battle, s: CombatShip, effects: Effect[]): void {
+  s.status = 'surrendered';
+  effects.push({ kind: 'surrender', shipId: s.id });
+  b.log.push(`${s.name} surrenders.`);
 }
 
 /** The battle result after a step, or null if the battle goes on (Section 13.7). */

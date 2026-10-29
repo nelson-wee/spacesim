@@ -9,7 +9,7 @@ import type { Actor, JumpPoint, Lane, Location, Sector, Vec } from '../core/type
 import type { GameData } from '../data';
 import { checkLoadout } from '../ship/rules';
 import { mapDistance } from '../world/geometry';
-import { fleetMove, fleetTravelStats } from './fleet';
+import { fleetMove, fleetTravelStats, payUpkeep } from './fleet';
 import { dockFuel, jumpFuel, sectorTripFuel, towFleet } from './fuel';
 import { observe } from './knowledge';
 
@@ -289,6 +289,7 @@ export function travelInSector(game: Game, actor: Actor, dest: Destination, enco
   actor.position = { kind: 'docked', locationId: dest.locationId };
   observe(game, actor);
   game.bus.message(`You dock at ${plan.destinationName}.`);
+  payUpkeep(game, actor);
   game.bus.emit({ type: 'arrived', actorId: actor.id, locationId: dest.locationId });
   return { result: 'arrived', days: plan.days };
 }

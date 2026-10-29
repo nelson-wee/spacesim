@@ -10,7 +10,7 @@ import type { Game } from '../../src/core/game';
 import { rng } from '../../src/core/game';
 import type { Actor } from '../../src/core/types';
 import { battleMapFor } from '../../src/encounter/battleMap';
-import { type Encounter, fleeSucceeds } from '../../src/encounter/encounter';
+import { type Encounter, fleeCargoLoss, fleeSucceeds } from '../../src/encounter/encounter';
 import { createShipFromLoadout } from '../../src/ship/loadout';
 import { travelStats } from '../../src/ship/stats';
 import { massFactor } from '../../src/actor/fuel';
@@ -25,7 +25,7 @@ export interface EncounterLog {
 }
 
 export function newEncounterLog(): EncounterLog {
-  return { encounters: 0, pirates: 0, paid: 0, fled: 0, battles: 0, results: { ok: 0, disabled: 0, cloned: 0, gameOver: 0, win: 0, loss: 0, fled: 0, draw: 0 } };
+  return { encounters: 0, pirates: 0, paid: 0, fled: 0, battles: 0, results: { ok: 0, disabled: 0, flagshipLost: 0, cloned: 0, gameOver: 0, win: 0, loss: 0, fled: 0, draw: 0 } };
 }
 
 /** Runs an encounter battle with the Attack AI for the player (headless). */
@@ -67,6 +67,7 @@ export function encounterPolicy(game: Game, actor: Actor, log: EncounterLog): (e
     if (!hostile && !(enc.kind === 'pirate' && enc.behavior === 'tribute')) return 'continue';
     if (fleeSucceeds(actor, enc, rng(game, 'encounter'), game.data)) {
       for (const ship of actor.fleet) ship.fuel = Math.max(0, ship.fuel - massFactor(travelStats(ship, game.data).mass, game.data) * game.data.balance.combat.kFlee);
+      if (enc.kind === 'pirate') fleeCargoLoss(actor, rng(game, 'encounter'), game.data);
       log.fled++;
       return 'continue';
     }

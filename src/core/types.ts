@@ -189,6 +189,10 @@ export interface Actor {
   /** Known prices and map knowledge (Section 9.12). */
   knowledge: Knowledge;
   insurance: InsurancePolicy | null;
+  /** Upkeep is counted up to this day (Section 11.9). */
+  upkeepDay: number;
+  /** Upkeep counted but not paid yet: it is paid at the next dock. */
+  upkeepOwed: number;
   /** The destination of a trip that had its encounter roll (Section 10.4: one roll per trip); null after arrival. */
   tripRolled?: string | null;
 }

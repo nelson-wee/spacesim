@@ -1,4 +1,6 @@
-# Design Brief: Space Trucking Sim (working title)
+# Design Brief: POL@RIS
+
+(The working title was "Space Trucking Sim". The owner named the game POL@RIS on 2026-10-29.)
 
 - **Version:** 2.4 (replaces 2.3)
 - **Date:** 2026-10-23

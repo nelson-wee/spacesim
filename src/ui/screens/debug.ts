@@ -22,6 +22,9 @@ import type { Sector } from '../../core/types';
 import { templateTu } from '../../encounter/budget';
 import { type Encounter, patrolEncounterOf, pirateEncounterOf, traderEncounter } from '../../encounter/encounter';
 import { HailScreen } from './hail';
+import { FleetScreen } from './fleet';
+import { createBattle } from '../../combat/battle';
+import { createShipFromLoadout } from '../../ship/loadout';
 
 type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle' | 'encounter' | 'security';
 
@@ -86,6 +89,7 @@ export class DebugScreen implements Screen {
         ['0', 'Test battle (your flagship against any loadouts)'],
         ['E', 'Encounter with any template (hail screen)'],
         ['S', 'Set the security level of this sector (0-4)'],
+        ['B', 'After-battle screen with a surrendered trader (M6)'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -269,6 +273,20 @@ export class DebugScreen implements Screen {
       case 's':
         this.mode = 'security';
         return true;
+      case 'b': {
+        // A won battle against a light freighter that surrendered with cargo (M6-UI-05).
+        const trader = createShipFromLoadout(game.data, 'light_freighter_trader', 'debug-trader', 'Trader Prize');
+        trader.cargo = { water: { units: 40, unitCost: 20 }, food: { units: 20, unitCost: 30 } };
+        const flag = player.fleet[player.flagshipIndex];
+        if (!flag) return true;
+        const b = createBattle({ player: [{ ship: structuredClone(flag), ai: 'human' }], other: [{ ship: trader, ai: 'trader', faction: 'trader' }], aggressor: 'player', rng: [1, 2, 3, 4] }, game.data);
+        const cs = b.ships.find((s) => s.side === 'other');
+        if (!cs) return true;
+        cs.status = 'surrendered';
+        this.app.pop();
+        this.app.push(new FleetScreen(this.app, { boarded: [cs] }));
+        return true;
+      }
       case '0':
         this.mode = 'battle';
         this.battleLoadout = Math.max(0, [...game.data.loadoutById.keys()].indexOf('pirate_raider'));

@@ -10,7 +10,9 @@ import { HelpScreen } from './help';
 import { SectorMapScreen } from './sectorMap';
 import { palette } from '../../render/palette';
 
-const TITLE = 'S P A C E   T R U C K I N G   S I M';
+/** The game name (owner, 2026-10-29). The @ is the player glyph of the maps. */
+const TITLE = 'P O L @ R I S';
+const SUBTITLE = 'an independent captain among the stars';
 
 /** A seed for a new game. UI code only: the simulation never uses this. */
 export function randomSeed(): number {
@@ -31,8 +33,10 @@ export class TitleScreen implements Screen {
     const w = TITLE.length + 8;
     const x0 = Math.floor((WIDTH - w) / 2);
     t.box(x0, 7, w, 3, ui.border, undefined, undefined, 'modal');
+    const at = TITLE.indexOf('@');
     t.text(x0 + 4, 8, TITLE, ui.title);
-    t.text(cx('(working title)'), 11, '(working title)', ui.dim);
+    t.put(x0 + 4 + at, 8, '@', palette(this.app.data).roles.player);
+    t.text(cx(SUBTITLE), 11, SUBTITLE, ui.dim);
 
     const menu: [string, string, boolean][] = [
       ['N', 'New game', true],
@@ -91,7 +95,7 @@ export class TitleScreen implements Screen {
 
   help(): string[] {
     return [
-      'SPACE TRUCKING SIM',
+      'POL@RIS',
       '',
       'You are an independent captain with a small ship and a little',
       'money. Travel between sectors, trade, and build your fleet.',

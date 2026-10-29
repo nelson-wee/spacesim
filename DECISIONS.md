@@ -392,6 +392,39 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-29 [Q-48] Tips show from App.render: the top screen names its triggers (`Screen.tutorialTriggers`), a market buy or sell gives 'bought' or 'sold' (new bus event `traded`), and the end of a lost battle gives 'defeat'. The tutorial writes only `GameState.tutorial` (through `core/tutorial.ts`). Test: the same seed and actions give the same state with the tutorial ON and OFF.
 - 2026-10-29 [Q-48] The setting "Tutorial tips in new games" is on the title screen (S). It is kept in `localStorage` (`spacesim.settings`), not in the game state; with no storage the default (ON) applies. `createGame` starts with the tutorial OFF unless the title screen asks for it, so tools and tests do not change.
 
+## Game name (owner, 2026-10-29)
+
+- 2026-10-29 The game is named POL@RIS (title screen, page title, README, brief and requirements headings). The `@` on the title screen has the player color: it is the player glyph of the maps. The repository name, the Pages path `/spacesim/`, the npm package name, and the storage key `spacesim.settings` do not change. Reason: they are technical ids; a new Pages path breaks the published link.
+
+## M6: Fleet
+
+### Owner changes (2026-10-29, Q-49, Q-50)
+
+- 2026-10-29 [Q-49] The disable rule (a 20% chance that an NPC ship at 0 hull is disabled) is not used. The forced surrender of Q-50 replaces it.
+- 2026-10-29 [Q-50, M6-FCMB-08] Forced surrender: at the morale step, an NPC ship with engine value 0 and hull at or below `combat.forcedSurrenderHull` (20%) surrenders, also a patrol and also after its morale roll. It uses no random number. Reason: the owner rule; with no roll, the RNG stream of other battles does not change.
+- 2026-10-29 [Q-50, M6-FLEET-10, M6-UI-06] Fleet management uses one screen (I): docked at any location, and after a battle with surrendered ships. Moves are free and take no time. Number keys 1-8 move the selected item to that ship: cargo as far as it fits; a module to the first empty slot of the same type that takes its size. Armor plating takes its armor HP along; a fuel tank moves empty (the fuel stays in the other tanks, up to their capacity). A module that holds cargo cannot leave a ship whose cargo then does not fit. In space with no battle, the screen only shows the fleet.
+- 2026-10-29 [Q-50] Scuttle (X, twice) is only on the after-battle screen. Docked, the player sells a ship instead. The after-battle screen closes only when each fleet ship passes the required-module rules; surrendered ships that the player does not take stay behind.
+
+### Fleet rules
+
+- 2026-10-29 [§11.9] `upkeepPerShip` = 20 cr per size point per day (Light Freighter: 60 cr a day). The brief gives no value. Reason: a backup ship must be a real cost (§11.9 design intent); with any value a second freighter does not pay for trade alone (Q-51).
+- 2026-10-29 [M6-TOOL-01] `sim-trader --fleet`: fleets of 1, 2, and 4 Light Freighters (`light_freighter_starter`) with 20,000 cr at the start trade for 150 days on the same seeds; profit per day = net worth change / days. The trader bot now fills free cargo space with other commodities for the same destination (each commodity once a turn). Reason: a player with a fleet does this; without it a second hull adds almost no cargo. M3 check 1 still passes (median day 94, 19/20).
+- 2026-10-29 [§11.9] Upkeep is counted up to the present day before each change to the fleet or the flagship, and paid at each dock (arrival, tow, Wait, clone wake-up). Reason: each ship pays only for its own days; the brief says "paid at each dock".
+- 2026-10-29 [M6-FLEET-02] The Shipyard tab: Enter trades in the flagship (M3); B buys a hull for the fleet with no trade-in. Both need a second key press. A new ship is named "<hull name> <n>" and has no fuel.
+- 2026-10-29 [M6-FLEET-03] A ship is sold on the fleet screen (S) at a location with a Shipyard; not the flagship; no cargo.
+- 2026-10-29 [§11.9] The encounter fleet factor applies to every pirate roll (trip, arrival, Hunt), capped at 100%.
+- 2026-10-29 [M6-UI-03] Route values subtract the fleet upkeep for the days of the route; profit per day is after fuel and upkeep. The best-route list shows fuel plus upkeep as "cost".
+
+### Fleet in combat
+
+- 2026-10-29 [M6-FCMB-03] A flee from pirates (hail or battle) takes `fleeCargoShare` (50%) of each cargo lot of one random non-flagship ship, also a ship with no cargo. It uses the encounter RNG stream. Reason: the brief rule, word for word.
+- 2026-10-29 [M6-FCMB-04] When a destroyed flagship has other ships in the fleet, the Clone Insurance policy is not used: it pays only when the last ship is lost. Reason: the policy covers a full loss (the career), as the owner defined it (2026-10-28).
+- 2026-10-29 [§13.7] Pirates that disable the flagship still take all cargo of the fleet (owner rule of 2026-10-28) and tow the full fleet.
+- 2026-10-29 [M6-FCMB-06] A prize keeps its battle name, loadout, damage, and cargo. Its cargo has a purchase price of 0 (loot). Capital hulls cannot be prizes. A prize whose faction is not pirate (trader, escort, patrol) adds `notoriety.prizeNonPirate` (+10).
+- 2026-10-29 [M6-FCMB-09] The player boards surrendered ships on the after-battle screen. Tools and tests use automatic boarding (they take the cargo, no prizes), as in M5.
+- 2026-10-29 [M6-FCMB-05] Game over shows a simple screen (day and credits), then the title screen.
+- 2026-10-29 [§4.3] Debug panel B: the after-battle screen with a surrendered Light Freighter (cargo), for tests in the browser.
+
 ## Cuts
 
 None.

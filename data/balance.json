@@ -51,6 +51,7 @@
     "destroyNonPirate": 10,
     "aggressorWhenPatrolArrives": 10,
     "pirateKilledOrCaptured": -3,
+    "prizeNonPirate": 10,
     "perDay": -0.3
   },
   "threat": {
@@ -89,11 +90,18 @@
     "disabledHullShare": 0.1,
     "surrenderChance": { "trader": 0.7, "evader": 0.6, "raider": 0.4, "patrol": 0, "attack": 0 },
     "auto": { "retreatHull": 0.25, "stopHull": 0.5, "turnDelayMs": 250 },
+    "forcedSurrenderHull": 0.2,
     "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6 }
   },
   "fuel": { "fuelPerHydrogen": 2 },
   "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },
-  "fleet": { "maxFleetSize": 4 },
+  "fleet": {
+    "maxFleetSize": 4,
+    "upkeepPerShip": 20,
+    "sizePoints": { "small": 1, "medium": 2, "large": 3, "capital": 6 },
+    "prizeFuelShare": 0.25,
+    "fleeCargoShare": 0.5
+  },
   "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Second Chance" },
   "economy": {
     "priceExponent": 0.6,

@@ -12,7 +12,7 @@ import { palette, threatBandColor } from '../../render/palette';
 import { battleMapFor } from '../../encounter/battleMap';
 import { bandOf, threatBand } from '../../encounter/budget';
 import type { Ship } from '../../core/types';
-import { type Encounter, flagshipTu, fleeSucceeds, type HailOption, hailOptions, payTribute } from '../../encounter/encounter';
+import { type Encounter, flagshipTu, fleeCargoLoss, fleeSucceeds, type HailOption, hailOptions, payTribute } from '../../encounter/encounter';
 import { travelStats } from '../../ship/stats';
 import type { App, Screen } from '../app';
 import { startBattle } from '../combatStart';
@@ -137,6 +137,9 @@ export class HailScreen implements Screen {
         if (fleeSucceeds(player, enc, rng(game, 'encounter'), data)) {
           for (const ship of player.fleet) ship.fuel = Math.max(0, ship.fuel - fleeFuelOf(game, ship));
           game.bus.message('You flee. They do not catch you.', 'good');
+          // M6-FCMB-03: pirates catch one of the slower fleet ships and take cargo.
+          const loss = enc.kind === 'pirate' ? fleeCargoLoss(player, rng(game, 'encounter'), data) : null;
+          if (loss && loss.units > 1e-9) game.bus.message(`The pirates take cargo from ${loss.ship.name}: ${Math.round(loss.units)} units.`, 'warning');
           this.app.pop();
           return;
         }

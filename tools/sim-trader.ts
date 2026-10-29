@@ -2,13 +2,19 @@
 // Reports the day of the first hull upgrade on each seed, and profit per day
 // over time. With --encounters, trips roll encounters (M5-TOOL-04) and the bot
 // uses a careful policy (tools/lib/encounterBot.ts).
-// Usage: npm run sim-trader -- [seeds] [firstSeed] [maxDays] [--verbose] [--encounters] [--override=json]
+// With --fleet (M6-TOOL-01): fleets of 1, 2, and 4 Light Freighters trade on
+// the same seeds; the tool compares profit per day after upkeep (M6 exit
+// check 5; Section 22 monitor: a second freighter adds 30%-60%, a fourth
+// 10%-25%).
+// Usage: npm run sim-trader -- [seeds] [firstSeed] [maxDays] [--verbose] [--encounters] [--fleet] [--override=json]
 import { travelStats } from '../src/ship/stats';
 import { knowsLocation } from '../src/actor/knowledge';
 import { createGame } from '../src/core/newGame';
 import { dataWithOverride } from './lib/override';
 import { type BotOptions, botTurn, netWorth, newBotState } from './lib/traderBot';
 import { encounterPolicy, newEncounterLog } from './lib/encounterBot';
+import { createShipFromLoadout } from '../src/ship/loadout';
+import { upkeepPerDay } from '../src/actor/fleet';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const verbose = process.argv.includes('--verbose');
@@ -24,11 +30,56 @@ const WINDOW = 30;
 const DEADLINE = 150;
 
 const pad = (v: string | number, n: number) => String(v).padStart(n);
+
+/** M6-TOOL-01: profit per day after upkeep for fleets of 1, 2, and 4 Light Freighters on the same seeds. */
+function fleetRun(): void {
+  const sizes = [1, 2, 4];
+  const credits = 20000;
+  const perSize: number[][] = sizes.map(() => []);
+  console.log(`Fleet comparison: ${seeds} seeds from ${firstSeed}, ${maxDays} days, fleets of ${sizes.join(', ')} x ${opts.targetLoadout}, ${credits} cr at the start.`);
+  console.log(`${'seed'.padStart(5)}${sizes.map((n) => pad(`${n} ship${n > 1 ? 's' : ''}`, 10)).join('')}   profit per day after upkeep`);
+  for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
+    const row: number[] = [];
+    sizes.forEach((n, k) => {
+      const game = createGame(seed, data);
+      const p = game.state.player;
+      p.fleet = Array.from({ length: n }, (_, i) => createShipFromLoadout(data, opts.targetLoadout, `ship-${i + 1}`, `Freighter ${i + 1}`));
+      p.flagshipIndex = 0;
+      p.credits = credits;
+      const bot = newBotState();
+      bot.upgradeDay = 0;
+      const log = newEncounterLog();
+      const seedOpts: BotOptions = withEncounters ? { ...opts, onEncounter: encounterPolicy(game, p, log) } : opts;
+      const start = netWorth(p);
+      let guard = 0;
+      while (game.state.day < maxDays && guard++ < 5000) botTurn(game, bot, seedOpts);
+      const rate = (netWorth(p) - start) / game.state.day;
+      row.push(rate);
+      perSize[k]?.push(rate);
+      if (verbose) console.log(`      ${n} ships: upkeep ${Math.round(upkeepPerDay(p, data))}/day, trips ${bot.trips}, fleet ${p.fleet.length}`);
+    });
+    console.log(`${pad(seed, 5)}${row.map((r) => pad(Math.round(r), 10)).join('')}`);
+  }
+  const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor((xs.length - 1) / 2)] ?? 0;
+  const [one, two, four] = perSize.map(med) as [number, number, number];
+  const better = (perSize[1] ?? []).filter((r, i) => r > (perSize[0]?.[i] ?? Infinity)).length;
+  const gain2 = one > 0 ? two / one - 1 : NaN;
+  const gain4 = two > 0 ? four / two - 1 : NaN;
+  console.log(`
+Median profit per day after upkeep: 1 ship ${Math.round(one)}, 2 ships ${Math.round(two)}, 4 ships ${Math.round(four)}.`);
+  console.log(`${two > one ? 'PASS' : 'FAIL'}  M6 exit check 5: a 2-ship fleet earns more per day than 1 ship after upkeep (median; ${better}/${seeds} seeds).`);
+  console.log(`NOTE  Second freighter: ${(gain2 * 100).toFixed(0)}% more (monitor 30%-60%). Ships 3 and 4: ${(gain4 * 100).toFixed(0)}% more than 2 ships, about ${((gain4 / 2) * 100).toFixed(0)}% for each ship (monitor for the fourth ship: 10%-25%).`);
+  console.log(`Run time ${((Date.now() - started) / 1000).toFixed(1)} s.`);
+}
 let inWindow = 0;
 let trips = 0;
 const upgradeDays: number[] = [];
 const windowRates: number[][] = [];
 const started = Date.now();
+if (process.argv.includes('--fleet')) {
+  fleetRun();
+  process.exit(0);
+}
 console.log(`Trader bot: ${seeds} seeds from ${firstSeed}, up to ${maxDays} days. Target: ${opts.targetHull}, reserve ${opts.reserve} cr.`);
 console.log(`${'seed'.padStart(5)}${pad('upgrade', 9)}${pad('trips', 7)}${pad('credits', 9)}  profit per day in ${WINDOW}-day windows`);
 for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
