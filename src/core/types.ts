@@ -237,9 +237,16 @@ export interface SupplyContract extends ContractBase {
   sizeId: string;
   units: number;
   delivered: number;
-  /** Price per unit, fixed at posting. */
+  /** Goods price per unit: the destination sell price at posting, fixed. */
   price: number;
+  /** The flat fee for all units (paid in step with the deliveries). */
+  fee: number;
+  /** Jumps from the nearest maker of the commodity to the destination, and the risk multiplier on that path. */
+  sourceJumps: number;
+  riskMult: number;
   severity: number;
+  /** True if a chain alert asked for it. */
+  alert: boolean;
   deadline: number;
 }
 

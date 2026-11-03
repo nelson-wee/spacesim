@@ -297,7 +297,8 @@ class BoardView {
       const dl = v.deadline === null ? `${game.data.contracts.sweep.deadlineDays} days from acceptance` : `by day ${displayDay(v.deadline)}`;
       t.text(2, y + 1, fit(`${what}; ${v.route}, ${v.jumps} jumps, lowest security ${v.lowestLevel}, threat band ${v.band}`, 97), ui.text, bg);
       const est = v.perDay === null ? '' : `, about ${Math.round(v.perDay)} cr/day`;
-      t.text(2, y + 2, fit(`Reward ${formatCredits(v.reward)}${est}; ${dl}${problem ? ` - ${problem}` : ''}`, 97), problem ? ui.warning : ui.good, bg);
+      const fee = o.kind === 'supply' ? ` (goods ${Math.round(o.price)} cr each + fee ${Math.round(o.fee)} cr${o.alert ? ', chain alert' : ''})` : '';
+      t.text(2, y + 2, fit(`Reward ${formatCredits(v.reward)}${fee}${est}; ${dl}${problem ? ` - ${problem}` : ''}`, 97), problem ? ui.warning : ui.good, bg);
       y += 3;
     });
     if (offers.length > max) t.text(2, y, `... ${offers.length - max} more.`, ui.dim);
@@ -350,8 +351,11 @@ export class GuildTab implements LocationTab {
       '',
       'Up/Down  Select an offer;  Enter  Accept it;  G  Your contracts',
       '',
-      'Supply: deliver goods to a location that needs them, at a fixed',
-      'price. Freight: carry the guild\'s cargo from a surplus to a deficit',
+      'Supply: deliver goods to a location that needs them. The guild pays',
+      'the goods at the market price on the posting day, and a fee for the',
+      'work: by tonnes, jumps from the nearest maker, urgency, and risk.',
+      'Chain alerts make Supply offers first. Freight: carry the guild\'s',
+      'cargo from a surplus to a deficit',
       '(deposit at pickup). Offers come from real needs; new offers every',
       '7 days. At most 4 active contracts. Freight Medium and Large need',
       'standing 3 and 8 (done - 2 x failed). Live prices within 2 jumps,',

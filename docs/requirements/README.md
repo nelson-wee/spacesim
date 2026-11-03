@@ -227,7 +227,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 | Q-49 | **Disabled enemy ships (M6).** A 20% chance that an NPC ship at 0 hull is disabled, not destroyed, for capture. **Not used (owner, 2026-10-29):** the forced surrender of Q-50 replaces it. | Closed. | — |
 | Q-50 | **Forced surrender and fleet management (M6).** Owner requests (2026-10-29): an enemy ship that cannot flee (engine value 0) and has 20% hull or less surrenders and stops all hostile actions; prize ships come from the after-battle screen; the player can move cargo and modules between ships and scuttle a ship to make room for a prize. The same fleet management is available docked at any location. Added as M6-FCMB-08, M6-FCMB-09, M6-FLEET-10, M6-UI-05, and M6-UI-06. | `combat.forcedSurrenderHull` 0.2; all NPC factions, patrols too (§13.8 gives patrols 0% for the roll; the forced rule is not a roll). Module moves go only between ships that the player owns, prizes included. This changes §13.7 "No module salvage in the MVP": a prize's modules can move to other fleet ships. No time and no fee. | M6 |
 | Q-51 | **Fleet trade value (M6 exit check 5).** With markets of `volumeScale` 8, 2 Light Freighters earned 13% less than 1. **Decided (owner, 2026-11-03):** options (a) and (b): check 5 is a report; `volumeScale` 16 is the start point for calibration (carrier capacity follows it). Result: 1 ship 706, 2 ships 618 (-12%), 4 ships 465 cr per day (6 seeds). | Done (`DECISIONS.md`). Look at fleet value again in the M7 balance pass. | — |
-| Q-52 | **Career balance and debt (M7 balance pass).** `sim-career` (6 careers): net worth at day 730 median 881,801 cr (Section 22: 250,000-600,000), range 10,119 to 5,974,115. Two careers stay poor: after early pirate losses the player is in debt with no cargo; when no module is left to sell, the player cannot trade again (only Retire). | (a) A guild loan or a small free refuel for a captain in debt with no cargo (a new rule; after the feature freeze it needs an owner exception). (b) Tune in M8: lower Supply premium for Machinery or cap the Supply quantity value; lower `volumeScale` toward 12. (c) Keep as is: the end score is a monitor. Proposed: (a) small rule in M8 as a bug fix (soft-lock), and (b) in the M8 balance pass. | M8 |
+| Q-52 | **Career balance and debt (M7 balance pass).** `sim-career` (6 careers): net worth at day 730 median 881,801 cr (Section 22: 250,000-600,000), range 10,119 to 5,974,115. Two careers stay poor: an over-invested player loses the cargo to pirates, pays the tow and repairs, and is in debt with no cargo; with no module left to sell, the player cannot trade again (only Retire). **Owner (2026-11-03):** scope a one-time second chance: a guild relief contract when towed into debt in a secure sector, or a pirate offer (a raiding Wasp and a capture job) in a low-security sector. | Scope: `docs/proposals/second-chance.md` (open points in its Section 6). Balance (net worth spread) in the M8 balance pass. | M8 |
 
 ## 9. Risks
 
@@ -261,7 +261,7 @@ These items need the repository owner. Claude Code cannot do them.
 12. **Auto-battle:** item 1 done (Q-47, 2026-10-29). Select the later items when you want them.
 13. **Boarding and fleet management:** done (Q-50, built in M6).
 14. **M6 checks:** done (Q-51 decided, 2026-11-03).
-15. **M7 balance:** answer Q-52 (career balance and the debt soft-lock).
+15. **M7 balance:** read `docs/proposals/second-chance.md` (Q-52) and answer its open points.
 
 ## 11. After the MVP (owner notes)
 

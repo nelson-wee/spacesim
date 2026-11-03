@@ -72,7 +72,7 @@ export function offerView(game: Game, offer: Contract): OfferView {
   if (offer.kind === 'supply') {
     const dest = locOf(game, offer.destId);
     const left = offer.units - offer.delivered;
-    const reward = left * offer.price;
+    const reward = left * offer.price + (offer.fee * left) / offer.units;
     // Buy at the cheapest known seller, then go to the destination.
     const source = bestKnownSource(game, offer.commodity);
     const buy = source?.buy ?? null;

@@ -455,7 +455,15 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-03 [§14.6, §15] Kill bounty: not added while the player is Wanted, and not paid out while Wanted.
 - 2026-11-03 [§14.6] The named encounter takes the place of the normal roll on each arrival in the sector and each Hunt there while the bounty is active; the group judges the odds as other pirates (it can avoid, so the player pursues).
 - 2026-11-03 [§10.3] New security changes: `sweepComplete` (baseline +2), `namedBounty` (value +5, baseline +1), `pirateSurge` (value -20).
-- 2026-11-03 [§14.9, M7-BAL-02] Supply `premiumBase` 0.10 -> 0.45. Reason: with 0.10 the median Supply offer gave 0.56x the best open-market route of similar length (check 3 needs 1.0-1.5x); 0.30 gave 0.89x, 0.50 gave 1.35x (sim-trader --contracts, 6 seeds).
+- 2026-11-03 [§14.9, M7-BAL-02] (Replaced the same day, see "Supply contracts v2".) Supply `premiumBase` 0.10 -> 0.45: with 0.10 the median Supply offer gave 0.56x the best open-market route of similar length.
+
+### Supply contracts v2 (owner, 2026-11-03)
+
+- 2026-11-03 [owner, §14.4] Supply pays the goods at the destination sell price on the posting day (no premium), plus a flat fee that does not follow the value of the goods: tonnes x (`feePerTonne` 20 + `feePerTonneJump` 15 x jumps from the nearest maker to the destination) x riskMult x (1 + `urgencyPerSeverity` 1 x severity). Reason: owner: the fee pays for the inefficiency that stops the trade; profitable trades happen anyway (carriers, player).
+- 2026-11-03 [owner, §14.4] Risk pay: riskMult = 1 + 0.3 x (4 - lowest security level on the path from the nearest maker to the destination, ends included). The fee is paid in step with the units delivered.
+- 2026-11-03 [owner, §14.3] Chain alerts are contract needs: a producer alert with an input or Machinery cause, and a population alert, make a need for that commodity (severity: 1 - output ratio, or 1 - stock / target, at least 0.1). Each Merchants' Guild board posts up to `alertOffersPerBoard` (2) alert offers first. Reason: owner: the guild posts contracts that fix the chain problems it reports, so the world corrects itself.
+- 2026-11-03 [owner] Freight `valueShare` 0.05 -> 0: the Freight fee is flat too (tonnes x jumps x 4 x riskMult); the 25% deposit still covers the cargo value.
+- 2026-11-03 [§14.9] Check 3 with the flat fee: 1.14x (6 seeds; fees x2 gave 1.95x, x4 gave 3.32x).
 
 ### Market events (M7-EVT)
 

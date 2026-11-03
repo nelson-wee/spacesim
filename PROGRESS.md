@@ -495,6 +495,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 - **Career:** statistics from the start; the end at day 730 (`career.days`), at Retire (E twice at a location), or at a total loss; score and titles (Drifter to Sector Magnate, Dread Pirate, Pirate Hunter, Warden of a sector); career end screen with the summary, the title, and the seed.
 - **Save and load:** autosave at each dock; Q twice on the sector map saves and quits; Continue on the title screen; another save version or a damaged save shows a message.
 - **Screens:** contracts screen (G), guild boards, kill bounty (K), debug K spawns any contract. Location tabs use short names when they do not fit.
+- **Supply contracts v2 (owner, 2026-11-03):** chain alerts make Supply offers first; Supply pays the goods at the market price plus a flat fee (tonnes, jumps from the nearest maker, urgency, risk pay for low security); Freight fee is flat.
 
 ### Exit checks
 
@@ -502,7 +503,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 |---|---|---|
 | 1 | 90% of boards have 3 or more offers. | PASS: 98.0% of 76,680 boards (Merchants' Guild 100%, Bounty Guild 96.9%), 1,000 days x 20 seeds. |
 | 2 | 100% of Supply and Freight offers point to a real deficit at posting. | PASS: test, and 123,206/123,206 offers in `sim-economy`. |
-| 3 | Median Supply contract gives 1.0x-1.5x the profit per day of the best known open-market route of similar length. | PASS: 1.14x (10 seeds, 1,487 offers valued; quartiles 0.32-2.74). Needs `premiumBase` 0.45 (brief 0.10: 0.56x). |
+| 3 | Median Supply contract gives 1.0x-1.5x the profit per day of the best known open-market route of similar length. | PASS: 1.14x with the flat fee of Supply contracts v2 (6 seeds, 1,009 offers valued; quartiles 0.37-2.93). |
 | 4 | A completed Machinery Supply contract to a producer with low K increases its output. | PASS (test). |
 | 5 | A full career to day 730 runs without errors. | PASS: `sim-career` 6/6 careers. |
 | 6 | Save and load give the same state. | PASS (tests: deep-equal state and RNG streams; the next 30 days are the same). |
@@ -515,7 +516,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 | `sim-economy` (1,000 days, 20 seeds, with events) | All M2 checks pass (20/20); contract board checks pass. Busts (61-365 days) on 3/20 seeds. |
 | `gen-report` (100 seeds) | 98 pass with 2 tries or fewer (need 95). |
 | `sim-trader` (20 seeds) | Light Freighter by day 150 on 20/20 (PASS); median day 54 (report); Shuttle 331 cr per day in the first 30 days (monitor 100-250). |
-| `sim-trader --contracts` (10 seeds) | Check 3 PASS (1.14x); 63 contracts accepted, 60 deliveries. |
+| `sim-trader --contracts` (6 seeds, Supply v2) | Check 3 PASS (1.14x); 47 contracts accepted, 39 deliveries. |
 | `sim-combat` (100 battles per pairing) | All pairing checks pass. |
 | `ship-report` | All PASS. |
 | `sim-career` (6 careers) | 6/6 with no errors. Net worth at day 730: 19,929; 2,694,878; 5,974,115; 881,801; 10,119; 1,355,241 cr (median 881,801). |

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { bountyBoard, lowestLevelOnPath, merchantsBoard, needsAt, securityProblem, sizeFor, surplusesAt } from '../src/career/contractGen';
+import { bountyBoard, lowestLevelOnPath, merchantsBoard, needsAt, securityProblem, sizeFor, supplyFee, surplusesAt } from '../src/career/contractGen';
+import { chainAlertsAt } from '../src/actor/knowledge';
 import { kRef } from '../src/econ/capital';
 import { econContext } from '../src/econ/context';
 import { recipeOf } from '../src/econ/recipes';
@@ -119,7 +120,7 @@ describe('boards (Section 14.3, 14.4)', () => {
     expect(checked).toBeGreaterThan(20);
   });
 
-  it('supply offer: price = sell price x (1 + 0.10 + 0.20 x severity); deadline = posting + 8 + 4 x jumps; units from the size class', () => {
+  it('supply offer: goods at the sell price, plus a flat fee (tonnes, jumps, risk, urgency); deadline = posting + 8 + 4 x jumps; units from the size class', () => {
     const g = fresh();
     const ctx = econContext(g.state.world, data);
     const loc = g.state.world.locations.find((l) => l.services.includes('merchants_guild')) as Location;
@@ -127,7 +128,9 @@ describe('boards (Section 14.3, 14.4)', () => {
     if (!offer || offer.kind !== 'supply') return;
     const dest = g.state.world.locations[offer.destId]!;
     const sell = sellPrice(dest.market[offer.commodity]!, basePrice(data, offer.commodity), data);
-    expect(offer.price).toBeCloseTo(sell * (1 + c.supply.premiumBase + c.supply.premiumPerSeverity * offer.severity));
+    expect(offer.price).toBeCloseTo(sell);
+    const tonnes = c.sizes.find((x) => x.id === offer.sizeId)!.tonnes;
+    expect(offer.fee).toBeCloseTo(tonnes * (c.supply.feePerTonne + c.supply.feePerTonneJump * offer.sourceJumps) * offer.riskMult * (1 + c.supply.urgencyPerSeverity * offer.severity));
     expect(offer.deadline).toBe(g.state.day + c.supply.deadlineBase + c.supply.deadlinePerJump * (ctx.sectorJumps[loc.sectorId]![dest.sectorId] as number));
     const size = c.sizes.find((s) => s.id === offer.sizeId)!;
     expect(offer.units).toBe(Math.round(size.tonnes / data.commodityById.get(offer.commodity)!.massPerUnit));
@@ -197,7 +200,7 @@ function withOffer<T extends import('../src/core/types').Contract>(offer: T, at:
 }
 
 function supply(destId: number, commodity = 'water', units = 10): SupplyContract {
-  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, sizeId: 'small', units, delivered: 0, price: 50, severity: 0.5, deadline: 20 };
+  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, sizeId: 'small', units, delivered: 0, price: 50, fee: 0, sourceJumps: 1, riskMult: 1, severity: 0.5, alert: false, deadline: 20 };
 }
 
 describe('contract play (Sections 14.4-14.7)', () => {
@@ -384,5 +387,46 @@ describe('contract play (Sections 14.4-14.7)', () => {
       return out;
     };
     expect(run(g.state)).toBeGreaterThan(run(control));
+  });
+});
+
+describe('Supply contracts v2 (owner, 2026-11-03)', () => {
+  it('a chain alert is a need, and boards post it first', () => {
+    const g = fresh();
+    const board = g.state.world.locations.find((l) => l.services.includes('merchants_guild')) as Location;
+    const ctx = econContext(g.state.world, data);
+    const loc = g.state.world.locations.find((l) => l.sectorId === board.sectorId && (ctx.uses[l.id] ?? []).length > 0) as Location;
+    const use = ctx.uses[loc.id]![0]!;
+    loc.market[use.commodity]!.stock = 0;
+    const alerts = chainAlertsAt(g.state.world, data, loc);
+    expect(alerts.some((a) => a.commodity === use.commodity)).toBe(true);
+    expect(needsAt(g, loc).find((n) => n.commodity === use.commodity)?.alert).toBe(true);
+    for (let s = 0; s < 5; s++) {
+      const offers = merchantsBoard(g, board, rngOf(s)).offers;
+      expect(offers.some((o) => o.kind === 'supply' && o.alert)).toBe(true);
+    }
+  });
+
+  it('the fee does not follow the value of the goods; low security raises it (risk pay); urgency raises it', () => {
+    const g = fresh();
+    const dest = g.state.world.locations.find((l) => l.market.water && l.market.electronics) as Location;
+    const a = supplyFee(g, dest, 'water', 30, 0.5);
+    const b = supplyFee(g, dest, 'electronics', 30, 0.5);
+    expect(a.fee / (a.riskMult * (c.supply.feePerTonne + c.supply.feePerTonneJump * a.sourceJumps))).toBeCloseTo(b.fee / (b.riskMult * (c.supply.feePerTonne + c.supply.feePerTonneJump * b.sourceJumps)));
+    expect(supplyFee(g, dest, 'water', 30, 1).fee).toBeGreaterThan(a.fee);
+    for (const s of g.state.world.sectors) s.securityValue = 0;
+    const risky = supplyFee(g, dest, 'water', 30, 0.5);
+    expect(risky.riskMult).toBeCloseTo(1 + 4 * c.supply.riskPerLevel);
+    expect(risky.fee).toBeGreaterThan(a.fee);
+  });
+
+  it('delivery pays the goods and the share of the fee', () => {
+    const dest = template.world.locations.find((l) => l.market.water)!;
+    const g = withOffer({ ...supply(dest.id), fee: 1000 }, dest.id);
+    acceptContract(g, dest.id, 900);
+    addCargo(g.state.player, data, 'water', 5, 1);
+    const c0 = g.state.player.credits;
+    deliverSupply(g, 900);
+    expect(g.state.player.credits).toBeCloseTo(c0 + 5 * 50 + 1000 * 0.5);
   });
 });

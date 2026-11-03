@@ -22,7 +22,7 @@ export function contractTask(game: Game, c: Contract): string {
   const { world } = game.state;
   const name = (id: number) => world.locations[id]?.name ?? '?';
   const com = (id: string) => game.data.commodityById.get(id)?.name ?? id;
-  if (c.kind === 'supply') return `Deliver ${Math.round(c.units - c.delivered)} of ${c.units} ${com(c.commodity)} to ${name(c.destId)} at ${Math.round(c.price)} cr each.`;
+  if (c.kind === 'supply') return `Deliver ${Math.round(c.units - c.delivered)} of ${c.units} ${com(c.commodity)} to ${name(c.destId)}: ${Math.round(c.price)} cr each, and a fee of ${Math.round(c.fee)} cr${c.riskMult > 1.01 ? ` (risk x${c.riskMult.toFixed(1)})` : ''}.`;
   if (c.kind === 'freight') {
     return c.pickedDay === null
       ? `Pick up ${c.units} ${com(c.commodity)} at ${name(c.fromId)} (deposit ${Math.round(c.deposit)} cr), deliver to ${name(c.toId)}.`

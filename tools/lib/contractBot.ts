@@ -63,7 +63,7 @@ export function supplyValue(game: Game, actor: Actor, here: Location, c: SupplyC
     const entry = { ...(l.market[c.commodity] as NonNullable<Location['market'][string]>) };
     const cost = quoteBuy(entry, basePrice(data, c.commodity), units, data).total;
     const fuel = (a.totalFuel + b.totalFuel) * fuelUnitPrice(data, here);
-    const perDay = (units * c.price - cost - fuel - upkeepPerDay(actor, data) * days) / days;
+    const perDay = (units * c.price + (c.fee * units) / c.units - cost - fuel - upkeepPerDay(actor, data) * days) / days;
     if (!best || perDay > best.perDay) best = { source: l, units, days, perDay };
   }
   return best;

@@ -92,7 +92,11 @@ function fail(game: Game, c: Contract, text: string): void {
   game.bus.message(text, 'danger');
 }
 
-/** Delivers Supply cargo at the destination: partial deliveries are paid at once; goods go into the market stock (Section 14.4). */
+/**
+ * Delivers Supply cargo at the destination: partial deliveries are paid at once
+ * (the goods at the contract price, and the share of the flat fee); the goods
+ * go into the market stock (Section 14.4).
+ */
 export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const { state, data } = game;
   const actor = state.player;
@@ -105,7 +109,8 @@ export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const dest = loc(game, c.destId);
   const entry = dest.market[c.commodity];
   if (entry) entry.stock += units;
-  const pay = units * c.price;
+  // The goods at the contract price, and the flat fee in step with the units (owner, 2026-11-03).
+  const pay = units * c.price + (c.fee * units) / c.units;
   actor.credits += pay;
   c.delivered += units;
   state.career.stats.cargoTradedTonnes += units * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
