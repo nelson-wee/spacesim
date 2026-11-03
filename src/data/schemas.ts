@@ -662,19 +662,20 @@ export const contractsSchema = z.object({
   /** Supply offers for chain alerts that each board posts first (owner, 2026-11-03). */
   alertOffersPerBoard: z.number().int().min(0),
   /**
-   * Supply (owner, 2026-11-03): the goods at the destination sell price at posting, plus a flat fee =
-   * tonnes x (feePerTonne + feePerTonneJump x jumps from the nearest maker) x riskMult x (1 + urgencyPerSeverity x severity);
+   * Supply (owner, 2026-11-03): open quantity, paid per tonne delivered (up to the destination's need),
+   * until the need ends. Each tonne pays the goods at the destination sell price at posting, plus a flat
+   * fee per tonne = (feePerTonne + feePerTonneJump x jumps from the nearest maker) x riskMult
+   * x (1 + urgencyPerSeverity x severity) x (alertFeeMult for a chain alert);
    * riskMult = 1 + riskPerLevel x (4 - lowest security level from the nearest maker to the destination).
+   * A contract counts as done (standing) when the need ends after the player delivered minDoneTonnes.
    */
   supply: z.object({
     feePerTonne: nonNeg,
     feePerTonneJump: nonNeg,
     riskPerLevel: nonNeg,
     urgencyPerSeverity: nonNeg,
-    /** A Supply contract is done at this share of its units (Food spoils 1% a day on the way). */
-    completeShare: prob,
-    deadlineBase: nonNeg,
-    deadlinePerJump: nonNeg,
+    alertFeeMult: pos,
+    minDoneTonnes: nonNeg,
   }),
   freight: z.object({
     pickupJumps: z.number().int().min(0),

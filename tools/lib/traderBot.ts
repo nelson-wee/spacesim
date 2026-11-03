@@ -268,13 +268,8 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   sellCargo(game, actor, loc, bot);
   bot.plan = null;
   const fill = opts.contractFill ? (at: Location, main: { toId: number; commodity: string }) => fillHold(game, actor, at, main, opts, bot) : undefined;
-  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity, opts.contractPolicy, fill)) {
-    // The trip can end in space after an encounter; the next turn docks first.
-    if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
-    bot.trips++;
-    return;
-  }
-
+  // The upgrade comes before contracts: open Supply contracts (owner, 2026-11-03) do not end
+  // on a deadline, so a bot with contracts would otherwise never stop to buy the ship.
   if (bot.upgradeDay === null && actor.fleet[0]?.hullId !== opts.targetHull) {
     const cost = upgradeCost(game, actor, loc, opts);
     const empty = actor.fleet.every((ship) => Object.keys(ship.cargo).length === 0);
@@ -284,7 +279,7 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
       // Can the bot pay at the nearest known Shipyard? Estimate with this location's prices.
       const yard = nearest(game, actor, loc, (l) => hasService(l, 'shipyard') && upgradeCost(game, actor, l, opts) !== null);
       const yardCost = yard ? upgradeCost(game, actor, yard, opts) : null;
-      if (yard && yardCost !== null && actor.credits >= yardCost + opts.reserve) {
+      if (yard && yardCost !== null && actor.credits >= yardCost + opts.reserve && empty) {
         refuel(game, actor, loc);
         if (goTo(game, actor, loc, yard)) {
           bot.trips++;
@@ -292,6 +287,13 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
         }
       }
     }
+  }
+
+  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity, opts.contractPolicy, fill)) {
+    // The trip can end in space after an encounter; the next turn docks first.
+    if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
+    bot.trips++;
+    return;
   }
 
   firstModule(game, actor, loc, opts, bot);

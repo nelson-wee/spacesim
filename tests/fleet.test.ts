@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addCargo, fleetUnits, loadingOrder } from '../src/actor/cargo';
-import { accrueUpkeep, payUpkeep, removeShip, setFlagship, upkeepPerDay } from '../src/actor/fleet';
+import { accrueUpkeep, payUpkeep, removeShip, renameShip, setFlagship, upkeepPerDay } from '../src/actor/fleet';
+import { TextInput } from '../src/ui/input';
 import { fleetProblems, moveAllCargo, moveCargo, moveModule } from '../src/actor/fleetManage';
 import { towFleet } from '../src/actor/fuel';
 import { planSectorTrip, travelInSector } from '../src/actor/travel';
@@ -95,6 +96,25 @@ describe('fleet rules (M6-FLEET)', () => {
     removeShip(game, p, 0);
     expect(p.fleet[p.flagshipIndex]!.name).toBe('S2');
     expect(removeShip(game, p, 0)).toBeNull();
+  });
+
+  it('rename: a clean, unique name of 1 to 20 characters (owner, 2026-11-03)', () => {
+    const { game } = withFleet(['start_shuttle', 'light_freighter_starter']);
+    const p = game.state.player;
+    expect(renameShip(p, 1, '  Dusty   Mule ')).toBeNull();
+    expect(p.fleet[1]!.name).toBe('Dusty Mule');
+    expect(renameShip(p, 0, 'dusty mule')).toMatch(/Another ship/);
+    expect(renameShip(p, 0, '   ')).toMatch(/Type a name/);
+    expect(renameShip(p, 0, 'x'.repeat(21))).toMatch(/20 characters/);
+    expect(renameShip(p, 0, 'Bad<name>')).toMatch(/letters/);
+    expect(renameShip(p, 5, 'Ghost')).toMatch(/no such ship/);
+    expect(p.fleet[0]!.name).toBe('S0');
+    const input = new TextInput('Ab');
+    expect(input.handle({ key: 'Backspace', shift: false, ctrl: false })).toBe('edit');
+    input.handle({ key: 'c', shift: true, ctrl: false });
+    input.handle({ key: '<', shift: false, ctrl: false });
+    expect(input.value).toBe('AC');
+    expect(input.handle({ key: 'Enter', shift: false, ctrl: false })).toBe('enter');
   });
 
   it('travel: the slowest ship sets the time; each ship uses its own fuel; departure needs each ship to pass the rules', () => {

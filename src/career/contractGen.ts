@@ -179,10 +179,10 @@ export function nearestMaker(game: Game, dest: Location, commodity: string): { l
 }
 
 /**
- * The flat Supply fee (owner, 2026-11-03): tonnes x (feePerTonne + feePerTonneJump x jumps from the nearest maker)
- * x riskMult x (1 + urgencyPerSeverity x severity). It does not follow the value of the goods.
+ * The flat Supply fee per tonne (owner, 2026-11-03): (feePerTonne + feePerTonneJump x jumps from the nearest maker)
+ * x riskMult x (1 + urgencyPerSeverity x severity) x (alertFeeMult for a chain alert). It does not follow the value of the goods.
  */
-export function supplyFee(game: Game, dest: Location, commodity: string, tonnes: number, severity: number): { fee: number; sourceJumps: number; riskMult: number } {
+export function supplyFee(game: Game, dest: Location, commodity: string, severity: number, alert: boolean): { feePerTonne: number; sourceJumps: number; riskMult: number } {
   const { data, state } = game;
   const ctx = econContext(state.world, data);
   const s = data.contracts.supply;
@@ -190,20 +190,28 @@ export function supplyFee(game: Game, dest: Location, commodity: string, tonnes:
   const sourceJumps = Number.isFinite(maker.jumps) ? maker.jumps : data.contracts.candidateJumps;
   const lowest = maker.loc ? lowestLevelOnPath(ctx, maker.loc.sectorId, dest.sectorId, data) : securityLevel(state.world.sectors[dest.sectorId]?.securityValue ?? 0, data);
   const riskMult = 1 + s.riskPerLevel * (4 - lowest);
-  return { fee: tonnes * (s.feePerTonne + s.feePerTonneJump * sourceJumps) * riskMult * (1 + s.urgencyPerSeverity * severity), sourceJumps, riskMult };
+  const feePerTonne = (s.feePerTonne + s.feePerTonneJump * sourceJumps) * riskMult * (1 + s.urgencyPerSeverity * severity) * (alert ? s.alertFeeMult : 1);
+  return { feePerTonne, sourceJumps, riskMult };
 }
 
-function supplyOffer(game: Game, id: number, board: Location, need: Need, sizeId?: string): SupplyContract {
+/** Units that a Supply destination takes now: up to its target stock (the need). */
+export function supplyRoom(game: Game, c: Pick<SupplyContract, 'destId' | 'commodity'>): number {
+  const entry = game.state.world.locations[c.destId]?.market[c.commodity];
+  return entry ? Math.max(0, entry.target - entry.stock) : 0;
+}
+
+/** True while the destination still has the need (a deficit, a capital need, or a chain alert) for the commodity. */
+export function supplyNeedOpen(game: Game, c: Pick<SupplyContract, 'destId' | 'commodity'>): boolean {
+  const dest = game.state.world.locations[c.destId];
+  return dest ? needsAt(game, dest).some((n) => n.commodity === c.commodity) : false;
+}
+
+function supplyOffer(game: Game, id: number, board: Location, need: Need): SupplyContract {
   const { data, state } = game;
-  const ctx = econContext(state.world, data);
   const dest = state.world.locations[need.locId] as Location;
-  const size = sizeId ? (data.contracts.sizes.find((s) => s.id === sizeId) ?? sizeFor(need.tonnes, data)) : sizeFor(need.tonnes, data);
-  const mass = data.commodityById.get(need.commodity)?.massPerUnit ?? 1;
   const entry = dest.market[need.commodity];
   const sell = entry ? sellPrice(entry, basePrice(data, need.commodity), data) : basePrice(data, need.commodity);
-  const s = data.contracts.supply;
-  const jumps = jumpsBetween(ctx, board.sectorId, dest.sectorId);
-  const { fee, sourceJumps, riskMult } = supplyFee(game, dest, need.commodity, size.tonnes, need.severity);
+  const { feePerTonne, sourceJumps, riskMult } = supplyFee(game, dest, need.commodity, need.severity, need.alert);
   return {
     kind: 'supply',
     id,
@@ -212,16 +220,13 @@ function supplyOffer(game: Game, id: number, board: Location, need: Need, sizeId
     reason: need.reason,
     destId: dest.id,
     commodity: need.commodity,
-    sizeId: size.id,
-    units: Math.round(size.tonnes / mass),
     delivered: 0,
     price: sell,
-    fee,
+    feePerTonne,
     sourceJumps,
     riskMult,
     severity: need.severity,
     alert: need.alert,
-    deadline: state.day + s.deadlineBase + s.deadlinePerJump * jumps,
   };
 }
 
@@ -382,16 +387,7 @@ export function merchantsBoard(game: Game, board: Location, r: Rng): Board {
   const alertRules = Array.from({ length: c.alertOffersPerBoard }, () => (x: Candidate) => x.alert === true);
   const chosen = pick(candidates, count, r, [...alertRules, (x) => !x.advanced, (x) => x.advanced]);
   const offers = chosen.map((x) => x.build(state.contracts.nextId++));
-  // At least one Small offer if possible: the supply offer with the lowest score becomes Small.
-  const small = data.contracts.sizes.reduce((a, b) => (b.tonnes < a.tonnes ? b : a));
-  if (offers.length > 0 && !offers.some((o) => (o.kind === 'supply' || o.kind === 'freight') && o.sizeId === small.id)) {
-    const supplies = chosen.map((x, i) => ({ x, o: offers[i] })).filter((p) => p.o?.kind === 'supply');
-    const last = supplies.sort((a, b) => a.x.score - b.x.score)[0];
-    if (last && last.o?.kind === 'supply') {
-      const need = needs.find((n) => n.locId === (last.o as SupplyContract).destId && n.commodity === (last.o as SupplyContract).commodity);
-      if (need) offers[offers.indexOf(last.o)] = supplyOffer(game, last.o.id, board, need, small.id);
-    }
-  }
+  // Supply has no size class now (open quantity, owner 2026-11-03): the brief's "at least 1 Small offer" rule is met by any Supply offer.
   return { locationId: board.id, guild: 'merchants', day: state.day, offers };
 }
 

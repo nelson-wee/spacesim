@@ -542,12 +542,29 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 | first, fill, fee x2 | 16,108 | 21,242 | 39,565 | 37,631 | 90,270 | +42% |
 
 - 365 days (6 seeds, no fill): trade 226,569 cr; first 102,881 cr (-55%). Contract sizes stop at 80 t and the fee does not grow with capital; open-market trade grows with capital and capacity.
-- First 15-30 days: no gain from contracts. The start location often has no Merchants' Guild, and a Small fee (10 t, about 350-700 cr) is small against a full 30 t hold of trade.
+- First 15-30 days: no gain from contracts. A Small fee (10 t, about 350-700 cr) is small against a full 30 t hold of trade. (Correction: the start location has a Merchants' Guild on 100 of 100 seeds. The early limit is price information: the player knows only the prices near the start.)
 - Chain alerts: 13% of Supply offers come from alerts (5 seeds, 300 days); alerts occur on 18-87% of days. 14 days after an offer, the alert is gone for 80-100% of the alerts that the bot served and for 77-100% of those that it did not serve: no measurable effect of the player's deliveries. The carriers fix most alerts; 10-80 t is small against markets at `volumeScale` 16.
 - Fixes found by the traces: Supply contracts are done at 98% (Food spoils on the way); the bot checks the seller's stock and keeps a credit margin (failed contracts 33 -> 17 of about 75).
 
+### Per-tonne Supply contracts (owner, 2026-11-03, Q-53)
+
+- Supply pays per tonne delivered (goods price at posting + flat fee per tonne, risk pay, 1.5x for chain alerts). No size, no deadline: the contract lasts while the destination has the need, and cannot fail. An offer leaves the board when its need ends.
+- The start location always has a Merchants' Guild. N on the fleet screen renames a fleet ship.
+- Check 3 (`sim-trader --contracts`, 20 seeds, 150 days): PASS, 1.00x with `feePerTonne` 12 and `feePerTonneJump` 9 (quartiles 0.60-2.82). Light Freighter by day 150 on 17/20 seeds (median day 41). Shuttle profit in the first 30 days: median 638 cr per day (open market only: 331).
+- `sim-economy` board checks: PASS (98.0% of boards with 3+ offers; 100% of offers point to a real deficit).
+- `sim-contracts` (career score, median of 10 seeds; day 365: 6 seeds):
+
+| Policy | Day 15 | Day 30 | Day 60 | Day 150 | Day 365 |
+|---|---|---|---|---|---|
+| trade | 16,259 | 23,828 | 28,117 | 63,724 | 226,569 |
+| best | 19,658 | 29,807 | 68,231 | 187,037 | 450,448 |
+| first | 14,663 | 22,521 | 34,451 | 176,171 | 394,810 |
+
+- Contracts now give more early (day 15-60), as the owner expected, and they stay ahead to day 365. The cause: a deficit that does not end (example: Water at an Agri World with 102% output) keeps one contract open for the full run, and the player's deliveries take the place of the carriers. On seeds 2 and 8, one contract gives about 600,000 cr in 150 days. Q-53 lists options to limit it.
+
 ### Known issues
 
+- Q-53: an open Supply contract at a deficit that does not end is a money pump (see above).
 - Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
 - Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
 - The tutorial text needs a pass for the M6 and M7 screens (M8).

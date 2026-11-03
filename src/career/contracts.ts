@@ -10,6 +10,7 @@ import type { Actor, Contract, FreightContract, Location, NamedBounty, Sector, S
 import type { GameData } from '../data';
 import { type Encounter, isWanted, pirateBehavior } from '../encounter/encounter';
 import { DEBT_TEXT, done, inDebt, refused, type ServiceResult } from '../services/common';
+import { supplyNeedOpen, supplyRoom } from './contractGen';
 import { shipTu } from '../ship/threat';
 import { changeSecurity, securityLevel } from '../world/security';
 import { addNotoriety } from './notoriety';
@@ -93,9 +94,10 @@ function fail(game: Game, c: Contract, text: string): void {
 }
 
 /**
- * Delivers Supply cargo at the destination: partial deliveries are paid at once
- * (the goods at the contract price, and the share of the flat fee); the goods
- * go into the market stock (Section 14.4).
+ * Delivers Supply cargo at the destination (owner, 2026-11-03): as much as the
+ * fleet has, up to what the destination still needs (its target stock). Each
+ * unit pays the goods price and the fee per tonne at once; the goods go into
+ * the market stock. When the need ends, the contract ends.
  */
 export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const { state, data } = game;
@@ -103,21 +105,38 @@ export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const c = state.contracts.active.find((x): x is SupplyContract => x.id === contractId && x.kind === 'supply');
   if (!c) return refused('There is no such Supply contract.');
   if (docked(actor) !== c.destId) return refused(`Deliver at ${loc(game, c.destId).name}.`);
-  // The last delivery may top up to all units; the contract is done at completeShare (perishable goods).
-  const units = Math.min(c.units - c.delivered, fleetUnits(actor, c.commodity));
-  if (units <= 1e-9) return refused(`You have no ${name(data, c.commodity)} to deliver.`);
+  const held = fleetUnits(actor, c.commodity);
+  if (held <= 1e-9) return refused(`You have no ${name(data, c.commodity)} to deliver.`);
+  const units = Math.min(held, supplyRoom(game, c));
+  if (units <= 1e-9) return refused(`${loc(game, c.destId).name} needs no more ${name(data, c.commodity)} now.`);
   removeCargo(actor, c.commodity, units);
   const dest = loc(game, c.destId);
   const entry = dest.market[c.commodity];
   if (entry) entry.stock += units;
-  // The goods at the contract price, and the flat fee in step with the units (owner, 2026-11-03).
-  const pay = units * c.price + (c.fee * units) / c.units;
+  const mass = data.commodityById.get(c.commodity)?.massPerUnit ?? 1;
+  const pay = units * (c.price + c.feePerTonne * mass);
   actor.credits += pay;
   c.delivered += units;
   state.career.stats.cargoTradedTonnes += units * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
   const text = `You deliver ${Math.round(units)} ${name(data, c.commodity)} to ${dest.name} for ${Math.round(pay)} cr.`;
-  if (c.delivered >= c.units * data.contracts.supply.completeShare - 1e-6) complete(game, c, `Supply contract done: ${text}`);
+  if (!supplyNeedOpen(game, c)) endSupply(game, c);
   return done(text);
+}
+
+/**
+ * A Supply contract ends when its need ends. It counts as done (standing +1)
+ * if the player delivered at least minDoneTonnes; else it ends with no
+ * penalty (owner, 2026-11-03: no deadline, no fail).
+ */
+function endSupply(game: Game, c: SupplyContract): void {
+  const { data, state } = game;
+  const tonnes = c.delivered * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
+  const where = loc(game, c.destId).name;
+  if (tonnes >= data.contracts.supply.minDoneTonnes - 1e-6) complete(game, c, `Supply contract done: ${where} has its ${name(data, c.commodity)} (you delivered ${Math.round(tonnes)} t).`);
+  else {
+    state.contracts.active = state.contracts.active.filter((x) => x.id !== c.id);
+    game.bus.message(`Supply contract ended: ${where} no longer needs ${name(data, c.commodity)}.`, 'warning');
+  }
 }
 
 /** Picks up Freight cargo at A: it leaves A's stock; the deposit is paid (Section 14.4). */
@@ -170,9 +189,11 @@ export function deliverFreight(game: Game, contractId: number): ServiceResult {
 export function contractDay(game: Game): void {
   const { state, data } = game;
   const actor = state.player;
+  // A Supply offer whose need ended leaves the board (open contracts, owner 2026-11-03).
+  for (const b of state.contracts.boards) b.offers = b.offers.filter((o) => o.kind !== 'supply' || supplyNeedOpen(game, o));
   for (const c of [...state.contracts.active]) {
-    if (c.kind === 'supply' && state.day > c.deadline) {
-      fail(game, c, `Supply contract failed: ${c.reason}. Standing ${data.contracts.standingFailed}.`);
+    if (c.kind === 'supply') {
+      if (!supplyNeedOpen(game, c)) endSupply(game, c);
     } else if (c.kind === 'freight') {
       const lost = c.pickedDay !== null && fleetUnits(actor, c.commodity) < c.units - 1e-6;
       if (state.day > c.deadline || lost) {

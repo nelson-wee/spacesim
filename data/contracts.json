@@ -20,7 +20,7 @@
   "standingCompleted": 1,
   "standingFailed": -2,
   "alertOffersPerBoard": 2,
-  "supply": { "feePerTonne": 20, "feePerTonneJump": 15, "riskPerLevel": 0.3, "urgencyPerSeverity": 1, "completeShare": 0.98, "deadlineBase": 8, "deadlinePerJump": 4 },
+  "supply": { "feePerTonne": 12, "feePerTonneJump": 9, "riskPerLevel": 0.3, "urgencyPerSeverity": 1, "alertFeeMult": 1.5, "minDoneTonnes": 10 },
   "freight": {
     "pickupJumps": 2,
     "destMinJumps": 1,

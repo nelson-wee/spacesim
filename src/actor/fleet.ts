@@ -104,3 +104,16 @@ export function newShipName(actor: Actor, hullName: string): string {
     if (!actor.fleet.some((s) => s.name === name)) return name;
   }
 }
+
+/** Renames a fleet ship (owner, 2026-11-03): 1-20 letters, digits, spaces, and - ' . ; unique in the fleet. */
+export function renameShip(actor: Actor, index: number, name: string): string | null {
+  const ship = actor.fleet[index];
+  if (!ship) return 'There is no such ship.';
+  const clean = name.trim().replace(/\s+/g, ' ');
+  if (clean.length === 0) return 'Type a name.';
+  if (clean.length > 20) return 'A name has at most 20 characters.';
+  if (!/^[A-Za-z0-9 '.-]+$/.test(clean)) return "Use letters, digits, spaces, and - ' . only.";
+  if (actor.fleet.some((s, i) => i !== index && s.name.toLowerCase() === clean.toLowerCase())) return 'Another ship in your fleet has this name.';
+  ship.name = clean;
+  return null;
+}

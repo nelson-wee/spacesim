@@ -12,7 +12,7 @@ import { priceView } from '../../src/actor/knowledge';
 import { type EncounterHandler, estimatePath, followPath, pathBetween } from '../../src/actor/paths';
 import { bestRoutes } from '../../src/actor/routes';
 import { acceptContract, deliverSupply } from '../../src/career/contracts';
-import { lowestLevelOnPath } from '../../src/career/contractGen';
+import { lowestLevelOnPath, supplyRoom } from '../../src/career/contractGen';
 import { econContext } from '../../src/econ/context';
 import type { Game } from '../../src/core/game';
 import type { Actor, Location, SupplyContract } from '../../src/core/types';
@@ -65,7 +65,7 @@ export function supplyValue(game: Game, actor: Actor, here: Location, c: SupplyC
     // Perishable goods: buy a little more; keep 10% of the credits for price moves; no more than the stock there.
     const extra = (data.commodityById.get(c.commodity)?.perishablePerDay ?? 0) > 0 ? 1.05 : 1;
     const stock = Math.floor(l.market[c.commodity]?.stock ?? 0);
-    const units = Math.min(Math.ceil((c.units - c.delivered) * extra), Math.floor(fleetFreeTonnes(actor, data) / mass), Math.floor((0.9 * actor.credits) / Math.max(1, view.buy)), stock);
+    const units = Math.min(Math.floor(supplyRoom(game, c) * extra), Math.floor(fleetFreeTonnes(actor, data) / mass), Math.floor((0.9 * actor.credits) / Math.max(1, view.buy)), stock);
     if (units <= 0) continue;
     const toSource = l.id === here.id ? null : pathBetween(state.world, data, here, l);
     const trip = pathBetween(state.world, data, l, dest);
@@ -77,7 +77,7 @@ export function supplyValue(game: Game, actor: Actor, here: Location, c: SupplyC
     const entry = { ...(l.market[c.commodity] as NonNullable<Location['market'][string]>) };
     const cost = quoteBuy(entry, basePrice(data, c.commodity), units, data).total;
     const fuel = (a.totalFuel + b.totalFuel) * fuelUnitPrice(data, here);
-    const perDay = (units * c.price + (c.fee * units) / c.units - cost - fuel - upkeepPerDay(actor, data) * days) / days;
+    const perDay = (units * (c.price + c.feePerTonne * mass) - cost - fuel - upkeepPerDay(actor, data) * days) / days;
     if (!best || perDay > best.perDay) best = { source: l, units, days, perDay };
   }
   return best;
@@ -96,7 +96,7 @@ function goTo(game: Game, actor: Actor, from: Location, to: Location, onEncounte
 
 /** The commodities that the bot keeps for its Supply contract (it must not sell them on the way). */
 export function contractGoods(game: Game): Set<string> {
-  return new Set(game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply').map((c) => c.commodity));
+  return new Set(game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply' && supplyRoom(game, c) > 0).map((c) => c.commodity));
 }
 
 /** One contract step at a docked location. Returns true if the bot acted (and the turn is over). */
@@ -132,11 +132,11 @@ export function contractTurn(
       if (open === null || open <= 0) continue;
       const ratio = v.perDay / open;
       log.ratios.push(ratio);
-      // Accept only an offer that the fleet can finish in one trip before its deadline.
+      // Accept an offer worth one trip (open quantity: at least 5 t).
       const ctx = econContext(state.world, game.data);
       const dest = loc(game, o.destId);
       const safe = minSecurity === 0 || (lowestLevelOnPath(ctx, here.sectorId, v.source.sectorId, game.data) >= minSecurity && lowestLevelOnPath(ctx, v.source.sectorId, dest.sectorId, game.data) >= minSecurity);
-      const fits = safe && v.units >= (o.units - o.delivered) * game.data.contracts.supply.completeShare && state.day + v.days + 2 <= o.deadline;
+      const fits = safe && v.units * (game.data.commodityById.get(o.commodity)?.massPerUnit ?? 1) >= 5;
       const wanted = policy === 'first' ? v.perDay > 0 : ratio > 1;
       const better = (x: SupplyContract, xv: SupplyValue) =>
         !pick || (policy === 'first' ? Number(x.alert) - Number(pick.c.alert) || xv.perDay - pick.v.perDay : xv.perDay - pick.v.perDay) > 0;
@@ -149,8 +149,8 @@ export function contractTurn(
     }
   }
   if (!c) return false;
-  const left = c.units * game.data.contracts.supply.completeShare - c.delivered;
-  if (fleetUnits(actor, c.commodity) >= left - 1e-6) return goTo(game, actor, here, loc(game, c.destId), onEncounter);
+  // Open quantity: carry what the fleet holds to the destination; at the destination with goods left, the need is full for now.
+  if (fleetUnits(actor, c.commodity) > 1e-6) return c.destId === here.id ? false : goTo(game, actor, here, loc(game, c.destId), onEncounter);
   const v = supplyValue(game, actor, here, c);
   if (!v) return false;
   if (v.source.id === here.id) {

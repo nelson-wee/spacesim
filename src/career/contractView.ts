@@ -8,6 +8,8 @@ import type { Contract, Location } from '../core/types';
 import { threatBand } from '../encounter/budget';
 import { econContext } from '../econ/context';
 import { securityLevel } from '../world/security';
+import { supplyRoom } from './contractGen';
+import { travelStats } from '../ship/stats';
 
 export interface OfferView {
   type: string;
@@ -15,9 +17,11 @@ export interface OfferView {
   jumps: number;
   lowestLevel: number;
   band: number;
+  /** Supply: the tonnes the destination needs now. */
   tonnes: number;
+  /** Supply: the pay for one hold (the need, as far as the fleet carries it). */
   reward: number;
-  /** Last day (game day number shown to the player), or null. */
+  /** Last day (game day number shown to the player), or null (Supply: until the need ends). */
   deadline: number | null;
   /** Estimated profit per day for the current fleet, or null if it cannot be estimated. */
   perDay: number | null;
@@ -71,8 +75,12 @@ export function offerView(game: Game, offer: Contract): OfferView {
   const mass = (c: string) => data.commodityById.get(c)?.massPerUnit ?? 1;
   if (offer.kind === 'supply') {
     const dest = locOf(game, offer.destId);
-    const left = offer.units - offer.delivered;
-    const reward = left * offer.price + (offer.fee * left) / offer.units;
+    const m = mass(offer.commodity);
+    // Open quantity (owner, 2026-11-03): the need now, as far as the fleet can carry it.
+    const need = supplyRoom(game, offer);
+    const hold = state.player.fleet.reduce((sum, s) => sum + travelStats(s, data).cargoCapacity, 0) / m;
+    const units = Math.min(need, hold);
+    const reward = units * (offer.price + offer.feePerTonne * m);
     // Buy at the cheapest known seller, then go to the destination.
     const source = bestKnownSource(game, offer.commodity);
     const buy = source?.buy ?? null;
@@ -81,10 +89,10 @@ export function offerView(game: Game, offer: Contract): OfferView {
       type: TYPE.supply,
       route: `${here.name} -> ${dest.name}`,
       ...routeInfo([here, dest]),
-      tonnes: left * mass(offer.commodity),
+      tonnes: need * m,
       reward,
-      deadline: offer.deadline,
-      perDay: buy === null || !Number.isFinite(days) ? null : (reward - left * buy) / days,
+      deadline: null,
+      perDay: buy === null || !Number.isFinite(days) ? null : (reward - units * buy) / days,
     };
   }
   if (offer.kind === 'freight') {

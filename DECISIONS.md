@@ -440,7 +440,7 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-03 [§14.3] Capital need: the daily need in the score is the most Machinery that the producer installs in a day (`installRatePerDay` x K_ref); the tonnes are (K_ref - K) x mass. Reason: the brief gives no daily need for capital.
 - 2026-11-03 [§14.3] Input starvation adds 1 - inputFactor to the deficit severity of each hard input that is below its target; without a deficit candidate, it makes one. Severity is capped at 1. Reason: "added to the deficit severity of that input"; an uncapped severity would raise the Supply price without limit.
 - 2026-11-03 [§14.3] Freight score = the score of the deficit at B. The quantity is the size class for the smaller of the surplus at A and the deficit at B. Reason: the brief gives no Freight score; Freight solves B's deficit.
-- 2026-11-03 [§14.3] "At least 1 Small offer if possible": if no offer is Small, the Supply offer with the lowest score becomes Small. Reason: a smaller quantity is always possible.
+- 2026-11-03 [§14.3] (Replaced the same day: Supply has no size, see "Supply contracts v3".) "At least 1 Small offer if possible": if no offer is Small, the Supply offer with the lowest score becomes Small. Reason: a smaller quantity is always possible.
 - 2026-11-03 [§14.3] Raw or Processed vs Advanced: Medicine (tier consumer) counts as Advanced.
 - 2026-11-03 [§14.6, Q-23] Named bounties use the Q-23 default: the template by tier-1 TU; reward and threat band with the TU of the tier-2 (or tier-3) group. Named-only templates (Frigate Group, Battle Group) follow their placement rules. Several named bounties can be in the same sector.
 - 2026-11-03 [§14.3] A Bounty Guild board has 2-4 named bounties plus Sweeps up to 3-6 offers in all (Sweeps only where there is a security problem).
@@ -459,12 +459,29 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 
 ### Supply contracts v2 (owner, 2026-11-03)
 
+(The fee per tonne, risk pay, and alert needs stay. Size, deadline, and `completeShare` are replaced by "Supply contracts v3".)
+
 - 2026-11-03 [owner, §14.4] Supply pays the goods at the destination sell price on the posting day (no premium), plus a flat fee that does not follow the value of the goods: tonnes x (`feePerTonne` 20 + `feePerTonneJump` 15 x jumps from the nearest maker to the destination) x riskMult x (1 + `urgencyPerSeverity` 1 x severity). Reason: owner: the fee pays for the inefficiency that stops the trade; profitable trades happen anyway (carriers, player).
 - 2026-11-03 [owner, §14.4] Risk pay: riskMult = 1 + 0.3 x (4 - lowest security level on the path from the nearest maker to the destination, ends included). The fee is paid in step with the units delivered.
 - 2026-11-03 [owner, §14.3] Chain alerts are contract needs: a producer alert with an input or Machinery cause, and a population alert, make a need for that commodity (severity: 1 - output ratio, or 1 - stock / target, at least 0.1). Each Merchants' Guild board posts up to `alertOffersPerBoard` (2) alert offers first. Reason: owner: the guild posts contracts that fix the chain problems it reports, so the world corrects itself.
 - 2026-11-03 [owner] Freight `valueShare` 0.05 -> 0: the Freight fee is flat too (tonnes x jumps x 4 x riskMult); the 25% deposit still covers the cargo value.
 - 2026-11-03 [§14.9] Check 3 with the flat fee: 1.14x (6 seeds; fees x2 gave 1.95x, x4 gave 3.32x).
-- 2026-11-03 [§14.4] A Supply contract is done when `completeShare` (98%) of its units are delivered. Reason: Food loses 1% a day in cargo, so a player who buys exactly the contract units delivers 19.8 of 20 and failed the contract (`sim-contracts` trace).
+- 2026-11-03 [§14.4] (Replaced by v3.) A Supply contract is done when `completeShare` (98%) of its units are delivered. Reason: Food loses 1% a day in cargo, so a player who buys exactly the contract units delivers 19.8 of 20 and failed the contract (`sim-contracts` trace).
+
+### Supply contracts v3: per tonne, open until the need ends (owner, 2026-11-03, Q-53)
+
+- 2026-11-03 [owner, §14.4] A Supply contract has no size and no deadline. Each delivery is paid at once: units x (goods price + `feePerTonne` x mass). The player delivers up to the need now (target stock - stock); the pay grows with the cargo capacity of the fleet. Reason: owner: the pay must scale with the player's holds.
+- 2026-11-03 [owner, §14.4] The contract stays open while the destination has the need (a deficit, a capital need, or a chain alert for the commodity). When the need ends (after a delivery or on a day), the contract ends: done (+1 standing) if the player delivered `minDoneTonnes` (10 t) or more, else it ends with no penalty. A Supply contract cannot fail. Reason: owner: contracts last until the alerts go away; a need that ends by itself is not the player's fault.
+- 2026-11-03 [owner, §14.4] Offers from a chain alert pay `alertFeeMult` (1.5) x the fee. Reason: owner, start point.
+- 2026-11-03 [§14.4] A Supply offer leaves the board on the day its need ends. Reason: else the board shows "needs 0 t now".
+- 2026-11-03 [§14.9] `feePerTonne` 20 -> 12 and `feePerTonneJump` 15 -> 9. Reason: with per-tonne pay, 20 and 15 gave check 3 = 3.13x; 14 and 10 gave 1.51x; 10 and 8 gave 0.95x; 12 and 9 give 1.06x (20 seeds).
+- 2026-11-03 [M7-TOOL-02] The trader bot buys its Light Freighter before it takes the next contract. Reason: open contracts do not end on a deadline, so the bot never stopped to buy the ship (2 of 20 seeds upgraded by day 150).
+- 2026-11-03 [§17.7] saveVersion 5 -> 6. Reason: the Supply contract fields changed.
+
+### Start location and ship names (owner, 2026-11-03)
+
+- 2026-11-03 [owner, §9.4] The start location always has a Merchants' Guild (the generator adds it if necessary). Measured before the change: 100 of 100 seeds already had one.
+- 2026-11-03 [owner, §17.1] N on the fleet screen renames the selected fleet ship (not a surrendered ship). A name has 1-20 characters (letters, digits, spaces, `-`, `'`, `.`), is unique in the fleet (case does not count), and has no extra spaces. Enter applies, Esc cancels. Reason: owner request; the limits keep the name in the ship tabs and the log.
 
 ### Market events (M7-EVT)
 
@@ -474,7 +491,7 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 
 - 2026-11-03 [§16] Score: hull and module value = the insured value (hull price + module prices); cargo at the sell price where the fleet is docked, else at base price. The end screen clears the save slot. Day 730 is `balance.career.days`.
 - 2026-11-03 [§16] Warden of [sector]: start level <= 1 and level >= 3 at the end. Pirate Hunter: 10+ named bounties.
-- 2026-11-03 [§17.7] Save: the full GameState as JSON in localStorage (`spacesim.save`), saveVersion 5; autosave on each dock (arrival and tow); Q twice on the sector map saves and quits; Continue on the title screen. Load refuses another saveVersion or a damaged save with a message.
+- 2026-11-03 [§17.7] Save: the full GameState as JSON in localStorage (`spacesim.save`), saveVersion 6 (6: per-tonne Supply contracts); autosave on each dock (arrival and tow); Q twice on the sector map saves and quits; Continue on the title screen. Load refuses another saveVersion or a damaged save with a message.
 - 2026-11-03 [§17.1] Keys: G contracts (sector map, location), E twice retire (location), K collect kill bounty (Bounty Guild), debug K spawns a contract. Reason: C, E, and other letters a-f select locations on the sector map.
 
 ### Balance (M7-BAL)

@@ -4,7 +4,7 @@ import type { Development, SlotSize, Tier } from '../data';
 import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 
 export interface Vec {
   x: number;
@@ -230,24 +230,27 @@ interface ContractBase {
   reason: string;
 }
 
+/**
+ * A Supply contract (owner, 2026-11-03): open quantity, paid per tonne
+ * delivered, up to what the destination still needs. It lasts until the need
+ * ends (the deficit or the chain alert goes away).
+ */
 export interface SupplyContract extends ContractBase {
   kind: 'supply';
   destId: number;
   commodity: string;
-  sizeId: string;
-  units: number;
+  /** Units delivered so far. */
   delivered: number;
   /** Goods price per unit: the destination sell price at posting, fixed. */
   price: number;
-  /** The flat fee for all units (paid in step with the deliveries). */
-  fee: number;
+  /** The flat fee per tonne delivered (by jumps, risk, urgency, and chain alert). */
+  feePerTonne: number;
   /** Jumps from the nearest maker of the commodity to the destination, and the risk multiplier on that path. */
   sourceJumps: number;
   riskMult: number;
   severity: number;
   /** True if a chain alert asked for it. */
   alert: boolean;
-  deadline: number;
 }
 
 export interface FreightContract extends ContractBase {

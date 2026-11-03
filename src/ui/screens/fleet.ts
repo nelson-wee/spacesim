@@ -5,8 +5,8 @@
 // After a battle (Q-50): the same screen also shows the surrendered ships;
 // the player takes a ship as a prize, takes its cargo, or leaves it, and can
 // scuttle a fleet ship. The screen closes only when each fleet ship passes the
-// required-module rules (Section 11.2).
-import { removeShip, setFlagship, upkeepPerDay } from '../../actor/fleet';
+// required-module rules (Section 11.2). N renames a fleet ship.
+import { removeShip, renameShip, setFlagship, upkeepPerDay } from '../../actor/fleet';
 import { fleetProblems, moveAllCargo, moveCargo, moveModule } from '../../actor/fleetManage';
 import { takePrize } from '../../career/prize';
 import type { CombatShip } from '../../combat/types';
@@ -22,7 +22,7 @@ import { sellShip, tradeInValue } from '../../services/shipyard';
 import { checkLoadout, type SlotKind } from '../../ship/rules';
 import { travelStats } from '../../ship/stats';
 import type { App, Screen } from '../app';
-import type { KeyInput } from '../input';
+import { type KeyInput, TextInput } from '../input';
 import { drawKeyHints, press } from '../widgets/clicks';
 import { drawStatusBar } from '../widgets/statusBar';
 import { fit } from '../widgets/text';
@@ -44,6 +44,8 @@ export class FleetScreen implements Screen {
   private notice = '';
   /** A scuttle waits for a second X. */
   private scuttleArmed = false;
+  /** The new name while the player types it (N). */
+  private nameInput: TextInput | null = null;
 
   constructor(
     private readonly app: App,
@@ -183,11 +185,15 @@ export class FleetScreen implements Screen {
     // Notice and keys.
     const fleetLine = `Fleet ${actor.fleet.length}/${data.balance.fleet.maxFleetSize} ships. Upkeep ${Math.round(upkeepPerDay(actor, data))} cr/day (each ship but the flagship).`;
     t.text(0, HEIGHT - 5, fit(fleetLine, 99), ui.dim);
-    t.text(0, HEIGHT - 4, fit(this.notice, 99), ui.warning);
+    if (this.nameInput) {
+      t.text(0, HEIGHT - 4, 'New name: ', ui.dim);
+      t.text(10, HEIGHT - 4, `${this.nameInput.value}_`.padEnd(this.nameInput.maxLength + 1), ui.bright, ui.selectBg);
+      t.text(33, HEIGHT - 4, 'Enter to apply, Esc to cancel', ui.dim);
+    } else t.text(0, HEIGHT - 4, fit(this.notice, 99), ui.warning);
     const hints: [string, string, KeyInput][] = [['Left/Right', 'Ship', press('ArrowRight')], ['Up/Down', 'Item', press('ArrowDown')]];
     if (this.canManage()) hints.push(['1-8', 'Move item to ship', press('1')]);
     if (this.after && boarded) hints.push(['P', 'Take as prize', press('p')], ['C', 'Take all cargo', press('c')]);
-    if (!boarded) hints.push(['F', 'Flagship', press('f')]);
+    if (!boarded) hints.push(['F', 'Flagship', press('f')], ['N', 'Rename', press('n')]);
     if (!this.after && this.docked() && !boarded) hints.push(['S', 'Sell', press('s')]);
     if (this.after && !boarded) hints.push(['X', 'Scuttle', press('x')]);
     hints.push(['Esc', this.after ? 'Done' : 'Back', press('Escape')]);
@@ -216,6 +222,20 @@ export class FleetScreen implements Screen {
     const say = (text: string) => {
       this.notice = text;
     };
+    if (this.nameInput) {
+      const r = this.nameInput.handle(k);
+      if (r === 'cancel') this.nameInput = null;
+      else if (r === 'enter') {
+        const old = ship.name;
+        const err = renameShip(actor, this.ship, this.nameInput.value);
+        if (err) say(err);
+        else {
+          this.nameInput = null;
+          say(old === ship.name ? `The name stays ${ship.name}.` : `${old} is now ${ship.name}.`);
+        }
+      }
+      return true;
+    }
     const n = Number(k.key);
     if (k.key.length === 1 && n >= 1 && n <= 8) {
       const target = all[n - 1];
@@ -308,6 +328,14 @@ export class FleetScreen implements Screen {
         say(`${ship.name} is scuttled.`);
         return true;
       }
+      case 'n':
+        if (boarded) {
+          say('Take the ship as a prize first.');
+          return true;
+        }
+        this.nameInput = new TextInput(ship.name);
+        this.notice = '';
+        return true;
       case 'Escape':
       case 'i':
         this.close();
@@ -342,6 +370,7 @@ export class FleetScreen implements Screen {
       '                  as far as it fits (docked, or after a battle)',
       'F                 Make the selected ship the flagship (docked, or',
       '                  after a battle)',
+      'N                 Rename the selected fleet ship (type, then Enter)',
       'S                 Sell the selected ship (at a Shipyard; not the',
       '                  flagship; no cargo)',
       'P                 Take a surrendered ship as a prize (after a battle)',
