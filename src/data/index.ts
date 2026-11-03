@@ -392,9 +392,11 @@ export function buildGameData(raw: RawData): GameData {
 
   parse('contracts.json', S.plannedSchema, raw.contracts);
 
-  const balance = parse('balance.json', S.balanceSchema, raw.balance);
-  // volumeScale multiplies all daily amounts (DECISIONS.md, M2). GameData holds the scaled values.
-  const scale = balance.economy.volumeScale;
+  const parsedBalance = parse('balance.json', S.balanceSchema, raw.balance);
+  // volumeScale multiplies all daily amounts (DECISIONS.md, M2), carrier capacity too (Q-51). GameData holds the scaled values.
+  const scale = parsedBalance.economy.volumeScale;
+  const carriers = { ...parsedBalance.economy.carriers, sectorCapacityTonnes: parsedBalance.economy.carriers.sectorCapacityTonnes * scale };
+  const balance = { ...parsedBalance, economy: { ...parsedBalance.economy, carriers } };
   recipes.recipes = recipes.recipes.map((r) => ({ ...r, batchesPerSize: r.batchesPerSize * scale }));
   const rawPopulation = parse('population.json', S.populationSchema, raw.population);
   const population = {

@@ -86,6 +86,9 @@ describe('fleet rules (M6-FLEET)', () => {
     expect(p.flagshipIndex).toBe(2);
     p.position = { kind: 'space', sectorId: 0, x: 1, y: 1 };
     expect(setFlagship(game, p, 0)).toMatch(/location/);
+    // After a battle (owner, 2026-11-03), also in space.
+    expect(setFlagship(game, p, 1, true)).toBeNull();
+    expect(p.flagshipIndex).toBe(1);
     p.flagshipIndex = 1;
     removeShip(game, p, 1);
     expect(p.fleet[p.flagshipIndex]!.name).toBe('S2');

@@ -213,7 +213,10 @@ export const balanceSchema = z.object({
       capitalCostPerDay: nonNeg,
       /** Share of the open surplus or deficit that carriers move on one day. */
       dailyShare: prob,
-      /** Tonnes per day that carriers can move through one sector at security level 4. */
+      /**
+       * Tonnes per day that carriers can move through one sector at security level 4, for each
+       * unit of `volumeScale` (the data load multiplies it, so that it follows the market volumes).
+       */
       sectorCapacityTonnes: nonNeg,
       /** Capacity multiplier: base + perLevel x security level (Lawless 0.2, Secure 1.0). */
       securityBase: nonNeg,

@@ -67,7 +67,8 @@ function fleetRun(): void {
   const gain4 = two > 0 ? four / two - 1 : NaN;
   console.log(`
 Median profit per day after upkeep: 1 ship ${Math.round(one)}, 2 ships ${Math.round(two)}, 4 ships ${Math.round(four)}.`);
-  console.log(`${two > one ? 'PASS' : 'FAIL'}  M6 exit check 5: a 2-ship fleet earns more per day than 1 ship after upkeep (median; ${better}/${seeds} seeds).`);
+  // Q-51 (owner, 2026-11-03): a report, not a check. Fleets are for roles (guard, backup, prizes).
+  console.log(`NOTE  M6 exit check 5 (report, Q-51): 2 ships ${two > one ? 'earn more' : 'do not earn more'} per day than 1 ship after upkeep (median; ${better}/${seeds} seeds better).`);
   console.log(`NOTE  Second freighter: ${(gain2 * 100).toFixed(0)}% more (monitor 30%-60%). Ships 3 and 4: ${(gain4 * 100).toFixed(0)}% more than 2 ships, about ${((gain4 / 2) * 100).toFixed(0)}% for each ship (monitor for the fourth ship: 10%-25%).`);
   console.log(`Run time ${((Date.now() - started) / 1000).toFixed(1)} s.`);
 }
@@ -124,13 +125,12 @@ const median = sorted.length ? (sorted[Math.floor((sorted.length - 1) / 2)] as n
 const first = windowRates.map((r) => r[0] ?? 0).sort((a, b) => a - b);
 console.log(`\nUpgrade on ${upgradeDays.length}/${seeds} seeds by day ${maxDays}.`);
 console.log(`Shuttle profit per day, first ${WINDOW} days: median ${Math.round(first[Math.floor(first.length / 2)] ?? 0)} cr (monitor: 100-250 on a good raw-goods route, Section 22).`);
-// Exit check 1 (Q-36, owner 2026-10-28): median upgrade day in 60-120, and 15 of 20 seeds upgrade by day 150.
+// Exit check 1 (Q-36, owner 2026-10-28): 15 of 20 seeds upgrade by day 150. The median day 60-120 is a
+// report (owner, 2026-11-03: an earlier upgrade is good).
 const need = Math.ceil(seeds * 0.75);
 const byDeadline = upgradeDays.filter((d) => d <= DEADLINE).length;
-const medianOk = median >= 60 && median <= 120;
-console.log(
-  `${medianOk && byDeadline >= need ? 'PASS' : 'FAIL'}  Light Freighter: median day ${Number.isNaN(median) ? '-' : median.toFixed(0)} (need 60-120); bought by day ${DEADLINE} on ${byDeadline}/${seeds} seeds (need ${need}).`,
-);
+console.log(`${byDeadline >= need ? 'PASS' : 'FAIL'}  Light Freighter bought by day ${DEADLINE} on ${byDeadline}/${seeds} seeds (need ${need}).`);
+console.log(`NOTE  Light Freighter median day ${Number.isNaN(median) ? '-' : median.toFixed(0)} (report; target 60-120).`);
 console.log(`NOTE  Bought between day 60 and day 120 on ${inWindow}/${seeds} seeds (report).`);
 if (withEncounters) {
   console.log(

@@ -425,6 +425,14 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-29 [M6-FCMB-05] Game over shows a simple screen (day and credits), then the title screen.
 - 2026-10-29 [§4.3] Debug panel B: the after-battle screen with a surrendered Light Freighter (cargo), for tests in the browser.
 
+## Market size and fleet value (owner, 2026-11-03, Q-51)
+
+- 2026-11-03 [Q-51] M6 exit check 5 (2 ships earn more than 1) is a report in `sim-trader --fleet`, not an exit check. Reason: owner decision; fleets are for roles (guard, backup, prizes).
+- 2026-11-03 [Q-51] `economy.volumeScale` 8 → 16 (all markets twice as large), as the start point for later calibration. Reason: owner decision; one freighter took most of the trade near it.
+- 2026-11-03 [Q-51] Carrier capacity follows the volume: `carriers.sectorCapacityTonnes` is now per unit of `volumeScale` (375 x 16 = 6,000 t per day). Reason: with a fixed 3,000 t, Medicine stayed at the price clamp and two Biolabs stopped on seed 11 (M2 checks 2 and 4 failed); with 6,000 t all M2 checks pass.
+- 2026-11-03 [Q-36] M3 exit check 1: the median upgrade day 60-120 is a report. The check is "15 of 20 seeds buy the Light Freighter by day 150". Ship prices do not change. Reason: owner decision; a faster progression is good.
+- 2026-11-03 [§11.9] The flagship can also change on the after-battle screen (F), in space. Reason: owner request; after a scuttle or a prize, the player can pick the ship that fights.
+
 ## Cuts
 
 None.

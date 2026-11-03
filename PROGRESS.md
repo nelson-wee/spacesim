@@ -9,7 +9,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
 | M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
-| M6 Fleet (feature freeze) | 6 | Built. Fleet trade value waits on owner review (Q-51). | 5 of 6 checks pass; check 5 (2 ships earn more than 1) fails; check 6 (freeze) is in force. |
+| M6 Fleet (feature freeze) | 6 | Done (owner decision of 2026-11-03, Q-51). Markets are twice as large (`volumeScale` 16). | 6 of 6 pass; check 5 (fleet trade value) is a report; the feature freeze is in force. |
 | M7 Contracts, career, save | 7 | Not started | — |
 | M8 Polish and release | 8 | Not started | — |
 
@@ -445,7 +445,7 @@ Why the TU calibration is out of band: TU is one number, but the combat model no
 | 2 | Flagship loss gives a new flagship. | PASS (test; browser). |
 | 3 | A prize ship joins the fleet. | PASS (test; browser, debug B). |
 | 4 | Upkeep is paid. | PASS (test). |
-| 5 | `sim-trader.ts` with a 2-ship fleet earns more per day than with 1 ship, after upkeep. | **FAIL**: median 271 vs 311 cr per day (-13%), 0 of 6 seeds. Q-51. |
+| 5 | `sim-trader.ts` with a 2-ship fleet earns more per day than with 1 ship, after upkeep. | Report (Q-51): with `volumeScale` 16, median 618 vs 706 cr per day (-12%), 2 of 6 seeds better. |
 | 6 | Feature freeze. | In force: after M6, only M7 and M8 items, balance, and bug fixes. |
 | 7 | `PROGRESS.md` is updated. | PASS. |
 
@@ -470,9 +470,18 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 - `sim-combat` (100 battles per pairing, with forced surrender): all pairing checks pass; Shuttle vs Raider 51%.
 - Browser: Shipyard B, fleet screen (module move, flagship, sell), after-battle screen (cargo, prize, close blocked by an unfit ship), flagship loss, game over; no page errors.
 
+### Recalibration after Q-51 (2026-11-03)
+
+- `volumeScale` 16; carrier capacity follows the volume (6,000 t per sector a day).
+- `sim-economy` (1,000 days, 20 seeds): all M2 checks pass (20/20). `gen-report` (100 seeds): 98 pass with 2 tries or fewer.
+- `sim-trader` (20 seeds): Light Freighter by day 150 on 20/20 (PASS); median day 56 (report; target 60-120); Shuttle profit per day in the first 30 days 329 cr (Section 22 monitor: 100-250).
+- `sim-trader --fleet` (6 seeds): profit per day after upkeep, median 1 ship 706, 2 ships 618, 4 ships 465 (per seed: 1 ship 430-1,230; 2 ships 392-1,160).
+- The flagship can change on the fleet screen when docked and on the after-battle screen (F).
+
 ### Known issues
 
-- Q-51 (fleet trade value) waits on the owner.
+- With the larger markets, the Shuttle earns more than the Section 22 monitor (329 vs 100-250 cr per day). Look at it in the M7 balance pass.
+- The `sim-trader --encounters` numbers in the M5 section are from `volumeScale` 8.
 - A bought hull has no modules and no fuel. With the flagship set to it, the fleet cannot leave until the player fits it (by design: M6-FLEET-06).
 
 <!--

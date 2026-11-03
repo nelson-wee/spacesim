@@ -206,7 +206,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 
 | ID | Problem | Proposed default | Milestone |
 |---|---|---|---|
-| Q-36 | **First hull upgrade (M3 exit check 1).** **Decided (owner, 2026-10-28): proposed default.** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
+| Q-36 | **First hull upgrade (M3 exit check 1).** **Decided (owner, 2026-10-28): proposed default.** The bot buys the Light Freighter on 18 of 20 seeds by day 130, median day 82, but only 11 of 20 seeds are in day 60–120 (need 15). The worlds differ: in the first 30 days, a good start gives 600–750 cr per day and a poor start 20–100 cr per day. No carrier margin moves 15 seeds into a window of 2× (margin 0.10: 13 of 20; 0.12: 11; 0.15: 11; 0.25: 3, median day 36). **Changed (owner, 2026-11-03):** the median day 60-120 is a report; the check is 15 of 20 seeds by day 150. | Change the check to "median upgrade day in 60–120, and 15 of 20 seeds upgrade by day 150". Keep the 60–120 count as a report. Option: choose the start location by its nearby trade (a second step after M3). | M3 |
 | Q-37 | **Light Freighter slots.** **Decided (owner, 2026-10-28): keep S2 M2 L1.** The brief gives internal S3 M2 L0; the build uses S2 M2 L1, so the trader loadout can fit a Cargo Rack L (`DECISIONS.md`, M3). | Keep S2 M2 L1. | M3 |
 
 ### 8.6 Combat checks (M4 results, 2026-10-28)
@@ -226,7 +226,7 @@ The M2 build does not pass all §9.13 checks. Some checks pull against each othe
 | Q-48 | **Tutorial.** A minimal tutorial: 10 tips (screen introduction, a first-trade plan from the best route, first hail, first battle, first defeat), a goal line for the first trade, and a Tutorial ON/OFF setting on the title screen. It does not change the simulation. **Decided and built (owner, 2026-10-29):** built before M6; no safe start; ON by default (`DECISIONS.md`). | Done. Text pass in M8 for the M6 and M7 screens. | — |
 | Q-49 | **Disabled enemy ships (M6).** A 20% chance that an NPC ship at 0 hull is disabled, not destroyed, for capture. **Not used (owner, 2026-10-29):** the forced surrender of Q-50 replaces it. | Closed. | — |
 | Q-50 | **Forced surrender and fleet management (M6).** Owner requests (2026-10-29): an enemy ship that cannot flee (engine value 0) and has 20% hull or less surrenders and stops all hostile actions; prize ships come from the after-battle screen; the player can move cargo and modules between ships and scuttle a ship to make room for a prize. The same fleet management is available docked at any location. Added as M6-FCMB-08, M6-FCMB-09, M6-FLEET-10, M6-UI-05, and M6-UI-06. | `combat.forcedSurrenderHull` 0.2; all NPC factions, patrols too (§13.8 gives patrols 0% for the roll; the forced rule is not a roll). Module moves go only between ships that the player owns, prizes included. This changes §13.7 "No module salvage in the MVP": a prize's modules can move to other fleet ships. No time and no fee. | M6 |
-| Q-51 | **Fleet trade value (M6 exit check 5).** `sim-trader --fleet` (6 seeds, 150 days, 20,000 cr): profit per day after upkeep is 311 cr with 1 Light Freighter, 271 with 2 (-13%, 0 of 6 seeds better), -182 with 4. With no upkeep, 2 ships are still not better: the markets near the trader are the limit (most routes stop at the margin limit, not at the cargo space). With `volumeScale` 16 (2x), 2 ships are about equal to 1 (-1%). | (a) Make check 5 a report: fleets are for roles (an armed flagship that guards a freighter, a backup ship, prize ships, §11.9 design intent), not for trade volume; keep `upkeepPerShip` 20. (b) Larger markets (`volumeScale` 16-24): run the M2 and M3 checks again and tune (about 0.5-1 day; Shuttle profits also rise, so M3 check 1 moves earlier). (c) Lower upkeep: does not fix check 5 (no gain at 0 upkeep). Proposed: (a), and look at fleet value again in the M7 balance pass. | M6 |
+| Q-51 | **Fleet trade value (M6 exit check 5).** With markets of `volumeScale` 8, 2 Light Freighters earned 13% less than 1. **Decided (owner, 2026-11-03):** options (a) and (b): check 5 is a report; `volumeScale` 16 is the start point for calibration (carrier capacity follows it). Result: 1 ship 706, 2 ships 618 (-12%), 4 ships 465 cr per day (6 seeds). | Done (`DECISIONS.md`). Look at fleet value again in the M7 balance pass. | — |
 
 ## 9. Risks
 
@@ -259,7 +259,7 @@ These items need the repository owner. Claude Code cannot do them.
 11. **M5 checks:** done (Q-46 decided, 2026-10-29).
 12. **Auto-battle:** item 1 done (Q-47, 2026-10-29). Select the later items when you want them.
 13. **Boarding and fleet management:** done (Q-50, built in M6).
-14. **M6 checks:** answer Q-51 (fleet trade value, exit check 5).
+14. **M6 checks:** done (Q-51 decided, 2026-11-03).
 
 ## 11. After the MVP (owner notes)
 
