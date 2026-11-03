@@ -297,7 +297,7 @@ class BoardView {
       const dl = o.kind === 'supply' ? '' : v.deadline === null ? `; ${game.data.contracts.sweep.deadlineDays} days from acceptance` : `; by day ${displayDay(v.deadline)}`;
       t.text(2, y + 1, fit(`${what}; ${v.route}, ${v.jumps} jumps, lowest security ${v.lowestLevel}, threat band ${v.band}`, 97), ui.text, bg);
       const est = v.perDay === null ? '' : `, about ${Math.round(v.perDay)} cr/day`;
-      const fee = o.kind === 'supply' ? ` per hold (goods ${Math.round(o.price)} cr each + fee ${Math.round(o.feePerTonne)} cr/t${o.alert ? ', chain alert x1.5' : ''}); until the need ends` : '';
+      const fee = o.kind === 'supply' ? ` per hold (goods ${Math.round(o.price)} cr each + fee ${Math.round(o.feePerTonne)} cr/t${o.alert ? ', chain alert x1.5' : ''}); until the need ends, at most ${game.data.contracts.supply.maxDays} days` : '';
       t.text(2, y + 2, fit(`Reward ${formatCredits(v.reward)}${fee}${est}${dl}${problem ? ` - ${problem}` : ''}`, 97), problem ? ui.warning : ui.good, bg);
       y += 3;
     });
@@ -352,7 +352,8 @@ export class GuildTab implements LocationTab {
       'Up/Down  Select an offer;  Enter  Accept it;  G  Your contracts',
       '',
       'Supply: deliver goods to a location that needs them, as much as it',
-      'needs, until the need ends. Each tonne pays the goods at the market',
+      'needs, until the need ends (at most the days on the offer; the guild',
+      'can then post it again at new prices). Each tonne pays the goods at the market',
       'price on the posting day and a fee by jumps, urgency, and risk (x1.5',
       'for a chain alert). Freight: carry the guild\'s cargo from a surplus',
       'to a deficit',

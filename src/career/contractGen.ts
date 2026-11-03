@@ -227,6 +227,7 @@ function supplyOffer(game: Game, id: number, board: Location, need: Need): Suppl
     riskMult,
     severity: need.severity,
     alert: need.alert,
+    acceptedDay: null,
   };
 }
 

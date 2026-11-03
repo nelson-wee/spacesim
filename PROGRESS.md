@@ -562,9 +562,26 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 
 - Contracts now give more early (day 15-60), as the owner expected, and they stay ahead to day 365. The cause: a deficit that does not end (example: Water at an Agri World with 102% output) keeps one contract open for the full run, and the player's deliveries take the place of the carriers. On seeds 2 and 8, one contract gives about 600,000 cr in 150 days. Q-53 lists options to limit it.
 
+### Q-53 option (c), fleet hold, and outfitter fix (owner, 2026-11-03)
+
+- A Supply contract ends when the need ends or 28 days after acceptance. The board can post the need again at new prices.
+- Check 3: PASS, 1.41x (20 seeds, quartiles 0.73-3.15). Light Freighter by day 150 on 20/20 seeds (median day 35). Open-market only: unchanged (20/20, median day 54).
+- `sim-contracts`, career score, median:
+
+| Policy | Day 30 | Day 60 | Day 150 (10 seeds) | Day 365 (6 seeds) |
+|---|---|---|---|---|
+| trade | 23,828 | 28,117 | 63,724 | 226,569 |
+| best | 28,800 | 52,339 | 148,447 | 319,165 |
+| first | 26,743 | 31,172 | 106,743 | 282,404 |
+
+- The gap is smaller than with open contracts (best at day 365: +41%, before +99%), but contracts still lead. Seed 2 (the Water deficit) gives 362,000 cr at day 150 (before 575,000): the board posts the same need again.
+- Fleet screen: U uninstalls a module into the fleet hold; Enter installs it. The screen closes only with an empty hold and loadouts that pass; else R reverts all module changes, D discards the held modules (warning), S sells them at an Outfitter.
+- Bugs fixed: a module moves into the smallest empty slot that takes it (a small module took the only large slot); the Outfitter shows `[` and `]` to select another ship (also clickable).
+- Trader bot: it sells cargo that has no plan, at a loss if necessary (it waited forever with goods from an ended contract).
+
 ### Known issues
 
-- Q-53: an open Supply contract at a deficit that does not end is a money pump (see above).
+- Q-53: Supply contracts still give much more than open-market trade (see above). Look again in the M8 balance pass.
 - Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
 - Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
 - The tutorial text needs a pass for the M6 and M7 screens (M8).

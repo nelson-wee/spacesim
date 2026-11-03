@@ -122,7 +122,8 @@ function sellCargo(game: Game, actor: Actor, loc: Location, bot: BotState): void
     if (!entry) continue;
     const atPlan = bot.plan !== null && bot.plan.toId === loc.id && bot.plan.commodity === c;
     const price = sellPrice(entry, game.data.commodityById.get(c)?.basePrice ?? 0, game.data);
-    if (atPlan || price > fleetUnitCost(actor, c)) {
+    // Cargo with no plan (for example, goods left after a Supply contract ended) is sold, at a loss if necessary.
+    if (atPlan || price > fleetUnitCost(actor, c) || bot.plan === null) {
       const cost = fleetUnits(actor, c) * fleetUnitCost(actor, c);
       const r = sell(game, actor, loc, c, fleetUnits(actor, c));
       if (r.ok) bot.events.push({ day: game.state.day, text: `  sold ${r.units.toFixed(1)} ${c} at ${loc.name}: ${Math.round(r.total)} (paid ${Math.round(cost)}, ${Math.round(r.total - cost)})` });

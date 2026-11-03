@@ -203,7 +203,7 @@ function withOffer<T extends import('../src/core/types').Contract>(offer: T, at:
 }
 
 function supply(destId: number, commodity = 'water'): SupplyContract {
-  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, delivered: 0, price: 50, feePerTonne: 0, sourceJumps: 1, riskMult: 1, severity: 0.5, alert: false };
+  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, delivered: 0, price: 50, feePerTonne: 0, sourceJumps: 1, riskMult: 1, severity: 0.5, alert: false, acceptedDay: null };
 }
 
 describe('contract play (Sections 14.4-14.7)', () => {
@@ -433,18 +433,27 @@ describe('Supply contracts v2 (owner, 2026-11-03)', () => {
     expect(risky.feePerTonne).toBeGreaterThan(a.feePerTonne);
   });
 
-  it('a contract lasts until the need ends, also over many days', () => {
+  it('a contract lasts while the need exists, at most maxDays after acceptance (Q-53 (c))', () => {
     const dest = template.world.locations.find((l) => l.market.water && l.market.water.target > 100)!;
     const g = withOffer(supply(dest.id), dest.id);
     const entry = g.state.world.locations[dest.id]!.market.water!;
     entry.stock = 0;
     acceptContract(g, dest.id, 900);
-    for (let d = 0; d < 40; d++) {
+    const c0 = g.state.contracts.active[0] as SupplyContract;
+    expect(c0.acceptedDay).toBe(g.state.day);
+    for (let d = 1; d < c.supply.maxDays; d++) {
       g.state.day++;
       entry.stock = 0;
       contractDay(g);
     }
     expect(g.state.contracts.active.length).toBe(1);
+    // 10 t or more delivered: the time limit counts as done.
+    c0.delivered = 100;
+    g.state.day++;
+    contractDay(g);
+    expect(g.state.contracts.active.length).toBe(0);
+    expect(g.state.contracts.completed).toBe(1);
+    expect(g.state.contracts.failed).toBe(0);
   });
 
   it('a Supply offer leaves the board when its need ends', () => {

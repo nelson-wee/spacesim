@@ -478,10 +478,21 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-03 [M7-TOOL-02] The trader bot buys its Light Freighter before it takes the next contract. Reason: open contracts do not end on a deadline, so the bot never stopped to buy the ship (2 of 20 seeds upgraded by day 150).
 - 2026-11-03 [§17.7] saveVersion 5 -> 6. Reason: the Supply contract fields changed.
 
+- 2026-11-03 [owner, Q-53] Option (c): a Supply contract also ends `maxDays` (28) days after acceptance; the board can post the need again at the new prices. Done (+1 standing) at 10 t or more, else no penalty. Reason: owner. Option (d) is not used: owner: the player can buy at a nearer Trade Hub and keep the fee for the full distance from the maker; this rewards knowledge of the game systems.
+- 2026-11-03 [M7-TOOL-02] The trader bot sells cargo that has no plan (for example, goods left when a Supply contract ends), at a loss if necessary. Reason: with the 28-day limit, the bot kept 80 t of Water after a contract ended and waited for a profit that did not come (5 of 10 seeds stopped).
+
 ### Start location and ship names (owner, 2026-11-03)
 
 - 2026-11-03 [owner, §9.4] The start location always has a Merchants' Guild (the generator adds it if necessary). Measured before the change: 100 of 100 seeds already had one.
 - 2026-11-03 [owner, §17.1] N on the fleet screen renames the selected fleet ship (not a surrendered ship). A name has 1-20 characters (letters, digits, spaces, `-`, `'`, `.`), is unique in the fleet (case does not count), and has no extra spaces. Enter applies, Esc cancels. Reason: owner request; the limits keep the name in the ship tabs and the log.
+
+### Fleet hold and outfitter ship selection (owner, 2026-11-03)
+
+- 2026-11-03 [owner, M6-FLEET-10, M6-UI-06] The fleet screen has a fleet hold: U uninstalls the selected module into it; Enter installs the marked hold module in the selected empty slot, or (with the hold list selected, H) in the smallest empty slot of the selected ship that takes it. The hold exists only while the screen is open. Armor plating keeps its armor HP in the hold; fuel above the new tank capacity is lost at uninstall.
+- 2026-11-03 [owner] The screen closes when the hold is empty and the loadouts pass the rules. Docked, a ship that did not pass when the screen opened (for example, a new hull with no modules) may stay as it is; after a battle, all ships must pass (as before). Else a prompt: R reverts the modules, fuel, and armor HP of each fleet ship to the state when the screen opened (a prize: when taken); D discards the held modules with a warning in the log (only when the loadouts pass); at an Outfitter, S sells them at 60% (`moduleSellShare`). Reason: owner; selling is the same as the Outfitter's X, and better for the player than a discard at an Outfitter.
+- 2026-11-03 [bug] A module moves into the smallest empty slot that takes it, not the first. Reason: owner bug report: a small module took the only large slot, so a large module had no place although slots were free. The 1-8 move stays as a shortcut (uninstall and install in one step).
+- 2026-11-03 [bug] The Outfitter shows the ship selection: `[` and `]` (clickable at the top of the tab, and in the key hints) select another fleet ship; the list wraps. Reason: owner bug report: the keys existed, but the tab showed them only as dim text.
+- 2026-11-03 [§17.1] The fleet screen lists each slot with its size (also empty slots that the ship data does not list).
 
 ### Market events (M7-EVT)
 

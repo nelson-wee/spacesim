@@ -68,6 +68,7 @@ export function acceptContract(game: Game, boardLocationId: number, offerId: num
   if (why) return refused(why);
   board.offers = board.offers.filter((o) => o.id !== offerId);
   if (offer.kind === 'sweep') offer.deadline = state.day + data.contracts.sweep.deadlineDays;
+  if (offer.kind === 'supply') offer.acceptedDay = state.day;
   state.contracts.active.push(offer);
   return done(`You accept the contract: ${offer.reason}.`);
 }
@@ -128,14 +129,20 @@ export function deliverSupply(game: Game, contractId: number): ServiceResult {
  * if the player delivered at least minDoneTonnes; else it ends with no
  * penalty (owner, 2026-11-03: no deadline, no fail).
  */
-function endSupply(game: Game, c: SupplyContract): void {
+/** The day a Supply contract ends if the need is still open (Q-53 (c)). */
+export function supplyEndDay(game: Game, c: SupplyContract): number {
+  return (c.acceptedDay ?? c.postedDay) + game.data.contracts.supply.maxDays;
+}
+
+function endSupply(game: Game, c: SupplyContract, timeUp = false): void {
   const { data, state } = game;
   const tonnes = c.delivered * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
   const where = loc(game, c.destId).name;
-  if (tonnes >= data.contracts.supply.minDoneTonnes - 1e-6) complete(game, c, `Supply contract done: ${where} has its ${name(data, c.commodity)} (you delivered ${Math.round(tonnes)} t).`);
+  const why = timeUp ? `its ${data.contracts.supply.maxDays} days are over; the guild can post a new offer` : `${where} has its ${name(data, c.commodity)}`;
+  if (tonnes >= data.contracts.supply.minDoneTonnes - 1e-6) complete(game, c, `Supply contract done: ${why} (you delivered ${Math.round(tonnes)} t).`);
   else {
     state.contracts.active = state.contracts.active.filter((x) => x.id !== c.id);
-    game.bus.message(`Supply contract ended: ${where} no longer needs ${name(data, c.commodity)}.`, 'warning');
+    game.bus.message(timeUp ? `Supply contract ended: ${why}.` : `Supply contract ended: ${where} no longer needs ${name(data, c.commodity)}.`, 'warning');
   }
 }
 
@@ -193,7 +200,9 @@ export function contractDay(game: Game): void {
   for (const b of state.contracts.boards) b.offers = b.offers.filter((o) => o.kind !== 'supply' || supplyNeedOpen(game, o));
   for (const c of [...state.contracts.active]) {
     if (c.kind === 'supply') {
+      // Q-53 (c): at most maxDays after acceptance; the board can post the need again at new prices.
       if (!supplyNeedOpen(game, c)) endSupply(game, c);
+      else if (state.day >= supplyEndDay(game, c)) endSupply(game, c, true);
     } else if (c.kind === 'freight') {
       const lost = c.pickedDay !== null && fleetUnits(actor, c.commodity) < c.units - 1e-6;
       if (state.day > c.deadline || lost) {

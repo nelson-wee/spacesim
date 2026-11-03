@@ -56,17 +56,74 @@ function slotList(ship: Ship, kind: SlotKind): (InstalledModule | null)[] {
   return kind === 'hardpoint' ? ship.hardpoints : ship.internal;
 }
 
-/** The first empty slot of a ship that takes this module, or null. */
+const SIZE_RANK = { S: 1, M: 2, L: 3 } as const;
+
+/**
+ * The smallest empty slot of a ship that takes this module, or null. The
+ * smallest slot keeps the larger slots free for larger modules (owner bug
+ * report, 2026-11-03: a small module took the only large slot).
+ */
 export function freeSlotFor(data: GameData, ship: Ship, kind: SlotKind, m: InstalledModule): number | null {
-  const n = slotSizesOf(ship, kind, data).length;
-  for (let i = 0; i < n; i++) if (!fitProblem(ship, kind, i, m.moduleId, m.size, data)) return i;
-  return null;
+  const sizes = slotSizesOf(ship, kind, data);
+  let best: number | null = null;
+  for (let i = 0; i < sizes.length; i++) {
+    if (fitProblem(ship, kind, i, m.moduleId, m.size, data)) continue;
+    if (best === null || SIZE_RANK[sizes[i] as keyof typeof SIZE_RANK] < SIZE_RANK[sizes[best] as keyof typeof SIZE_RANK]) best = i;
+  }
+  return best;
+}
+
+/** A module out of its slot, in the fleet hold of the fleet screen (owner, 2026-11-03). */
+export interface HeldModule {
+  module: InstalledModule;
+  /** Armor plating keeps its armor HP. */
+  armorHp: number;
+  /** The ship it came from, for the list. */
+  fromName: string;
+}
+
+export interface UninstallResult extends MoveResult {
+  held?: HeldModule;
 }
 
 /**
- * Moves a module from a slot of one ship to the first empty slot that takes
- * it on another ship. Armor plating takes its armor HP with it; a fuel tank
- * keeps no fuel (the fuel stays in the other tanks, up to their capacity).
+ * Takes a module out of its slot. Armor plating takes its share of the armor
+ * HP with it; fuel above the new tank capacity is lost.
+ */
+export function uninstallModule(data: GameData, ship: Ship, kind: SlotKind, index: number): UninstallResult {
+  const m = slotList(ship, kind)[index];
+  if (!m) return { ok: false, text: 'The slot is empty.' };
+  const why = removeProblem(ship, kind, index, data);
+  if (why) return { ok: false, text: why };
+  const armorBefore = ship.armorHp;
+  const fuelBefore = ship.fuel;
+  slotList(ship, kind)[index] = null;
+  const s = travelStats(ship, data);
+  ship.fuel = Math.min(ship.fuel, s.fuelCapacity);
+  ship.armorHp = Math.min(ship.armorHp, s.maxArmorHp);
+  const lostFuel = fuelBefore - ship.fuel;
+  const text = `You uninstall ${moduleName(m, data)} from ${ship.name}.${lostFuel > 1e-6 ? ` ${lostFuel.toFixed(1)} fuel is lost.` : ''}`;
+  return { ok: true, text, held: { module: m, armorHp: armorBefore - ship.armorHp, fromName: ship.name } };
+}
+
+/** Puts a held module in a slot (index null: the smallest empty slot that takes it). */
+export function installModule(data: GameData, ship: Ship, held: HeldModule, index: number | null = null): MoveResult {
+  const kind: SlotKind = data.moduleById.get(held.module.moduleId)?.slot === 'hardpoint' ? 'hardpoint' : 'internal';
+  const slot = index ?? freeSlotFor(data, ship, kind, held.module);
+  if (slot === null) return { ok: false, text: `${ship.name} has no empty ${kind === 'hardpoint' ? 'hardpoint' : 'internal slot'} of size ${held.module.size} or larger.` };
+  const why = fitProblem(ship, kind, slot, held.module.moduleId, held.module.size, data);
+  if (why) return { ok: false, text: why };
+  const list = slotList(ship, kind);
+  while (list.length < slot) list.push(null);
+  list[slot] = held.module;
+  ship.armorHp = Math.min(ship.armorHp + held.armorHp, travelStats(ship, data).maxArmorHp);
+  return { ok: true, text: `You install ${moduleName(held.module, data)} on ${ship.name}.` };
+}
+
+/**
+ * Moves a module from a slot of one ship to the smallest empty slot that
+ * takes it on another ship (uninstall, then install). Armor plating takes its
+ * armor HP with it; a fuel tank keeps no fuel.
  */
 export function moveModule(data: GameData, from: Ship, kind: SlotKind, index: number, to: Ship): MoveResult {
   const m = slotList(from, kind)[index];
@@ -74,16 +131,31 @@ export function moveModule(data: GameData, from: Ship, kind: SlotKind, index: nu
   if (from === to) return { ok: false, text: 'Select another ship.' };
   const why = removeProblem(from, kind, index, data);
   if (why) return { ok: false, text: why };
-  const slot = freeSlotFor(data, to, kind, m);
-  if (slot === null) return { ok: false, text: `${to.name} has no empty ${kind === 'hardpoint' ? 'hardpoint' : 'internal slot'} for this module.` };
-  const armorBefore = from.armorHp;
-  slotList(from, kind)[index] = null;
-  const s = travelStats(from, data);
-  from.fuel = Math.min(from.fuel, s.fuelCapacity);
-  from.armorHp = Math.min(from.armorHp, s.maxArmorHp);
-  slotList(to, kind)[slot] = m;
-  to.armorHp = Math.min(to.armorHp + (armorBefore - from.armorHp), travelStats(to, data).maxArmorHp);
+  if (freeSlotFor(data, to, kind, m) === null) return { ok: false, text: `${to.name} has no empty ${kind === 'hardpoint' ? 'hardpoint' : 'internal slot'} of size ${m.size} or larger.` };
+  const out = uninstallModule(data, from, kind, index);
+  if (!out.held) return out;
+  installModule(data, to, out.held);
   return { ok: true, text: `${moduleName(m, data)} moves from ${from.name} to ${to.name}.` };
+}
+
+/** The modules, fuel, and armor HP of a ship, to revert the changes of a fleet screen session. */
+export interface LoadoutSnapshot {
+  hardpoints: (InstalledModule | null)[];
+  internal: (InstalledModule | null)[];
+  fuel: number;
+  armorHp: number;
+}
+
+export function snapshotLoadout(ship: Ship): LoadoutSnapshot {
+  return structuredClone({ hardpoints: ship.hardpoints, internal: ship.internal, fuel: ship.fuel, armorHp: ship.armorHp });
+}
+
+export function restoreLoadout(ship: Ship, snap: LoadoutSnapshot): void {
+  const copy = structuredClone(snap);
+  ship.hardpoints = copy.hardpoints;
+  ship.internal = copy.internal;
+  ship.fuel = copy.fuel;
+  ship.armorHp = copy.armorHp;
 }
 
 /** Fleet ships that break a required-module rule (Section 11.2), with the first error. */

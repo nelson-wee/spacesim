@@ -21,7 +21,7 @@ export interface OfferView {
   tonnes: number;
   /** Supply: the pay for one hold (the need, as far as the fleet carries it). */
   reward: number;
-  /** Last day (game day number shown to the player), or null (Supply: until the need ends). */
+  /** Last day (game day number shown to the player), or null (a Supply offer: maxDays from acceptance). */
   deadline: number | null;
   /** Estimated profit per day for the current fleet, or null if it cannot be estimated. */
   perDay: number | null;
@@ -91,7 +91,7 @@ export function offerView(game: Game, offer: Contract): OfferView {
       ...routeInfo([here, dest]),
       tonnes: need * m,
       reward,
-      deadline: null,
+      deadline: offer.acceptedDay === null ? null : offer.acceptedDay + data.contracts.supply.maxDays,
       perDay: buy === null || !Number.isFinite(days) ? null : (reward - units * buy) / days,
     };
   }

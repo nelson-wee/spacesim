@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addCargo, fleetUnits, loadingOrder } from '../src/actor/cargo';
 import { accrueUpkeep, payUpkeep, removeShip, renameShip, setFlagship, upkeepPerDay } from '../src/actor/fleet';
 import { TextInput } from '../src/ui/input';
-import { fleetProblems, moveAllCargo, moveCargo, moveModule } from '../src/actor/fleetManage';
+import { fleetProblems, freeSlotFor, installModule, moveAllCargo, moveCargo, moveModule, restoreLoadout, snapshotLoadout, uninstallModule } from '../src/actor/fleetManage';
 import { towFleet } from '../src/actor/fuel';
 import { planSectorTrip, travelInSector } from '../src/actor/travel';
 import { buy, sell } from '../src/services/market';
@@ -25,8 +25,10 @@ import { buyShip, sellShip, tradeInValue } from '../src/services/shipyard';
 import { wait } from '../src/services/wait';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { travelStats } from '../src/ship/stats';
+import { slotSizesOf } from '../src/ship/rules';
 
 const data = gameData();
+const slotSizes = (s: Ship, k: 'hardpoint' | 'internal') => slotSizesOf(s, k, data);
 const template = createGame(11, data).state;
 
 function setup(): { game: Game; loc: Location } {
@@ -201,6 +203,65 @@ describe('fleet rules (M6-FLEET)', () => {
       addCargo(p, data, 'water', 1e6, 1);
       expect(moveModule(data, src, 'internal', rack, dst).ok).toBe(false);
     }
+  });
+
+  it('a module goes to the smallest empty slot that takes it (owner bug report, 2026-11-03)', () => {
+    const { game } = withFleet(['start_shuttle']);
+    const p = game.state.player;
+    p.fleet.push(createShipFromLoadout(data, 'light_freighter_starter', 'lf', 'LF'));
+    const lf = p.fleet[1]!;
+    lf.internal = lf.internal.map(() => null);
+    const sizes = slotSizes(lf, 'internal');
+    const small = { moduleId: 'engine', size: 'S' as const, tier: 1 as const, on: true };
+    const slot = freeSlotFor(data, lf, 'internal', small)!;
+    expect(sizes[slot]).toBe('S');
+    // Fill all small slots: the next small module takes the smallest larger slot, not the largest.
+    sizes.forEach((sz, i) => {
+      if (sz === 'S') lf.internal[i] = { ...small };
+    });
+    const next = freeSlotFor(data, lf, 'internal', small)!;
+    expect(sizes[next]).toBe('M');
+    // A large module still finds the large slot after small modules moved in.
+    const shuttle = p.fleet[0]!;
+    const rackIdx = shuttle.internal.findIndex((m) => m?.moduleId === 'cargo_rack');
+    expect(moveModule(data, shuttle, 'internal', rackIdx, lf).ok).toBe(true);
+    expect(lf.internal.some((m) => m?.moduleId === 'cargo_rack')).toBe(true);
+  });
+
+  it('uninstall and install: the module goes to the hold and back; armor HP goes with plating; a snapshot reverts the loadout', () => {
+    const { game } = withFleet(['start_shuttle', 'light_freighter_starter']);
+    const p = game.state.player;
+    const [a, b] = p.fleet as [Ship, Ship];
+    const before = snapshotLoadout(a);
+    const idx = a.internal.findIndex((m) => m?.moduleId === 'engine');
+    const out = uninstallModule(data, a, 'internal', idx);
+    expect(out.ok).toBe(true);
+    expect(a.internal[idx]).toBeNull();
+    expect(out.held!.module.moduleId).toBe('engine');
+    expect(fleetProblems([a], data)[0]).toMatch(/engine/i);
+    expect(uninstallModule(data, a, 'internal', idx).ok).toBe(false);
+    // Install on the other ship in a chosen slot, then a wrong slot is refused.
+    const empty = b.internal.findIndex((m) => m === null);
+    if (empty >= 0) {
+      expect(installModule(data, b, out.held!, empty).ok).toBe(true);
+      expect(b.internal[empty]!.moduleId).toBe('engine');
+    }
+    expect(installModule(data, a, { module: { moduleId: 'engine', size: 'L', tier: 1, on: true }, armorHp: 0, fromName: 'x' }).ok).toBe(false);
+    // Armor plating keeps its armor HP through the hold.
+    const plate = data.modules.modules.find((m) => m.category === 'armor' && m.slot === 'internal' && m.sizes.S);
+    if (plate) {
+      a.internal[idx] = { moduleId: plate.id, size: 'S', tier: 1, on: true };
+      const max = travelStats(a, data).maxArmorHp;
+      a.armorHp = max;
+      const held = uninstallModule(data, a, 'internal', idx).held!;
+      expect(held.armorHp).toBeCloseTo(max);
+      expect(a.armorHp).toBeCloseTo(0);
+      expect(installModule(data, a, held).ok).toBe(true);
+      expect(a.armorHp).toBeCloseTo(max);
+    }
+    restoreLoadout(a, before);
+    expect(a.internal[idx]!.moduleId).toBe('engine');
+    expect(fleetProblems([a], data)).toEqual([]);
   });
 
   it('fleet problems list ships that break the required-module rules', () => {

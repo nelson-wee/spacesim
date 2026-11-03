@@ -667,7 +667,8 @@ export const contractsSchema = z.object({
    * fee per tonne = (feePerTonne + feePerTonneJump x jumps from the nearest maker) x riskMult
    * x (1 + urgencyPerSeverity x severity) x (alertFeeMult for a chain alert);
    * riskMult = 1 + riskPerLevel x (4 - lowest security level from the nearest maker to the destination).
-   * A contract counts as done (standing) when the need ends after the player delivered minDoneTonnes.
+   * The contract ends when the need ends or maxDays after acceptance (Q-53 (c); the board can post it
+   * again at new prices). It counts as done (standing) when the player delivered minDoneTonnes.
    */
   supply: z.object({
     feePerTonne: nonNeg,
@@ -676,6 +677,7 @@ export const contractsSchema = z.object({
     urgencyPerSeverity: nonNeg,
     alertFeeMult: pos,
     minDoneTonnes: nonNeg,
+    maxDays: z.number().int().min(1),
   }),
   freight: z.object({
     pickupJumps: z.number().int().min(0),

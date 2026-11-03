@@ -233,7 +233,8 @@ interface ContractBase {
 /**
  * A Supply contract (owner, 2026-11-03): open quantity, paid per tonne
  * delivered, up to what the destination still needs. It lasts until the need
- * ends (the deficit or the chain alert goes away).
+ * ends (the deficit or the chain alert goes away), at most `supply.maxDays`
+ * days after acceptance (owner, Q-53 (c)).
  */
 export interface SupplyContract extends ContractBase {
   kind: 'supply';
@@ -251,6 +252,8 @@ export interface SupplyContract extends ContractBase {
   severity: number;
   /** True if a chain alert asked for it. */
   alert: boolean;
+  /** The day of acceptance (null while it is an offer). */
+  acceptedDay: number | null;
 }
 
 export interface FreightContract extends ContractBase {
