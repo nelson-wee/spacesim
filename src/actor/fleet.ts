@@ -63,9 +63,12 @@ export function payUpkeep(game: Game, actor: Actor): number {
   return cost;
 }
 
-/** Makes another ship the flagship (Section 11.9: at any docked location). */
-export function setFlagship(game: Game, actor: Actor, index: number): string | null {
-  if (actor.position.kind !== 'docked') return 'You can change the flagship only at a location.';
+/**
+ * Makes another ship the flagship (Section 11.9: at any docked location; owner
+ * 2026-11-03: also on the after-battle screen, `afterBattle`).
+ */
+export function setFlagship(game: Game, actor: Actor, index: number, afterBattle = false): string | null {
+  if (actor.position.kind !== 'docked' && !afterBattle) return 'You can change the flagship only at a location or after a battle.';
   if (!actor.fleet[index]) return 'There is no such ship.';
   accrueUpkeep(game, actor);
   actor.flagshipIndex = index;

@@ -4,6 +4,8 @@ import { observe } from '../actor/knowledge';
 import { type GameData, gameData } from '../data';
 import { createShipFromLoadout } from '../ship/loadout';
 import { generateWorld } from '../world/generator';
+import { securityLevel } from '../world/security';
+import { refreshBoards } from '../career/contractGen';
 import { type Game, wrapGame } from './game';
 import { createStreams, Rng } from './rng';
 import { type GameState, SAVE_VERSION } from './types';
@@ -29,9 +31,26 @@ export function createGame(seed: number, data: GameData = gameData(), options: {
     log: [],
     nextId: 1,
     tutorial: { on: options.tutorial ?? false, seen: [], plan: null },
+    contracts: { boards: [], active: [], completed: 0, failed: 0, killBounty: 0, nextId: 1 },
+    career: {
+      stats: {
+        jumps: 0,
+        cargoTradedTonnes: 0,
+        battlesWon: 0,
+        shipsCaptured: 0,
+        namedBounties: 0,
+        sweeps: 0,
+        contractsCompleted: 0,
+        contractsFailed: 0,
+        startSecurity: world.sectors.map((s) => s.securityValue),
+        startLevels: world.sectors.map((s) => securityLevel(s.securityValue, data)),
+      },
+      end: null,
+    },
   };
   const game = wrapGame(state, data);
   observe(game, player);
+  refreshBoards(game, true);
   const loc = world.locations[world.startLocationId];
   game.bus.message(`Day 1. Your ship, the ${ship.name}, is docked at ${loc?.name ?? '?'}. Seed: ${cleanSeed}.`, 'good');
   return game;

@@ -318,6 +318,24 @@ describe('reinforcements (M5-REIN)', () => {
 });
 
 describe('security and notoriety (M5-SEC, M5-NOT)', () => {
+  it('Section 22 (M7-BAL-03): about 15 pirate kills raise a sector one level for a long time', () => {
+    const g = fresh();
+    const s = startSector(g);
+    for (const level of [0, 1, 2]) {
+      const min = data.security.levels.find((l) => l.level === level)!.min;
+      s.securityValue = min + 5;
+      s.securityBaseline = min + 5;
+      for (let i = 0; i < 15; i++) changeSecurity(s, 'destroyPirate', data);
+      for (let d = 0; d < 365; d++) securityDay([s], data);
+      expect(securityLevel(s.securityValue, data)).toBe(level + 1);
+      s.securityValue = min + 5;
+      s.securityBaseline = min + 5;
+      for (let i = 0; i < 10; i++) changeSecurity(s, 'destroyPirate', data);
+      for (let d = 0; d < 365; d++) securityDay([s], data);
+      expect(securityLevel(s.securityValue, data)).toBe(level);
+    }
+  });
+
   it('changes of value and baseline; daily drift of 2% of the gap; trend', () => {
     const g = fresh();
     const s = startSector(g);
@@ -325,7 +343,7 @@ describe('security and notoriety (M5-SEC, M5-NOT)', () => {
     s.securityBaseline = 50;
     changeSecurity(s, 'destroyPirate', data);
     expect(s.securityValue).toBe(53);
-    expect(s.securityBaseline).toBe(50.5);
+    expect(s.securityBaseline).toBeCloseTo(50 + data.security.changes.destroyPirate!.baseline);
     changeSecurity(s, 'attackNonPirate', data);
     expect(s.securityValue).toBe(49);
     s.securityValue = 40;

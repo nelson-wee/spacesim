@@ -91,6 +91,8 @@ export interface GameData {
   encounters: z.infer<typeof S.encountersSchema>;
   battleMaps: z.infer<typeof S.battleMapsSchema>;
   tutorial: z.infer<typeof S.tutorialSchema>;
+  contracts: z.infer<typeof S.contractsSchema>;
+  events: z.infer<typeof S.eventsSchema>;
   names: z.infer<typeof S.namesSchema>;
   hulls: Hull[];
   hullById: Map<string, Hull>;
@@ -301,6 +303,9 @@ function checkModuleArt(data: GameData): string[] {
     data.balance.threat.referenceLoadout,
   ];
   for (const id of loadoutIds) if (!data.loadoutById.has(id)) problems.push(`templates.json or balance.json: no loadout ${id}`);
+  for (const id of [data.contracts.sweep.change, data.contracts.named.change, ...data.events.kinds.flatMap((k) => (k.change ? [k.change] : []))]) {
+    if (!data.security.changes[id]) problems.push(`security.json: no change ${id} (contracts.json or events.json)`);
+  }
   const tipIds = data.tutorial.tips.map((t) => t.id);
   if (new Set(tipIds).size !== tipIds.length) problems.push('tutorial.json: tip ids are not unique');
   if (!data.battleMaps.templates.some((t) => t.id === data.battleMaps.default)) problems.push(`battleMaps.json: no default template ${data.battleMaps.default}`);
@@ -388,13 +393,13 @@ export function buildGameData(raw: RawData): GameData {
   const modules = parse('modules.json', S.modulesSchema, raw.modules);
   const loadouts = parse('loadouts.json', S.loadoutsSchema, raw.loadouts).loadouts;
   const services = parse('services.json', S.servicesSchema, raw.services);
-  parse('events.json', S.plannedSchema, raw.events);
 
-  parse('contracts.json', S.plannedSchema, raw.contracts);
 
-  const balance = parse('balance.json', S.balanceSchema, raw.balance);
-  // volumeScale multiplies all daily amounts (DECISIONS.md, M2). GameData holds the scaled values.
-  const scale = balance.economy.volumeScale;
+  const parsedBalance = parse('balance.json', S.balanceSchema, raw.balance);
+  // volumeScale multiplies all daily amounts (DECISIONS.md, M2), carrier capacity too (Q-51). GameData holds the scaled values.
+  const scale = parsedBalance.economy.volumeScale;
+  const carriers = { ...parsedBalance.economy.carriers, sectorCapacityTonnes: parsedBalance.economy.carriers.sectorCapacityTonnes * scale };
+  const balance = { ...parsedBalance, economy: { ...parsedBalance.economy, carriers } };
   recipes.recipes = recipes.recipes.map((r) => ({ ...r, batchesPerSize: r.batchesPerSize * scale }));
   const rawPopulation = parse('population.json', S.populationSchema, raw.population);
   const population = {
@@ -421,6 +426,8 @@ export function buildGameData(raw: RawData): GameData {
     encounters: parse('encounters.json', S.encountersSchema, raw.encounters),
     battleMaps: parse('battleMaps.json', S.battleMapsSchema, raw.battleMaps),
     tutorial: parse('tutorial.json', S.tutorialSchema, raw.tutorial),
+    contracts: parse('contracts.json', S.contractsSchema, raw.contracts),
+    events: parse('events.json', S.eventsSchema, raw.events),
     names: parse('names.json', S.namesSchema, raw.names),
     hulls,
     hullById: byId(hulls, (h) => h.id, 'hulls.json'),

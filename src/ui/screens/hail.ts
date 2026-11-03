@@ -113,13 +113,22 @@ export class HailScreen implements Screen {
     const enc = this.enc;
     const sector = state.world.sectors[enc.sectorId];
     const map = sector ? battleMapFor(sector, enc.point, state.world.locations, data) : undefined;
-    const enemies = enc.ships.map((s) => ({ loadoutId: s.loadoutId, ai: s.ai, faction: s.faction, escortOf: s.escortOf, cargo: s.cargo }));
+    const enemies = enc.ships.map((s) => ({ loadoutId: s.loadoutId, ai: s.ai, faction: s.faction, escortOf: s.escortOf, cargo: s.cargo, tier: s.tier }));
     const battle = (opts: { aggressor: 'player' | 'other'; enemyFirst?: boolean; evade?: boolean; intro: string }) => {
       this.app.pop();
       startBattle(
         this.app,
         opts.evade ? enemies.map((e) => ({ ...e, ai: 'evader' as const })) : enemies,
-        { aggressor: opts.aggressor, enemyFirst: opts.enemyFirst, map, sectorId: enc.sectorId, intro: `${opts.intro} Map: ${map?.name ?? 'Open Space'}.`, autoResolve },
+        {
+          aggressor: opts.aggressor,
+          enemyFirst: opts.enemyFirst,
+          map,
+          sectorId: enc.sectorId,
+          intro: `${opts.intro} Map: ${map?.name ?? 'Open Space'}.`,
+          autoResolve,
+          namedId: enc.namedId,
+          shipName: enc.namedId !== undefined ? enc.name.split(',')[0] : undefined,
+        },
       );
     };
     switch (option) {

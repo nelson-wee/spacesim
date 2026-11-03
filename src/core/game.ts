@@ -4,12 +4,15 @@ import { decayCargo } from '../actor/cargo';
 import type { GameData } from '../data';
 import { econContext } from '../econ/context';
 import { economyDay } from '../econ/economy';
+import { eventText } from '../econ/events';
 import { advanceClock } from './clock';
 import { EventBus } from './eventBus';
 import { Rng, type StreamName } from './rng';
 import type { GameState } from './types';
 import { notorietyDay } from '../career/notoriety';
 import { securityDay } from '../world/security';
+import { refreshBoards } from '../career/contractGen';
+import { contractDay } from '../career/contracts';
 
 export interface Game {
   state: GameState;
@@ -45,10 +48,14 @@ export function newId(game: Game, prefix: string): string {
 function dailyTick(game: Game, day: number): void {
   const { world } = game.state;
   economyDay(econContext(world, game.data), world.economy, rng(game, 'economy'));
+  if (world.economy.newEvent) game.bus.message(`Market event. ${eventText(world.economy.newEvent, world, game.data)}`, 'warning');
   decayCargo(game.state.player, game.data);
   // Security drift and notoriety decay (M5-SEC-02, M5-NOT-01).
   securityDay(world.sectors, game.data);
   notorietyDay(game.state.player, game.data);
+  // Contract deadlines, then new contract boards every boardIntervalDays (Section 14.3).
+  contractDay(game);
+  refreshBoards(game);
   game.bus.emit({ type: 'newDay', day });
 }
 

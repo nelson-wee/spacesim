@@ -110,6 +110,8 @@ export interface Battle {
   sector: { securityValue: number; development: 'core' | 'middle' | 'frontier' } | null;
   /** Reinforcement groups that arrived (one of each type, Section 13.5). */
   reinforced: { patrol: boolean; pirate: boolean };
+  /** The named bounty contract of the enemy group, or null (Section 14.6). */
+  namedId: number | null;
 }
 
 /** A cargo pod ($): a ship collects it when it moves onto it (Section 13.7). */

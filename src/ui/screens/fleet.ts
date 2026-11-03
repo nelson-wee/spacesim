@@ -187,11 +187,13 @@ export class FleetScreen implements Screen {
     const hints: [string, string, KeyInput][] = [['Left/Right', 'Ship', press('ArrowRight')], ['Up/Down', 'Item', press('ArrowDown')]];
     if (this.canManage()) hints.push(['1-8', 'Move item to ship', press('1')]);
     if (this.after && boarded) hints.push(['P', 'Take as prize', press('p')], ['C', 'Take all cargo', press('c')]);
-    if (!this.after && this.docked() && !boarded) hints.push(['F', 'Flagship', press('f')], ['S', 'Sell', press('s')]);
+    if (!boarded) hints.push(['F', 'Flagship', press('f')]);
+    if (!this.after && this.docked() && !boarded) hints.push(['S', 'Sell', press('s')]);
     if (this.after && !boarded) hints.push(['X', 'Scuttle', press('x')]);
     hints.push(['Esc', this.after ? 'Done' : 'Back', press('Escape')]);
     drawKeyHints(t, this.app.zones, 0, HEIGHT - 2, hints, ui, this.app.press, 2);
     if (!this.canManage()) t.text(0, HEIGHT - 3, 'Dock at a location to move cargo and modules or to change the flagship.', ui.dim);
+    else if (!boarded && this.ship !== actor.flagshipIndex) t.text(0, HEIGHT - 3, `F makes ${ship.name} the flagship (the ship that fights; it pays no upkeep).`, ui.dim);
   }
 
   private zoneItem(y: number, w: number, i: number, x = 0): void {
@@ -256,8 +258,11 @@ export class FleetScreen implements Screen {
         this.item = Math.min(Math.max(0, items.length - 1), this.item + 1);
         return true;
       case 'f':
-        if (this.after || boarded) return true;
-        say(setFlagship(game, actor, this.ship) ?? `${ship.name} is now your flagship.`);
+        if (boarded) {
+          say('Take the ship as a prize first.');
+          return true;
+        }
+        say(setFlagship(game, actor, this.ship, this.after !== null) ?? `${ship.name} is now your flagship.`);
         return true;
       case 's': {
         if (this.after || boarded) return true;
@@ -335,7 +340,8 @@ export class FleetScreen implements Screen {
       '1-8               Move the selected item to that ship: a module goes',
       '                  to the first empty slot that takes it; cargo moves',
       '                  as far as it fits (docked, or after a battle)',
-      'F                 Make the selected ship the flagship (docked)',
+      'F                 Make the selected ship the flagship (docked, or',
+      '                  after a battle)',
       'S                 Sell the selected ship (at a Shipyard; not the',
       '                  flagship; no cargo)',
       'P                 Take a surrendered ship as a prize (after a battle)',

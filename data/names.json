@@ -10,5 +10,10 @@
     "end": ["ri", "na", "ton", "dor", "mus", "lia", "vos", "ren", "tis", "gar", "bel", "nor", "sa", "kis", "dun", "via"]
   },
   "nameAttempts": 60,
-  "middleChance": 0.4
+  "middleChance": 0.4,
+  "pirate": {
+    "captains": ["Oriel", "Vask", "Merra", "Tobin", "Ysolde", "Kade", "Harrow", "Lune", "Brisk", "Calder", "Senna", "Rook", "Ilse", "Dorran", "Fen", "Mabry", "Quill", "Solace", "Varo", "Wren", "Jessit", "Corvin", "Anya", "Pell"],
+    "epithets": ["the Saltless", "the Grey", "Half-Moon", "the Lantern", "Ironjaw", "the Quiet", "Blackwake", "the Unpaid", "Two-Coins", "the Long Fuse", "Cinder", "the Last Bell", "Rustheart", "the Patient", "No-Harbor", "the Thin"],
+    "ships": ["Low Tide", "Bitter Orbit", "Ninth Debt", "Cold Welcome", "Brass Widow", "Empty Promise", "Hollow Star", "Red Ledger", "Slow Burn", "Gallows Moon", "Last Cargo", "Quiet Ruin", "Sable Wake", "Unkept Oath", "Thin Mercy", "Iron Psalm"]
+  }
 }

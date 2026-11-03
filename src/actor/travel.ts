@@ -5,6 +5,7 @@
 import { type Encounter, rollEncounter } from '../encounter/encounter';
 import { type Game, passTime, rng } from '../core/game';
 import { dockingRefusal } from '../career/notoriety';
+import { namedEncounter } from '../career/contracts';
 import type { Actor, JumpPoint, Lane, Location, Sector, Vec } from '../core/types';
 import type { GameData } from '../data';
 import { checkLoadout } from '../ship/rules';
@@ -305,6 +306,7 @@ export function jump(game: Game, actor: Actor, encounters = false): TripOutcome 
   const days = plan.days * Math.min(1, share);
   passTime(game, days);
   game.bus.emit({ type: 'jumped', actorId: actor.id, fromSectorId: route.from.sectorId, toSectorId: route.to.sectorId });
+  if (actor === game.state.player) game.state.career.stats.jumps++;
 
   if (share < 1) {
     const rest = (1 - share) * route.lane.length;
@@ -317,7 +319,9 @@ export function jump(game: Game, actor: Actor, encounters = false): TripOutcome 
   // An encounter on sector arrival (Section 10.4).
   const sector = game.state.world.sectors[route.to.sectorId];
   if (encounters && sector) {
-    const enc = rollEncounter('arrival', sector, route.to.pos, actor, game.state.world.locations, rng(game, 'encounter'), game.data);
+    // A named bounty in this sector meets the player on arrival (Section 14.6).
+    const named = actor === game.state.player ? namedEncounter(game, sector, route.to.pos) : null;
+    const enc = named ?? rollEncounter('arrival', sector, route.to.pos, actor, game.state.world.locations, rng(game, 'encounter'), game.data);
     if (enc) return { result: 'encounter', days, encounter: enc };
   }
   return { result: 'arrived', days };
@@ -343,7 +347,8 @@ export function hunt(game: Game, actor: Actor): TripOutcome {
   passTime(game, 1);
   const place = actorPlace(game, actor);
   const sector = game.state.world.sectors[place.sectorId];
-  const enc = sector ? rollEncounter('hunt', sector, place.point, actor, game.state.world.locations, rng(game, 'encounter'), data) : null;
+  const named = sector && actor === game.state.player ? namedEncounter(game, sector, place.point) : null;
+  const enc = named ?? (sector ? rollEncounter('hunt', sector, place.point, actor, game.state.world.locations, rng(game, 'encounter'), data) : null);
   if (enc) return { result: 'encounter', days: 1, encounter: enc };
   game.bus.message('You hunt for a day. No pirates come.');
   return { result: 'arrived', days: 1 };

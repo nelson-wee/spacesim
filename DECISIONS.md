@@ -425,6 +425,54 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-10-29 [M6-FCMB-05] Game over shows a simple screen (day and credits), then the title screen.
 - 2026-10-29 [§4.3] Debug panel B: the after-battle screen with a surrendered Light Freighter (cargo), for tests in the browser.
 
+## Market size and fleet value (owner, 2026-11-03, Q-51)
+
+- 2026-11-03 [Q-51] M6 exit check 5 (2 ships earn more than 1) is a report in `sim-trader --fleet`, not an exit check. Reason: owner decision; fleets are for roles (guard, backup, prizes).
+- 2026-11-03 [Q-51] `economy.volumeScale` 8 → 16 (all markets twice as large), as the start point for later calibration. Reason: owner decision; one freighter took most of the trade near it.
+- 2026-11-03 [Q-51] Carrier capacity follows the volume: `carriers.sectorCapacityTonnes` is now per unit of `volumeScale` (375 x 16 = 6,000 t per day). Reason: with a fixed 3,000 t, Medicine stayed at the price clamp and two Biolabs stopped on seed 11 (M2 checks 2 and 4 failed); with 6,000 t all M2 checks pass.
+- 2026-11-03 [Q-36] M3 exit check 1: the median upgrade day 60-120 is a report. The check is "15 of 20 seeds buy the Light Freighter by day 150". Ship prices do not change. Reason: owner decision; a faster progression is good.
+- 2026-11-03 [§11.9] The flagship can also change on the after-battle screen (F), in space. Reason: owner request; after a scuttle or a prize, the player can pick the ship that fights.
+
+## M7: Contracts, market events, career end, and save
+
+### Contract generator (M7-GEN)
+
+- 2026-11-03 [§14.3] Capital need: the daily need in the score is the most Machinery that the producer installs in a day (`installRatePerDay` x K_ref); the tonnes are (K_ref - K) x mass. Reason: the brief gives no daily need for capital.
+- 2026-11-03 [§14.3] Input starvation adds 1 - inputFactor to the deficit severity of each hard input that is below its target; without a deficit candidate, it makes one. Severity is capped at 1. Reason: "added to the deficit severity of that input"; an uncapped severity would raise the Supply price without limit.
+- 2026-11-03 [§14.3] Freight score = the score of the deficit at B. The quantity is the size class for the smaller of the surplus at A and the deficit at B. Reason: the brief gives no Freight score; Freight solves B's deficit.
+- 2026-11-03 [§14.3] "At least 1 Small offer if possible": if no offer is Small, the Supply offer with the lowest score becomes Small. Reason: a smaller quantity is always possible.
+- 2026-11-03 [§14.3] Raw or Processed vs Advanced: Medicine (tier consumer) counts as Advanced.
+- 2026-11-03 [§14.6, Q-23] Named bounties use the Q-23 default: the template by tier-1 TU; reward and threat band with the TU of the tier-2 (or tier-3) group. Named-only templates (Frigate Group, Battle Group) follow their placement rules. Several named bounties can be in the same sector.
+- 2026-11-03 [§14.3] A Bounty Guild board has 2-4 named bounties plus Sweeps up to 3-6 offers in all (Sweeps only where there is a security problem).
+- 2026-11-03 [§14.4] Freight pickup deadline (the brief gives none): acceptance + 8 + 4 x jumps from the board to A. The delivery deadline starts at pickup (brief).
+
+### Contract play (M7-MG, M7-BG)
+
+- 2026-11-03 [§14.4] Contracts are accepted at the board (docked there). Supply and Freight are delivered with the contracts screen (G) docked at the destination, at any location (it need not have a guild).
+- 2026-11-03 [§14.4] At Freight pickup, the units are the smaller of the contract units and the stock at A. The cargo has a purchase price of 0. A failed Freight contract also removes what is left of its cargo. Reason: else a player could sell guild cargo (worth 4x the deposit) for profit.
+- 2026-11-03 [§14.4] Freight cargo "lost to pirates": the contract fails as soon as the fleet holds fewer units of the commodity than the contract (checked each day).
+- 2026-11-03 [§14.5, §14.6] Sweep and named rewards are paid at once when done; only kill bounties wait at a Bounty Guild. A named bounty is done when the battle with its group (Battle.namedId) is won. Sweep kills: each pirate ship destroyed or surrendered in a battle in its sector.
+- 2026-11-03 [§14.6, §15] Kill bounty: not added while the player is Wanted, and not paid out while Wanted.
+- 2026-11-03 [§14.6] The named encounter takes the place of the normal roll on each arrival in the sector and each Hunt there while the bounty is active; the group judges the odds as other pirates (it can avoid, so the player pursues).
+- 2026-11-03 [§10.3] New security changes: `sweepComplete` (baseline +2), `namedBounty` (value +5, baseline +1), `pirateSurge` (value -20).
+- 2026-11-03 [§14.9, M7-BAL-02] Supply `premiumBase` 0.10 -> 0.45. Reason: with 0.10 the median Supply offer gave 0.56x the best open-market route of similar length (check 3 needs 1.0-1.5x); 0.30 gave 0.89x, 0.50 gave 1.35x (sim-trader --contracts, 6 seeds).
+
+### Market events (M7-EVT)
+
+- 2026-11-03 [§9.11] `dailyChance` 0.03 (about one new event in 33 days), weights Shortage 3, Boom 2, Strike 2, Pirate Surge 2. Reason: with 0.05, a Strike and Water shortages stopped a Biolab for 540 days on seed 14 (M2 check 4 failed on 1/20); 0.03 and 0.02 pass all M2 checks on 20/20. A Pirate Surge is instant and does not count toward the 3 active events. The generator warm-up and validation run with no events. Reason: the brief gives no rate; the warm-up must not change the start security.
+
+### Career and save (M7-CAR, M7-SAVE)
+
+- 2026-11-03 [§16] Score: hull and module value = the insured value (hull price + module prices); cargo at the sell price where the fleet is docked, else at base price. The end screen clears the save slot. Day 730 is `balance.career.days`.
+- 2026-11-03 [§16] Warden of [sector]: start level <= 1 and level >= 3 at the end. Pirate Hunter: 10+ named bounties.
+- 2026-11-03 [§17.7] Save: the full GameState as JSON in localStorage (`spacesim.save`), saveVersion 5; autosave on each dock (arrival and tow); Q twice on the sector map saves and quits; Continue on the title screen. Load refuses another saveVersion or a damaged save with a message.
+- 2026-11-03 [§17.1] Keys: G contracts (sector map, location), E twice retire (location), K collect kill bounty (Bounty Guild), debug K spawns a contract. Reason: C, E, and other letters a-f select locations on the sector map.
+
+### Balance (M7-BAL)
+
+- 2026-11-03 [§22, M7-BAL-03] `destroyPirate` baseline 0.5 -> 1.35 and `pirateSurrenders` 0.3 -> 0.8. Reason: only the baseline lasts (the value drifts back to it); 15 kills now add 20 baseline points (one level). Test: 15 kills raise a sector one level after 365 days, 10 kills do not.
+- 2026-11-03 [M7-TOOL-03] The trader bot in `sim-career` is a careful trader (no routes through security below 2) and sells a weapon or shield module when it has no credits and no cargo. Reason: without it, the bot stays in debt with no cargo after two pirate losses (a player can sell modules, Section 8.6).
+
 ## Cuts
 
 None.

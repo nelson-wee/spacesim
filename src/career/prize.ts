@@ -44,5 +44,6 @@ export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boole
   // The ship is now in the fleet: the battle copy has no cargo left to take.
   cs.ship.cargo = {};
   if (cs.faction !== 'pirate') addNotoriety(actor, data.balance.notoriety.prizeNonPirate, data);
+  if (actor === game.state.player) game.state.career.stats.shipsCaptured++;
   return { ok: true, text: `${ship.name} joins your fleet as a prize.${cs.faction !== 'pirate' ? ' Notoriety rises.' : ''}`, ship };
 }

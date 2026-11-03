@@ -1,5 +1,9 @@
 // Small Location tabs: Refuel, Mechanic, Clone Insurance, Shipyard, Merchants' Guild, Bounty Guild.
 import { observe } from '../../actor/knowledge';
+import { acceptContract, acceptProblem, collectBounty, standing } from '../../career/contracts';
+import { offerView } from '../../career/contractView';
+import type { Board, Contract } from '../../core/types';
+import { eventText } from '../../econ/events';
 import { displayDay } from '../../core/clock';
 import type { Term } from '../../render/display';
 import { palette } from '../../render/palette';
@@ -259,48 +263,140 @@ export class ShipyardTab implements LocationTab {
   }
 }
 
+/** A contract board (Section 14.8): the offers of one guild here, with the display fields; Enter accepts. */
+class BoardView {
+  row = 0;
+  notice = '';
+
+  offers(ctx: TabContext, guild: Board['guild']): Contract[] {
+    return ctx.game.state.contracts.boards.find((b) => b.locationId === ctx.location.id && b.guild === guild)?.offers ?? [];
+  }
+
+  render(t: Term, ctx: TabContext, guild: Board['guild'], y: number, rows: number): void {
+    const { game } = ctx;
+    const ui = palette(game.data).ui;
+    const offers = this.offers(ctx, guild);
+    this.row = Math.min(this.row, Math.max(0, offers.length - 1));
+    const board = game.state.contracts.boards.find((b) => b.locationId === ctx.location.id && b.guild === guild);
+    const next = board ? board.day + game.data.contracts.boardIntervalDays : null;
+    t.text(0, y++, `Offers${next !== null ? ` (new offers on day ${displayDay(next)})` : ''}:`, ui.title);
+    if (offers.length === 0) t.text(2, y++, 'No offers now.', ui.dim);
+    const max = Math.floor(rows / 3);
+    offers.slice(0, max).forEach((o, i) => {
+      const v = offerView(game, o);
+      const sel = i === this.row;
+      const bg = sel ? ui.selectBg : undefined;
+      if (bg) t.fill(0, y, 100, 3, bg);
+      ctx.zones.add(0, y, 100, () => {
+        this.row = i;
+      });
+      const problem = acceptProblem(game, o);
+      const head = o.kind === 'named' ? `${v.type}: ${o.name}` : `${v.type}: ${o.reason}`;
+      t.text(0, y, fit(head, 99), problem ? ui.dim : sel ? ui.bright : ui.text, bg);
+      const what = o.kind === 'named' ? o.reason : o.kind === 'sweep' ? `${o.ships} pirate ships` : `${Math.round(v.tonnes)} t`;
+      const dl = v.deadline === null ? `${game.data.contracts.sweep.deadlineDays} days from acceptance` : `by day ${displayDay(v.deadline)}`;
+      t.text(2, y + 1, fit(`${what}; ${v.route}, ${v.jumps} jumps, lowest security ${v.lowestLevel}, threat band ${v.band}`, 97), ui.text, bg);
+      const est = v.perDay === null ? '' : `, about ${Math.round(v.perDay)} cr/day`;
+      t.text(2, y + 2, fit(`Reward ${formatCredits(v.reward)}${est}; ${dl}${problem ? ` - ${problem}` : ''}`, 97), problem ? ui.warning : ui.good, bg);
+      y += 3;
+    });
+    if (offers.length > max) t.text(2, y, `... ${offers.length - max} more.`, ui.dim);
+  }
+
+  onKey(k: KeyInput, ctx: TabContext, guild: Board['guild']): boolean {
+    const offers = this.offers(ctx, guild);
+    if (k.key === 'ArrowUp') this.row = Math.max(0, this.row - 1);
+    else if (k.key === 'ArrowDown') this.row = Math.min(Math.max(0, offers.length - 1), this.row + 1);
+    else if (k.key === 'Enter') {
+      const o = offers[this.row];
+      if (o) this.notice = report(ctx.game, acceptContract(ctx.game, ctx.location.id, o.id), 'good').text;
+    } else return false;
+    return true;
+  }
+}
+
 export class GuildTab implements LocationTab {
   readonly serviceId = 'merchants_guild';
   readonly title = "Merchants' Guild";
+  private readonly board = new BoardView();
 
-  render(t: Term, { game }: TabContext): void {
+  render(t: Term, ctx: TabContext): void {
+    const { game } = ctx;
     const ui = palette(game.data).ui;
     const k = game.state.player.knowledge;
     let y = TAB_Y;
-    t.text(0, y++, `Live prices for all locations within ${game.data.serviceRules.guildRangeJumps} jumps, with ${game.data.serviceRules.trendDays}-day trend arrows. Free.`, ui.text);
-    t.text(0, y++, 'See them in the Trade Ledger (T).', ui.dim);
+    t.text(0, y++, fit(`Live prices within ${game.data.serviceRules.guildRangeJumps} jumps in the Trade Ledger (T). Standing ${standing(game)}. Active contracts: G.`, 99), ui.dim);
+    const alerts = k.alerts.slice(0, 2);
+    for (const a of alerts) t.text(2, y++, fit(`Alert: ${a.text}`, 97), ui.warning);
+    const events = game.state.world.economy.events;
+    for (const e of events) t.text(2, y++, fit(`Event: ${eventText(e, game.state.world, game.data)} Ends on day ${displayDay(game.state.day + (e.endDay - game.state.world.economy.days))}.`, 97), ui.warning);
     y++;
-    t.text(0, y++, `Chain alerts${k.alertsDay !== null ? ` (day ${displayDay(k.alertsDay)})` : ''}:`, ui.title);
-    if (k.alerts.length === 0) t.text(0, y++, 'No alerts.', ui.dim);
-    for (const a of k.alerts.slice(0, TAB_H - 6)) t.text(2, y++, a.text, ui.warning, undefined, 98);
-    if (k.alerts.length > TAB_H - 6) t.text(2, y, `... and ${k.alerts.length - (TAB_H - 6)} more (Trade Ledger).`, ui.dim);
-    t.text(0, TAB_Y + TAB_H - 1, 'Supply and Freight contracts come in M7.', ui.dim);
+    this.board.render(t, ctx, 'merchants', y, TAB_Y + TAB_H - 3 - y);
+    t.text(0, TAB_Y + TAB_H - 2, fit(this.board.notice, 99), ui.warning);
+    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Accept', press('Enter')], ['G', 'Contracts', press('g')]]);
   }
 
-  onKey(k: KeyInput, { game }: TabContext): boolean {
-    if (k.key !== 'u') return false;
-    observe(game, game.state.player);
-    return true;
+  onKey(k: KeyInput, ctx: TabContext): boolean {
+    if (k.key === 'u') {
+      observe(ctx.game, ctx.game.state.player);
+      return true;
+    }
+    return this.board.onKey(k, ctx, 'merchants');
   }
 
   help(): string[] {
-    return ["MERCHANTS' GUILD", '', 'Live prices within 2 jumps, trend arrows, and chain alerts.', 'A chain alert shows a producer with low output, or a', 'population that is short of a commodity.'];
+    return [
+      "MERCHANTS' GUILD",
+      '',
+      'Up/Down  Select an offer;  Enter  Accept it;  G  Your contracts',
+      '',
+      'Supply: deliver goods to a location that needs them, at a fixed',
+      'price. Freight: carry the guild\'s cargo from a surplus to a deficit',
+      '(deposit at pickup). Offers come from real needs; new offers every',
+      '7 days. At most 4 active contracts. Freight Medium and Large need',
+      'standing 3 and 8 (done - 2 x failed). Live prices within 2 jumps,',
+      'chain alerts, and market events show here too.',
+    ];
   }
 }
 
 export class BountyTab implements LocationTab {
   readonly serviceId = 'bounty_guild';
   readonly title = 'Bounty Guild';
+  private readonly board = new BoardView();
 
-  render(t: Term, { game }: TabContext): void {
-    t.text(0, TAB_Y, 'Sweep contracts and named bounties come in M7.', palette(game.data).ui.dim);
+  render(t: Term, ctx: TabContext): void {
+    const { game } = ctx;
+    const ui = palette(game.data).ui;
+    let y = TAB_Y;
+    const owed = game.state.contracts.killBounty;
+    t.text(0, y++, `Kill bounty to collect: ${formatCredits(owed)}${owed > 0 ? ' (K)' : ''}. Active contracts: G.`, owed > 0 ? ui.good : ui.dim);
+    y++;
+    this.board.render(t, ctx, 'bounty', y, TAB_Y + TAB_H - 3 - y);
+    t.text(0, TAB_Y + TAB_H - 2, fit(this.board.notice, 99), ui.warning);
+    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Accept', press('Enter')], ['K', 'Collect bounty', press('k')], ['G', 'Contracts', press('g')]]);
   }
 
-  onKey(): boolean {
-    return false;
+  onKey(k: KeyInput, ctx: TabContext): boolean {
+    if (k.key === 'k') {
+      this.board.notice = report(ctx.game, collectBounty(ctx.game, ctx.location), 'good').text;
+      return true;
+    }
+    return this.board.onKey(k, ctx, 'bounty');
   }
 
   help(): string[] {
-    return ['BOUNTY GUILD', '', 'Contracts and bounties come in a later version.'];
+    return [
+      'BOUNTY GUILD',
+      '',
+      'Up/Down  Select an offer;  Enter  Accept it;  K  Collect kill bounties',
+      '',
+      'Sweep: destroy or capture N pirate ships in a sector in 25 days.',
+      'Named bounty: find and beat a named pirate group. It meets you when',
+      'you arrive in its sector or Hunt there. The threat band shows how',
+      'strong it is. Kill bounty: each pirate ship that you destroy or',
+      'capture pays; collect here. Wanted captains are not paid.',
+      'At most 3 named bounties and 1 Sweep at a time.',
+    ];
   }
 }

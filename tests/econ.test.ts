@@ -277,12 +277,17 @@ describe('background carriers (DECISIONS.md, M2; replaces Section 9.7)', () => {
   });
 
   it('counts goods in transit, so it does not send too much', () => {
-    const { w, ctx, src } = twoMarkets(3, 1);
+    const { w, ctx, src, dst } = twoMarkets(3, 1);
     for (let i = 0; i < 5; i++) runCarriers(ctx, w.economy, levels(w));
     const sent = 2000 - src.market.water!.stock;
     // Never more than the source's surplus above half target.
     expect(sent).toBeLessThanOrEqual(2000 - e.surplusShareOfTarget * 1000 + 1e-6);
-    expect(sent).toBeLessThan(1000);
+    // Never more than the sink's room up to the break-even stock (with its use in transit), although 5 days pass.
+    const buy = buyPrice({ stock: 2000, target: 1000, history: [] }, 10, data);
+    const breakEven = (buy * (1 + c.minMargin) + transportCost(1, 1, buy, ctx)) / (1 - e.spread / 2) / 10;
+    const room = stockAtPriceFactor(1000, breakEven, data) + (ctx.dailyNeed.get(`${dst.id}:water`) ?? 0) * transitDays(1, ctx);
+    expect(sent).toBeLessThanOrEqual(room + 1e-6);
+    expect(sent).toBeLessThan(5 * c.dailyShare * Math.min(2000 - e.surplusShareOfTarget * 1000, room));
   });
 
   it('no route beyond maxJumps', () => {

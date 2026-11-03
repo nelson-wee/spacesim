@@ -83,6 +83,17 @@ export function allowedPirateTemplates(sector: SectorLike, data: GameData): Temp
   );
 }
 
+/** Pirate templates for a named bounty (Section 14.6): the placement rules, named-only templates too. */
+export function namedPirateTemplates(sector: SectorLike, data: GameData): TemplateDef[] {
+  const level = sectorLevel(sector, data);
+  return data.templates.pirate.filter(
+    (t) =>
+      (t.maxSecurity === undefined || level <= t.maxSecurity) &&
+      !(t.notCore && sector.development === 'core') &&
+      (t.development === undefined || t.development.includes(sector.development)),
+  );
+}
+
 /**
  * Section 10.6 selection: templates with TU <= budget; of those, keep TU >=
  * 0.5 x budget, or if none, the most expensive one; select at random with

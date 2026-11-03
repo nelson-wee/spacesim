@@ -6,7 +6,7 @@ import { addCargo, fleetUnits } from '../actor/cargo';
 import type { AiKind, Faction } from '../combat/types';
 import type { Rng } from '../core/rng';
 import type { Actor, CargoLot, Location, Sector, Ship, Vec } from '../core/types';
-import type { GameData } from '../data';
+import type { GameData, Tier } from '../data';
 import type { TemplateDef } from '../data/schemas';
 import { basePrice, sellPrice } from '../econ/prices';
 import { createShipFromLoadout } from '../ship/loadout';
@@ -26,6 +26,8 @@ export interface EncounterShip {
   /** Index of the ship this escort guards (in `ships`), or null. */
   escortOf: number | null;
   cargo: Record<string, CargoLot>;
+  /** Module tier of all modules (named groups, Section 14.6); default: the loadout tiers. */
+  tier?: Tier;
 }
 
 export interface Encounter {
@@ -41,6 +43,8 @@ export interface Encounter {
   ratio: number;
   /** Patrols: hostile when the player is Wanted (Section 15). */
   hostile: boolean;
+  /** The named bounty contract of a named group (Section 14.6). */
+  namedId?: number;
 }
 
 /** TU of the flagship, at least 1 (a ship with no weapons has 0 firepower). */

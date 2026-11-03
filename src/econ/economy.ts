@@ -10,6 +10,7 @@ import { emptyRegionStats, inputTrickle, regionBalance } from './offmap';
 import { updateCapacity } from './capacity';
 import { createReplacementPricer } from './costs';
 import { refreshTargets } from './markets';
+import { batchMult, eventsDay, useMult } from './events';
 import { basePrice, midPrice } from './prices';
 import { produce, recipeOf } from './recipes';
 import type { DayReport } from './report';
@@ -17,7 +18,7 @@ import type { DayReport } from './report';
 export function createEconomyState(data: GameData): EconomyState {
   const region: EconomyState['region'] = {};
   for (const c of data.commodities) region[c.id] = emptyRegionStats();
-  return { days: 0, region, shipments: [] };
+  return { days: 0, region, shipments: [], events: [], nextEventId: 1, newEvent: null };
 }
 
 export interface EconomyDayOptions {
@@ -26,6 +27,8 @@ export interface EconomyDayOptions {
    * it; tools use it for the chain-shock test. Default 1.
    */
   eventMult?: (loc: Location) => number;
+  /** Market events (step 8). Default true; the generator warm-up and validation turn them off. */
+  events?: boolean;
 }
 
 function addTo(map: Map<string, number>, key: string, qty: number): void {
@@ -58,7 +61,7 @@ export function economyDay(
     for (const u of ctx.uses[loc.id] ?? []) {
       const entry = loc.market[u.commodity];
       if (!entry) continue;
-      const want = u.amount * mult;
+      const want = u.amount * mult * useMult(economy, loc.id, u.commodity, data);
       const used = Math.min(want, Math.max(0, entry.stock));
       entry.stock -= used;
       addTo(demand, u.commodity, want);
@@ -69,7 +72,7 @@ export function economyDay(
   // 2. Production.
   for (const loc of ctx.producers) {
     const recipe = recipeOf(data, loc.producer as string);
-    const result = produce(loc, recipe, mults[loc.sectorId] ?? 1, options.eventMult?.(loc) ?? 1);
+    const result = produce(loc, recipe, mults[loc.sectorId] ?? 1, (options.eventMult?.(loc) ?? 1) * batchMult(economy, loc, data));
     loc.production = {
       outputRatio: result.outputRatio,
       inputFactor: result.inputFactor,
@@ -113,7 +116,8 @@ export function economyDay(
     }
   }
 
-  // 8. Events update: M7.
+  // 8. Market events (Section 9.11).
+  economy.newEvent = options.events === false ? null : eventsDay(ctx, economy, rng);
 
   // Price history for trend arrows (Section 9.12).
   for (const loc of world.locations) {

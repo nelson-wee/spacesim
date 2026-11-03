@@ -1,4 +1,5 @@
 // Title screen (Section 17.1): New game with seed input, Continue, Help.
+import { hasSave, loadGame } from '../saveStore';
 import { SettingsScreen } from './settings';
 import { loadSettings } from '../settings';
 import { createGame } from '../../core/newGame';
@@ -23,6 +24,7 @@ export function randomSeed(): number {
 
 export class TitleScreen implements Screen {
   private seedInput: DigitInput | null = null;
+  private notice = '';
   private readonly proposedSeed = randomSeed();
 
   constructor(private readonly app: App) {}
@@ -40,7 +42,7 @@ export class TitleScreen implements Screen {
 
     const menu: [string, string, boolean][] = [
       ['N', 'New game', true],
-      ['C', 'Continue (save and load come in a later version)', false],
+      ['C', 'Continue', hasSave()],
       ['S', 'Settings', true],
       ['H', 'Help', true],
     ];
@@ -51,6 +53,7 @@ export class TitleScreen implements Screen {
       if (active && !this.seedInput) this.app.zones.add(30, 18 + i * 2, 4 + text.length, () => this.app.press({ key: key.toLowerCase(), shift: false, ctrl: false }));
     });
 
+    if (this.notice) t.text(cx(this.notice), 26, this.notice, ui.warning, undefined, WIDTH);
     if (this.seedInput) {
       t.box(25, 26, 50, 6, ui.border, 'New game', ui.title, 'modal');
       t.text(28, 28, 'Seed:', ui.text);
@@ -81,6 +84,18 @@ export class TitleScreen implements Screen {
       case 's':
         this.app.push(new SettingsScreen(this.app));
         return true;
+      case 'c': {
+        const loaded = loadGame(this.app.data);
+        if (loaded === null) return true;
+        if (typeof loaded === 'string') {
+          this.notice = loaded;
+          return true;
+        }
+        this.app.game = loaded;
+        loaded.bus.message(`Day ${Math.floor(loaded.state.day) + 1}: your career goes on.`, 'good');
+        this.app.reset(new SectorMapScreen(this.app));
+        return true;
+      }
       case 'Escape':
         return true;
       default:
@@ -104,6 +119,7 @@ export class TitleScreen implements Screen {
       '',
       'TITLE SCREEN',
       'N        New game (type a seed, or press Enter for a random seed)',
+      'C        Continue the saved career (the game saves at each dock)',
       'S        Settings (tutorial tips ON or OFF)',
       'H        Help',
       '',
