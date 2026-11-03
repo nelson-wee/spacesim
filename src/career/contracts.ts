@@ -103,6 +103,7 @@ export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const c = state.contracts.active.find((x): x is SupplyContract => x.id === contractId && x.kind === 'supply');
   if (!c) return refused('There is no such Supply contract.');
   if (docked(actor) !== c.destId) return refused(`Deliver at ${loc(game, c.destId).name}.`);
+  // The last delivery may top up to all units; the contract is done at completeShare (perishable goods).
   const units = Math.min(c.units - c.delivered, fleetUnits(actor, c.commodity));
   if (units <= 1e-9) return refused(`You have no ${name(data, c.commodity)} to deliver.`);
   removeCargo(actor, c.commodity, units);
@@ -115,7 +116,7 @@ export function deliverSupply(game: Game, contractId: number): ServiceResult {
   c.delivered += units;
   state.career.stats.cargoTradedTonnes += units * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
   const text = `You deliver ${Math.round(units)} ${name(data, c.commodity)} to ${dest.name} for ${Math.round(pay)} cr.`;
-  if (c.delivered >= c.units - 1e-6) complete(game, c, `Supply contract done: ${text}`);
+  if (c.delivered >= c.units * data.contracts.supply.completeShare - 1e-6) complete(game, c, `Supply contract done: ${text}`);
   return done(text);
 }
 

@@ -18,7 +18,8 @@
     "ship-report": "tsx tools/ship-report.ts",
     "sim-trader": "tsx tools/sim-trader.ts",
     "sim-combat": "tsx tools/sim-combat.ts",
-    "sim-career": "tsx tools/sim-career.ts"
+    "sim-career": "tsx tools/sim-career.ts",
+    "sim-contracts": "tsx tools/sim-contracts.ts"
   },
   "dependencies": {
     "jetbrains-mono": "1.0.6",

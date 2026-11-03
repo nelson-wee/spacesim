@@ -430,3 +430,20 @@ describe('Supply contracts v2 (owner, 2026-11-03)', () => {
     expect(g.state.player.credits).toBeCloseTo(c0 + 5 * 50 + 1000 * 0.5);
   });
 });
+
+describe('Supply completion with perishable goods', () => {
+  it('a Supply contract is done at completeShare of its units (Food spoils on the way)', () => {
+    const dest = template.world.locations.find((l) => l.market.food)!;
+    const g = withOffer({ ...supply(dest.id, 'food', 20) }, dest.id);
+    acceptContract(g, dest.id, 900);
+    addCargo(g.state.player, data, 'food', 19.7, 1);
+    deliverSupply(g, 900);
+    expect(g.state.contracts.active.length).toBe(0);
+    expect(g.state.contracts.completed).toBe(1);
+    const g2 = withOffer({ ...supply(dest.id, 'food', 20) }, dest.id);
+    acceptContract(g2, dest.id, 900);
+    addCargo(g2.state.player, data, 'food', 19, 1);
+    deliverSupply(g2, 900);
+    expect(g2.state.contracts.active.length).toBe(1);
+  });
+});

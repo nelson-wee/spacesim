@@ -464,6 +464,7 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-03 [owner, §14.3] Chain alerts are contract needs: a producer alert with an input or Machinery cause, and a population alert, make a need for that commodity (severity: 1 - output ratio, or 1 - stock / target, at least 0.1). Each Merchants' Guild board posts up to `alertOffersPerBoard` (2) alert offers first. Reason: owner: the guild posts contracts that fix the chain problems it reports, so the world corrects itself.
 - 2026-11-03 [owner] Freight `valueShare` 0.05 -> 0: the Freight fee is flat too (tonnes x jumps x 4 x riskMult); the 25% deposit still covers the cargo value.
 - 2026-11-03 [§14.9] Check 3 with the flat fee: 1.14x (6 seeds; fees x2 gave 1.95x, x4 gave 3.32x).
+- 2026-11-03 [§14.4] A Supply contract is done when `completeShare` (98%) of its units are delivered. Reason: Food loses 1% a day in cargo, so a player who buys exactly the contract units delivers 19.8 of 20 and failed the contract (`sim-contracts` trace).
 
 ### Market events (M7-EVT)
 

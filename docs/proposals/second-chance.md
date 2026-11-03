@@ -1,6 +1,6 @@
 # Second chance: scope proposal (Q-52)
 
-Status: proposal (2026-11-03). Nothing in this file is built. The owner selects the options, the defaults, and the milestone. M8 is after the feature freeze, so this needs an owner exception.
+Status: planned for M8 (owner, 2026-11-03; M8-SC-01 to M8-SC-06), with an owner exception to the feature freeze. Owner decisions: Medium security gets the guild relief; the pirate trade-in keeps the debt until the contract is done; the Pirate Haven offers a buyback of the original ship (the contract delivers the captured vessel to the pirates); the starting ship is named "Fresh Start". Nothing in this file is built yet.
 
 ## 1. The problem
 
@@ -15,7 +15,7 @@ A player invests all credits in cargo. Pirates disable the ship and take all the
 | Sector level | Offer | Proposed default |
 |---|---|---|
 | 3-4 (High, Secure) | Guild relief contract (Section 3) | Yes |
-| 2 (Medium) | Not in the owner note | Guild relief contract (the guild still works there) |
+| 2 (Medium) | Guild relief contract (owner, 2026-11-03) | Yes |
 | 0-1 (Lawless, Low) | Pirate offer (Section 4) | Yes |
 
 The offer is a modal screen with Accept and Decline. With Decline, the career goes on as it is.
@@ -38,11 +38,12 @@ Code: a Supply contract with `relief: true` (no goods payment; the effect clears
 | Item | Rule (proposed) |
 |---|---|
 | Offer | "The pirates here like your nerve. They take your ship in trade for a raiding Wasp, and they have a job for you." |
-| At once | The flagship is traded for a raiding Wasp: a new player loadout `raider_wasp` (Wasp hull; Pulse Laser S and Autocannon S; Engine; Reactor; Fuel Tank S, so that it can travel; full fuel). The debt is cleared by the trade-in. Other fleet ships stay. |
+| At once | The flagship (with its modules) is traded for a raiding Wasp: a new player loadout `raider_wasp` (Wasp hull; Pulse Laser S and Autocannon S; Engine; Reactor; Fuel Tank S, so that it can travel; full fuel). The debt stays until the contract is done (owner). Other fleet ships stay. |
 | Task | Capture a special trader: a Light Freighter with cargo (and a small escort in a Medium sector) in a sector 1-2 jumps away with security level 2 or lower. The encounter is guaranteed on arrival in that sector or on Hunt there (as a named bounty). Then bring the captured ship, with its cargo, to a known Pirate Haven within 3 jumps. |
 | Capture | The normal rules: the trader surrenders by morale (70%) or by forced surrender (engine value 0 and hull 20% or less; the Wasp's laser aims best at the Engines). Prize rules apply (fleet size, notoriety +10 for a non-pirate prize). |
-| Done | Docked at a Pirate Haven with the prize in the fleet. Reward: the pirates' cut, a fixed fee (for example 2,000 cr), plus what the player gets for the cargo (the Haven buys at 70%) and the prize (sell it, or keep it). |
-| Fail | 25 days pass, or the trader escapes or is destroyed: the contract ends. The player keeps the Wasp and has no debt. |
+| Done | Docked at a Pirate Haven with the captured vessel in the fleet. The pirates take the vessel (the contract is for its delivery); the debt is cleared; the player keeps the cargo sale (the Haven buys at 70%). |
+| Buyback | After that, the Haven offers the original ship with its modules at its trade-in value (owner, 2026-11-03). |
+| Fail | 25 days pass, or the trader escapes or is destroyed: the contract ends. The player keeps the Wasp, and the debt stays. |
 | Side effects | The attack and the prize raise notoriety (about +25: Suspect). Secure sectors can refuse docking. This is the change of playstyle. |
 
 Code: the `raider_wasp` loadout (data), the trade-in (headless), a contract kind `raid` with a spawned encounter (the named-bounty mechanism), the Pirate Haven completion check, a modal screen, tests. About 1 day.
@@ -51,11 +52,13 @@ Code: the `raider_wasp` loadout (data), the trade-in (headless), a contract kind
 
 If the player is stuck again later (in debt, no cargo, no module to sell), the owner note gives a forced retire as an option: the game shows "You cannot trade any more" with Retire (a career end with the reason "bankrupt"). Proposed: offer Retire on that screen; do not force it, because a fleet can still have a ship to sell.
 
-## 6. Open points for the owner
+## 6. Owner decisions (2026-11-03)
 
-1. Medium security (level 2): guild relief (proposed) or pirate offer?
-2. Option A reward: clear the debt only (proposed), or also the normal Supply fee?
-3. Option B: does the trade-in also clear a large debt (proposed: yes, all of it)?
-4. Option B: does the player keep the old flagship's other fleet ships (proposed: yes)?
-5. A bankrupt state after the second chance: Retire offered (proposed) or forced?
-6. Milestone: M8 with an exception to the feature freeze (proposed), or after the MVP.
+1. Medium security (level 2): guild relief.
+2. Option A reward: the debt is cleared (proposed default kept).
+3. Option B: the debt stays until the contract is done (not cleared by the trade-in).
+4. Option B: the other fleet ships stay (proposed default kept).
+5. A later stuck state: Retire offered, not forced (proposed default kept).
+6. Milestone: M8, with an exception to the feature freeze.
+7. Buyback of the original ship at the Pirate Haven, at its trade-in value (price: proposed default).
+8. The starting ship is named "Fresh Start".

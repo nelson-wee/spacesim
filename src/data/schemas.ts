@@ -666,7 +666,16 @@ export const contractsSchema = z.object({
    * tonnes x (feePerTonne + feePerTonneJump x jumps from the nearest maker) x riskMult x (1 + urgencyPerSeverity x severity);
    * riskMult = 1 + riskPerLevel x (4 - lowest security level from the nearest maker to the destination).
    */
-  supply: z.object({ feePerTonne: nonNeg, feePerTonneJump: nonNeg, riskPerLevel: nonNeg, urgencyPerSeverity: nonNeg, deadlineBase: nonNeg, deadlinePerJump: nonNeg }),
+  supply: z.object({
+    feePerTonne: nonNeg,
+    feePerTonneJump: nonNeg,
+    riskPerLevel: nonNeg,
+    urgencyPerSeverity: nonNeg,
+    /** A Supply contract is done at this share of its units (Food spoils 1% a day on the way). */
+    completeShare: prob,
+    deadlineBase: nonNeg,
+    deadlinePerJump: nonNeg,
+  }),
   freight: z.object({
     pickupJumps: z.number().int().min(0),
     destMinJumps: z.number().int().min(1),

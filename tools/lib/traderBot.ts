@@ -31,7 +31,7 @@ import { lowestLevelOnPath } from '../../src/career/contractGen';
 import { refuel } from '../../src/services/refuel';
 import { buyHull, quoteHull } from '../../src/services/shipyard';
 import { wait } from '../../src/services/wait';
-import { type ContractLog, contractGoods, contractTurn } from './contractBot';
+import { type ContractLog, type ContractPolicy, contractGoods, contractTurn } from './contractBot';
 import { mapDistance } from '../../src/world/geometry';
 
 export interface BotOptions {
@@ -47,6 +47,10 @@ export interface BotOptions {
   contracts?: ContractLog;
   /** A careful trader: no routes through sectors below this security level (default 0: all routes). */
   minSecurity?: number;
+  /** How the bot takes Supply contracts (default 'best'). */
+  contractPolicy?: ContractPolicy;
+  /** On a contract trip, fill the rest of the hold with trade goods for the same destination. */
+  contractFill?: boolean;
 }
 
 export interface BotEvent {
@@ -213,7 +217,7 @@ function expectedPerDay(game: Game, r: RouteValue): number {
 }
 
 /** Loads other commodities for the same destination into the free cargo space, best profit first. */
-function fillHold(game: Game, actor: Actor, loc: Location, main: RouteValue, opts: BotOptions, bot: BotState): void {
+export function fillHold(game: Game, actor: Actor, loc: Location, main: Pick<RouteValue, 'toId' | 'commodity'>, opts: Pick<BotOptions, 'maxJumps'>, bot: BotState): void {
   // Each commodity one time: the known price of a commodity does not show the bot's own buy.
   const bought = new Set([main.commodity]);
   for (let i = 0; i < 4; i++) {
@@ -263,7 +267,8 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   const loc = here(game, actor);
   sellCargo(game, actor, loc, bot);
   bot.plan = null;
-  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity)) {
+  const fill = opts.contractFill ? (at: Location, main: { toId: number; commodity: string }) => fillHold(game, actor, at, main, opts, bot) : undefined;
+  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity, opts.contractPolicy, fill)) {
     // The trip can end in space after an encounter; the next turn docks first.
     if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
     bot.trips++;

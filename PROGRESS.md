@@ -528,6 +528,24 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 | Good trader net worth at day 730: 250,000-600,000 cr | Outside: median 881,801 cr; 2 of 6 bot careers stay poor after early pirate losses, 4 of 6 end with 0.9-6.0 million cr (large markets, Q-51, and Machinery Supply contracts). Q-52. |
 | Shuttle profit 100-250 cr per day | Outside: 331 (larger markets, Q-51). |
 
+### Guild contracts against open-market trade (`sim-contracts`, 2026-11-03)
+
+Same seeds, three trader policies: **trade** (open market only), **best** (a Supply contract only when it pays more per day than the best known route of similar length), **first** (any profitable Supply contract first, chain alerts first). Score = career score (credits + 60% of ship value + cargo). Median of 10 seeds, 150 days; "fill" = a contract trip also carries trade goods for the same destination.
+
+| Policy | Day 15 | Day 30 | Day 60 | Day 90 | Day 150 | vs trade at day 150 |
+|---|---|---|---|---|---|---|
+| trade | 16,259 | 23,828 | 28,117 | 38,243 | 63,724 | - |
+| best | 16,108 | 23,295 | 32,321 | 34,794 | 72,348 | +14% |
+| first | 16,108 | 20,675 | 32,321 | 33,858 | 61,560 | -3% |
+| best, fill | 16,108 | 23,295 | 32,321 | 34,794 | 65,476 | +3% |
+| first, fill | 16,108 | 20,675 | 34,047 | 38,174 | 76,189 | +20% |
+| first, fill, fee x2 | 16,108 | 21,242 | 39,565 | 37,631 | 90,270 | +42% |
+
+- 365 days (6 seeds, no fill): trade 226,569 cr; first 102,881 cr (-55%). Contract sizes stop at 80 t and the fee does not grow with capital; open-market trade grows with capital and capacity.
+- First 15-30 days: no gain from contracts. The start location often has no Merchants' Guild, and a Small fee (10 t, about 350-700 cr) is small against a full 30 t hold of trade.
+- Chain alerts: 13% of Supply offers come from alerts (5 seeds, 300 days); alerts occur on 18-87% of days. 14 days after an offer, the alert is gone for 80-100% of the alerts that the bot served and for 77-100% of those that it did not serve: no measurable effect of the player's deliveries. The carriers fix most alerts; 10-80 t is small against markets at `volumeScale` 16.
+- Fixes found by the traces: Supply contracts are done at 98% (Food spoils on the way); the bot checks the seller's stock and keeps a credit margin (failed contracts 33 -> 17 of about 75).
+
 ### Known issues
 
 - Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
