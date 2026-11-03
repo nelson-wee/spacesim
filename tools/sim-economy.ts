@@ -1,5 +1,6 @@
 // Headless economy test (Section 9.13). Runs the economy with no player and
-// fixed security, and checks the acceptance rules.
+// fixed security, and checks the acceptance rules. M7-TOOL-01: it also makes
+// all contract boards every 7 days and reports the Section 14.9 checks.
 // Usage: npm run sim-economy -- [days] [seeds] [firstSeed] [--csv=dir] [--quiet]
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -17,6 +18,9 @@ import { recipeOf } from '../src/econ/recipes';
 import { DayReport } from '../src/econ/report';
 import { generateWorld } from '../src/world/generator';
 import { EconStats, median } from './lib/econStats';
+import { bountyBoard, merchantsBoard, needsAt } from '../src/career/contractGen';
+import { type Game, wrapGame } from '../src/core/game';
+import type { GameState } from '../src/core/types';
 
 const data = dataWithOverride(process.argv);
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
@@ -207,6 +211,45 @@ interface SeedResult {
   capitalShort: ReturnType<typeof capitalEffect>;
   capitalFull: ReturnType<typeof capitalEffect>;
   capitalResponse: ReturnType<typeof capitalResponse>;
+  boards: BoardStats;
+}
+
+interface BoardStats {
+  merchants: number;
+  merchants3: number;
+  bounty: number;
+  bounty3: number;
+  offers: number;
+  realDeficit: number;
+}
+
+/** A game around a world with no player, for the contract boards. */
+function boardGame(world: World): Game {
+  const state = { world, day: 0, contracts: { boards: [], active: [], completed: 0, failed: 0, killBounty: 0, nextId: 1 } } as unknown as GameState;
+  return wrapGame(state, data);
+}
+
+/** Makes all boards now and counts them (Section 14.9 checks 1 and 2). */
+function countBoards(game: Game, r: Rng, s: BoardStats): void {
+  const ctx = createEconContext(game.state.world, data);
+  for (const loc of game.state.world.locations) {
+    if (loc.services.includes('merchants_guild')) {
+      const b = merchantsBoard(game, loc, r);
+      s.merchants++;
+      if (b.offers.length >= data.contracts.offersMin) s.merchants3++;
+      for (const o of b.offers) {
+        if (o.kind !== 'supply' && o.kind !== 'freight') continue;
+        s.offers++;
+        const dest = game.state.world.locations[o.kind === 'supply' ? o.destId : o.toId] as Location;
+        if (needsAt(game, dest, ctx).some((n) => n.commodity === o.commodity)) s.realDeficit++;
+      }
+    }
+    if (loc.services.includes('bounty_guild')) {
+      const b = bountyBoard(game, loc, r);
+      s.bounty++;
+      if (b.offers.length >= data.contracts.offersMin) s.bounty3++;
+    }
+  }
 }
 
 function runSeed(seed: number): SeedResult {
@@ -214,11 +257,18 @@ function runSeed(seed: number): SeedResult {
   const stats = new EconStats(world, data, WARMUP);
   const csv: string[] = csvDir ? [CSV_HEADER] : [];
   const r = runner(world, seed);
+  const game = boardGame(world);
+  const boardRng = Rng.fromSeed(seed, 'contracts');
+  const boards: BoardStats = { merchants: 0, merchants3: 0, bounty: 0, bounty3: 0, offers: 0, realDeficit: 0 };
   for (let day = 1; day <= days; day++) {
     r.run(1, (rep) => {
       stats.record(rep);
       if (csvDir) csv.push(...csvRows(world, day, rep));
     });
+    if (day % data.contracts.boardIntervalDays === 0) {
+      game.state.day = day;
+      countBoards(game, boardRng, boards);
+    }
   }
   if (csvDir) {
     mkdirSync(csvDir, { recursive: true });
@@ -231,6 +281,7 @@ function runSeed(seed: number): SeedResult {
     capitalShort: capitalEffect(generateWorld(seed, data), seed, 0.5),
     capitalFull: capitalEffect(generateWorld(seed, data), seed, 1),
     capitalResponse: capitalResponse(generateWorld(seed, data), seed),
+    boards,
   };
 }
 
@@ -366,6 +417,27 @@ function report(results: SeedResult[], d: GameData): void {
       .slice(0, 10)
       .join(', ')}`,
   );
+
+  // Section 14.9 (M7-TOOL-01): boards every 7 days.
+  const b = results.reduce(
+    (a, r) => ({
+      merchants: a.merchants + r.boards.merchants,
+      merchants3: a.merchants3 + r.boards.merchants3,
+      bounty: a.bounty + r.boards.bounty,
+      bounty3: a.bounty3 + r.boards.bounty3,
+      offers: a.offers + r.boards.offers,
+      realDeficit: a.realDeficit + r.boards.realDeficit,
+    }),
+    { merchants: 0, merchants3: 0, bounty: 0, bounty3: 0, offers: 0, realDeficit: 0 },
+  );
+  const all = b.merchants + b.bounty;
+  const all3 = b.merchants3 + b.bounty3;
+  const share = (x: number, y: number) => `${y > 0 ? ((100 * x) / y).toFixed(1) : '-'}%`;
+  console.log('\nContract boards (Section 14.9):');
+  console.log(
+    `${all3 >= 0.9 * all ? 'PASS' : 'FAIL'}  Boards with ${d.contracts.offersMin}+ offers: ${share(all3, all)} of ${all} (need 90%); Merchants' Guild ${share(b.merchants3, b.merchants)}, Bounty Guild ${share(b.bounty3, b.bounty)}`,
+  );
+  console.log(`${b.realDeficit === b.offers ? 'PASS' : 'FAIL'}  Supply and Freight offers that point to a real deficit at posting: ${b.realDeficit}/${b.offers}`);
 }
 
 const started = Date.now();

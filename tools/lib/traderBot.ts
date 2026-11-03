@@ -26,10 +26,12 @@ import { econContext } from '../../src/econ/context';
 import { sellPrice } from '../../src/econ/prices';
 import { hasService } from '../../src/services/common';
 import { buy, sell } from '../../src/services/market';
-import { buyModule, moduleOffers } from '../../src/services/outfitter';
+import { buyModule, moduleOffers, sellModule } from '../../src/services/outfitter';
+import { lowestLevelOnPath } from '../../src/career/contractGen';
 import { refuel } from '../../src/services/refuel';
 import { buyHull, quoteHull } from '../../src/services/shipyard';
 import { wait } from '../../src/services/wait';
+import { type ContractLog, contractGoods, contractTurn } from './contractBot';
 import { mapDistance } from '../../src/world/geometry';
 
 export interface BotOptions {
@@ -41,6 +43,10 @@ export interface BotOptions {
   maxJumps: number;
   /** Encounters ON (M5-TOOL-04): the policy for each encounter. */
   onEncounter?: EncounterHandler;
+  /** Supply contracts ON (M7-TOOL-02): the log of valued and accepted offers. */
+  contracts?: ContractLog;
+  /** A careful trader: no routes through sectors below this security level (default 0: all routes). */
+  minSecurity?: number;
 }
 
 export interface BotEvent {
@@ -105,7 +111,9 @@ function upgrade(game: Game, actor: Actor, loc: Location, opts: BotOptions, bot:
 
 function sellCargo(game: Game, actor: Actor, loc: Location, bot: BotState): void {
   const commodities = new Set(actor.fleet.flatMap((s) => Object.keys(s.cargo)));
+  const keep = contractGoods(game);
   for (const c of commodities) {
+    if (keep.has(c)) continue;
     const entry = loc.market[c];
     if (!entry) continue;
     const atPlan = bot.plan !== null && bot.plan.toId === loc.id && bot.plan.commodity === c;
@@ -145,14 +153,16 @@ function goTo(game: Game, actor: Actor, from: Location, to: Location, stopAfterJ
 }
 
 /** Explores: a known location with no prices, or a sector next to a known sector. */
-function explore(game: Game, actor: Actor, loc: Location): boolean {
-  const target = nearest(game, actor, loc, (l) => actor.knowledge.markets[l.id] === undefined);
-  if (target) return goTo(game, actor, loc, target);
+function explore(game: Game, actor: Actor, loc: Location, minSecurity = 0): boolean {
   const { world } = game.state;
   const { data } = game;
-  const jumps = econContext(world, data).sectorJumps[loc.sectorId] ?? [];
+  const ctx = econContext(world, data);
+  const safeTo = (sectorId: number) => minSecurity === 0 || lowestLevelOnPath(ctx, loc.sectorId, sectorId, data) >= minSecurity;
+  const target = nearest(game, actor, loc, (l) => actor.knowledge.markets[l.id] === undefined && safeTo(l.sectorId));
+  if (target) return goTo(game, actor, loc, target);
+  const jumps = ctx.sectorJumps[loc.sectorId] ?? [];
   const unknown = world.sectors
-    .filter((s) => !actor.knowledge.knownSectors.includes(s.id))
+    .filter((s) => !actor.knowledge.knownSectors.includes(s.id) && safeTo(s.id))
     .sort((a, b) => (jumps[a.id] ?? Infinity) - (jumps[b.id] ?? Infinity) || a.id - b.id)[0];
   if (!unknown) return false;
   // Plan on lanes and jump points only: stop after the jump into the new sector.
@@ -218,6 +228,27 @@ function fillHold(game: Game, actor: Actor, loc: Location, main: RouteValue, opt
   }
 }
 
+/**
+ * With no credits and no cargo, the bot cannot trade (Section 8.6: debt
+ * blocks purchases). It sells a weapon or a shield module at an Outfitter to
+ * get trade capital again, as a player can.
+ */
+function sellForCapital(game: Game, actor: Actor, loc: Location, bot: BotState): void {
+  if (actor.credits > 300 || actor.fleet.some((s) => Object.keys(s.cargo).length > 0) || !hasService(loc, 'outfitter')) return;
+  for (const [i, ship] of actor.fleet.entries()) {
+    for (const kind of ['hardpoint', 'internal'] as const) {
+      const slots = kind === 'hardpoint' ? ship.hardpoints : ship.internal;
+      const idx = slots.findIndex((m) => m !== null && ['laser', 'ballistic', 'guided', 'shield', 'flak', 'pointDefense'].includes(game.data.moduleById.get(m.moduleId)?.category ?? ''));
+      if (idx < 0) continue;
+      const r = sellModule(game, actor, loc, i, kind, idx);
+      if (r.ok) {
+        bot.events.push({ day: game.state.day, text: `Sold a module for trade capital at ${loc.name}` });
+        return;
+      }
+    }
+  }
+}
+
 /** One bot turn at a docked location. */
 export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   encounterHandler = opts.onEncounter;
@@ -232,6 +263,12 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   const loc = here(game, actor);
   sellCargo(game, actor, loc, bot);
   bot.plan = null;
+  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity)) {
+    // The trip can end in space after an encounter; the next turn docks first.
+    if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
+    bot.trips++;
+    return;
+  }
 
   if (bot.upgradeDay === null && actor.fleet[0]?.hullId !== opts.targetHull) {
     const cost = upgradeCost(game, actor, loc, opts);
@@ -253,9 +290,17 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   }
 
   firstModule(game, actor, loc, opts, bot);
+  sellForCapital(game, actor, loc, bot);
   refuel(game, actor, loc);
+  const ctx = econContext(game.state.world, game.data);
+  const safe = (r: RouteValue) => {
+    if (!opts.minSecurity) return true;
+    const from = game.state.world.locations[r.fromId] as Location;
+    const to = game.state.world.locations[r.toId] as Location;
+    return lowestLevelOnPath(ctx, loc.sectorId, from.sectorId, game.data) >= opts.minSecurity && lowestLevelOnPath(ctx, from.sectorId, to.sectorId, game.data) >= opts.minSecurity;
+  };
   const route = bestRoutes(game, actor, { maxJumps: opts.maxJumps, limit: 20 })
-    .filter((r) => r.fuelOk)
+    .filter((r) => r.fuelOk && safe(r))
     .map((r) => ({ r, score: expectedPerDay(game, r) }))
     .sort((a, b) => b.score - a.score)[0]?.r;
   if (route) {
@@ -279,7 +324,7 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
       return;
     }
   }
-  if (explore(game, actor, loc)) return;
+  if (explore(game, actor, loc, opts.minSecurity)) return;
   wait(game, actor, loc, 1);
 }
 

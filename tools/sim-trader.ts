@@ -6,19 +6,25 @@
 // the same seeds; the tool compares profit per day after upkeep (M6 exit
 // check 5; Section 22 monitor: a second freighter adds 30%-60%, a fourth
 // 10%-25%).
-// Usage: npm run sim-trader -- [seeds] [firstSeed] [maxDays] [--verbose] [--encounters] [--fleet] [--override=json]
+// With --contracts (M7-TOOL-02): the bot also takes Supply contracts when they
+// pay more than the best known open-market route of similar length; the tool
+// reports the ratio (Section 14.9 check 3: median 1.0x to 1.5x).
+// Usage: npm run sim-trader -- [seeds] [firstSeed] [maxDays] [--verbose] [--encounters] [--fleet] [--contracts] [--override=json]
 import { travelStats } from '../src/ship/stats';
 import { knowsLocation } from '../src/actor/knowledge';
 import { createGame } from '../src/core/newGame';
 import { dataWithOverride } from './lib/override';
 import { type BotOptions, botTurn, netWorth, newBotState } from './lib/traderBot';
 import { encounterPolicy, newEncounterLog } from './lib/encounterBot';
+import { newContractLog } from './lib/contractBot';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { upkeepPerDay } from '../src/actor/fleet';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const verbose = process.argv.includes('--verbose');
 const withEncounters = process.argv.includes('--encounters');
+const withContracts = process.argv.includes('--contracts');
+const contractTotal = newContractLog();
 const total = newEncounterLog();
 const seeds = Number(args[0] ?? 20);
 const firstSeed = Number(args[1] ?? 1);
@@ -87,7 +93,8 @@ for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
   const game = createGame(seed, data);
   const bot = newBotState();
   const log = newEncounterLog();
-  const seedOpts: BotOptions = withEncounters ? { ...opts, onEncounter: encounterPolicy(game, game.state.player, log) } : opts;
+  const clog = newContractLog();
+  const seedOpts: BotOptions = { ...opts, ...(withEncounters ? { onEncounter: encounterPolicy(game, game.state.player, log) } : {}), ...(withContracts ? { contracts: clog } : {}) };
   const worth: number[] = [netWorth(game.state.player)];
   let guard = 0;
   while (game.state.day < maxDays && guard++ < 5000) {
@@ -107,6 +114,12 @@ for (let seed = firstSeed; seed < firstSeed + seeds; seed++) {
     `${pad(seed, 5)}${pad(up === null ? '-' : up.toFixed(0), 9)}${pad(bot.trips, 7)}${pad(Math.round(game.state.player.credits), 9)}  ${rates.map((r) => pad(Math.round(r), 5)).join('')}${ship ? `   ${ship.hullId} cargo ${travelStats(ship, data).cargoCapacity} t` : ''}`,
   );
   if (verbose) for (const e of bot.events) console.log(`      day ${e.day.toFixed(1)}: ${e.text}`);
+  if (withContracts) {
+    contractTotal.ratios.push(...clog.ratios);
+    contractTotal.accepted += clog.accepted;
+    contractTotal.delivered += clog.delivered;
+    console.log(`      contracts: ${clog.ratios.length} valued, ${clog.accepted} accepted, ${clog.delivered} deliveries; done ${game.state.contracts.completed}, failed ${game.state.contracts.failed}`);
+  }
   if (withEncounters) {
     console.log(`      encounters ${log.encounters} (pirates ${log.pirates}): paid ${log.paid}, fled ${log.fled}, battles ${log.battles} (won ${log.results.win}, disabled ${log.results.disabled})`);
     for (const k of ['encounters', 'pirates', 'paid', 'fled', 'battles'] as const) total[k] += log[k];
@@ -136,5 +149,12 @@ if (withEncounters) {
   console.log(
     `NOTE  Encounters ON: ${total.encounters} encounters (${total.pirates} pirates) on ${trips} trips (one per ${(trips / Math.max(1, total.pirates)).toFixed(1)} trips for pirates; Section 22: 1 per 3-4 trips at security 1-2); tribute ${total.paid}, fled ${total.fled}, battles ${total.battles} (won ${total.results.win}, disabled ${total.results.disabled}, destroyed ${total.results.gameOver + total.results.cloned}).`,
   );
+}
+if (withContracts) {
+  const r = [...contractTotal.ratios].sort((a, b) => a - b);
+  const med = r[Math.floor((r.length - 1) / 2)] ?? NaN;
+  const ok = med >= 1 && med <= 1.5;
+  console.log(`${ok ? 'PASS' : 'FAIL'}  Section 14.9 check 3: median Supply contract / best open-market route of similar length = ${med.toFixed(2)}x (need 1.0-1.5; ${r.length} offers valued; quartiles ${(r[Math.floor(r.length / 4)] ?? NaN).toFixed(2)}-${(r[Math.floor((3 * r.length) / 4)] ?? NaN).toFixed(2)}).`);
+  console.log(`NOTE  Contracts accepted ${contractTotal.accepted}, deliveries ${contractTotal.delivered}.`);
 }
 console.log(`Run time ${((Date.now() - started) / 1000).toFixed(1)} s.`);

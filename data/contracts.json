@@ -19,7 +19,7 @@
   ],
   "standingCompleted": 1,
   "standingFailed": -2,
-  "supply": { "premiumBase": 0.1, "premiumPerSeverity": 0.2, "deadlineBase": 8, "deadlinePerJump": 4 },
+  "supply": { "premiumBase": 0.45, "premiumPerSeverity": 0.2, "deadlineBase": 8, "deadlinePerJump": 4 },
   "freight": {
     "pickupJumps": 2,
     "destMinJumps": 1,

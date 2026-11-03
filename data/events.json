@@ -1,6 +1,6 @@
 {
   "maxActive": 3,
-  "dailyChance": 0.05,
+  "dailyChance": 0.03,
   "kinds": [
     { "id": "shortage", "name": "Shortage", "weight": 3, "minDays": 20, "maxDays": 40, "useMult": 2 },
     { "id": "boom", "name": "Boom", "weight": 2, "minDays": 20, "maxDays": 40, "batchMult": 1.5 },

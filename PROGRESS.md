@@ -10,7 +10,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
 | M6 Fleet (feature freeze) | 6 | Done (owner decision of 2026-11-03, Q-51). Markets are twice as large (`volumeScale` 16). | 6 of 6 pass; check 5 (fleet trade value) is a report; the feature freeze is in force. |
-| M7 Contracts, career, save | 7 | Not started | — |
+| M7 Contracts, career, save | 7 | Done. Balance pass: monitors in the M7 section. | 7 of 7 pass. |
 | M8 Polish and release | 8 | Not started | — |
 
 ## M1 Foundation (2026-10-26)
@@ -483,6 +483,56 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 - With the larger markets, the Shuttle earns more than the Section 22 monitor (329 vs 100-250 cr per day). Look at it in the M7 balance pass.
 - The `sim-trader --encounters` numbers in the M5 section are from `volumeScale` 8.
 - A bought hull has no modules and no fuel. With the flagship set to it, the fleet cannot leave until the player fits it (by design: M6-FLEET-06).
+
+## M7 Contracts, market events, career end, and save (2026-11-03)
+
+### What works
+
+- **Contract boards:** each Merchants' Guild and Bounty Guild posts 3-6 offers every 7 days from the real state of the world within 3 jumps: Supply (deficits, capital needs, input starvation), Freight (a surplus at A and a deficit at B), Sweep (security problems), and 2-4 named bounties (sectors with security level 2 or lower). Each offer shows its reason, route, jumps, lowest security level, threat band, tonnes, reward, deadline, and an estimate of profit per day.
+- **Contract play:** accept at the board; Supply deliveries are paid at once and go into the market stock; Freight pickup (deposit) and delivery (fee and deposit back); standing (done - 2 x failed) and its Freight limits; at most 4 Merchants' Guild contracts, 3 named bounties, 1 Sweep; no contracts in debt; deadlines and expiry each day; lost Freight cargo fails the contract.
+- **Bounties:** Sweep kills in the contract sector; named groups (tier 2 or 3 modules, names from `names.json`) meet the player on each arrival in their sector and on Hunt there; rewards, security changes, and notoriety; kill bounties for each pirate ship destroyed or captured, collected at a Bounty Guild (not for Wanted players).
+- **Market events:** Shortage, Boom, Strike, Pirate Surge; at most 3 active; the log and the Merchants' Guild show them.
+- **Career:** statistics from the start; the end at day 730 (`career.days`), at Retire (E twice at a location), or at a total loss; score and titles (Drifter to Sector Magnate, Dread Pirate, Pirate Hunter, Warden of a sector); career end screen with the summary, the title, and the seed.
+- **Save and load:** autosave at each dock; Q twice on the sector map saves and quits; Continue on the title screen; another save version or a damaged save shows a message.
+- **Screens:** contracts screen (G), guild boards, kill bounty (K), debug K spawns any contract. Location tabs use short names when they do not fit.
+
+### Exit checks
+
+| # | Check | Result |
+|---|---|---|
+| 1 | 90% of boards have 3 or more offers. | PASS: 98.0% of 76,680 boards (Merchants' Guild 100%, Bounty Guild 96.9%), 1,000 days x 20 seeds. |
+| 2 | 100% of Supply and Freight offers point to a real deficit at posting. | PASS: test, and 123,206/123,206 offers in `sim-economy`. |
+| 3 | Median Supply contract gives 1.0x-1.5x the profit per day of the best known open-market route of similar length. | PASS: 1.14x (10 seeds, 1,487 offers valued; quartiles 0.32-2.74). Needs `premiumBase` 0.45 (brief 0.10: 0.56x). |
+| 4 | A completed Machinery Supply contract to a producer with low K increases its output. | PASS (test). |
+| 5 | A full career to day 730 runs without errors. | PASS: `sim-career` 6/6 careers. |
+| 6 | Save and load give the same state. | PASS (tests: deep-equal state and RNG streams; the next 30 days are the same). |
+| 7 | `PROGRESS.md` is updated with all tool results. | PASS. |
+
+### Balance pass (M7-BAL)
+
+| Tool | Result |
+|---|---|
+| `sim-economy` (1,000 days, 20 seeds, with events) | All M2 checks pass (20/20); contract board checks pass. Busts (61-365 days) on 3/20 seeds. |
+| `gen-report` (100 seeds) | 98 pass with 2 tries or fewer (need 95). |
+| `sim-trader` (20 seeds) | Light Freighter by day 150 on 20/20 (PASS); median day 54 (report); Shuttle 331 cr per day in the first 30 days (monitor 100-250). |
+| `sim-trader --contracts` (10 seeds) | Check 3 PASS (1.14x); 63 contracts accepted, 60 deliveries. |
+| `sim-combat` (100 battles per pairing) | All pairing checks pass. |
+| `ship-report` | All PASS. |
+| `sim-career` (6 careers) | 6/6 with no errors. Net worth at day 730: 19,929; 2,694,878; 5,974,115; 881,801; 10,119; 1,355,241 cr (median 881,801). |
+
+| Section 22 target | Result |
+|---|---|
+| Security: about 15 pirate kills raise a sector one level for a long time | Done: `destroyPirate` baseline +1.35 (test: 15 kills +1 level after 365 days; 10 kills no change). |
+| Battle Group named bounty pays 75,000 cr or more | 90,449 cr (Low) to 103,370 cr (Lawless), tier 3 (TU 345). |
+| Good trader net worth at day 730: 250,000-600,000 cr | Outside: median 881,801 cr; 2 of 6 bot careers stay poor after early pirate losses, 4 of 6 end with 0.9-6.0 million cr (large markets, Q-51, and Machinery Supply contracts). Q-52. |
+| Shuttle profit 100-250 cr per day | Outside: 331 (larger markets, Q-51). |
+
+### Known issues
+
+- Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
+- Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
+- The tutorial text needs a pass for the M6 and M7 screens (M8).
+- The `sim-trader --encounters` numbers in the M5 section are from `volumeScale` 8.
 
 <!--
 Template for each milestone:
