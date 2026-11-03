@@ -7,7 +7,7 @@ import { report } from '../../services/common';
 import { buyInsurance, quoteInsurance } from '../../services/insurance';
 import { quoteRepair, repair } from '../../services/mechanic';
 import { quoteRefuel, refuel } from '../../services/refuel';
-import { buyHull, hullOffers, quoteHull, tradeInValue } from '../../services/shipyard';
+import { buyHull, buyShip, hullOffers, quoteHull, tradeInValue } from '../../services/shipyard';
 import { travelStats } from '../../ship/stats';
 import { locationCode } from '../../world/codes';
 import type { KeyInput } from '../input';
@@ -188,6 +188,7 @@ export class ShipyardTab implements LocationTab {
     const ship = actor.fleet[actor.flagshipIndex];
     let y = TAB_Y;
     if (ship) t.text(0, y++, `Trade-in of ${ship.name}: ${formatCredits(tradeInValue(ship, data))} (60% of hull and module prices).`, ui.dim);
+    t.text(0, y++, `Fleet: ${actor.fleet.length}/${data.balance.fleet.maxFleetSize} ships. B buys a hull for the fleet; sell a ship on the fleet screen (I).`, ui.dim);
     y++;
     const head = ['Hull', 'Role', '  HP', 'Arm', 'Mass', 'Pwr', 'Hardp S/M/L', 'Internal S/M/L', 'Tech', '    Price', ' After trade-in'];
     const cols = [0, 16, 28, 33, 37, 42, 46, 58, 73, 78, 88];
@@ -212,7 +213,7 @@ export class ShipyardTab implements LocationTab {
     y++;
     t.text(0, y++, 'A new hull has an empty loadout: fit an engine, a reactor if needed, a fuel tank, and cargo.', ui.warning);
     if (this.confirm) t.text(0, y, this.confirm, ui.bright);
-    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Buy (trade in)', press('Enter')]]);
+    keys(t, ctx, [['Up/Down', 'Select', press('ArrowDown')], ['Enter', 'Buy (trade in)', press('Enter')], ['B', 'Buy for the fleet', press('b')]]);
   }
 
   onKey(k: KeyInput, { game, location }: TabContext): boolean {
@@ -222,20 +223,39 @@ export class ShipyardTab implements LocationTab {
     else if (k.key === 'ArrowDown') this.row = Math.min(offers.length - 1, this.row + 1);
     else if (k.key === 'Enter' && o) {
       const name = game.data.hullById.get(o.hullId)?.name ?? o.hullId;
-      if (this.confirm === null) {
+      if (this.confirm === null || this.confirm.includes('for the fleet')) {
         this.confirm = `Buy a ${name} and trade in your ship? Press Enter again to confirm, Esc to cancel.`;
         return true;
       }
       report(game, buyHull(game, game.state.player, location, game.state.player.flagshipIndex, o.hullId), 'good');
       this.confirm = null;
+    } else if (k.key === 'b' && o) {
+      const name = game.data.hullById.get(o.hullId)?.name ?? o.hullId;
+      if (this.confirm === null || !this.confirm.includes('for the fleet')) {
+        this.confirm = `Buy a ${name} for the fleet (no trade-in)? Press B again to confirm, Esc to cancel.`;
+        return true;
+      }
+      report(game, buyShip(game, game.state.player, location, o.hullId), 'good');
+      this.confirm = null;
     } else if (k.key === 'Escape' && this.confirm) this.confirm = null;
     else return false;
-    if (k.key !== 'Enter') this.confirm = null;
+    if (k.key !== 'Enter' && k.key !== 'b') this.confirm = null;
     return true;
   }
 
   help(): string[] {
-    return ['SHIPYARD', '', 'Up/Down   Select a hull', 'Enter     Buy it (press twice); your ship is traded in', '', 'Trade-in: 60% of the hull price and 60% of each module.', 'Sell the cargo first. The new hull has no modules.'];
+    return [
+      'SHIPYARD',
+      '',
+      'Up/Down   Select a hull',
+      'Enter     Buy it (press twice); your flagship is traded in',
+      'B         Buy it for the fleet (press twice); no trade-in',
+      '',
+      'Trade-in: 60% of the hull price and 60% of each module.',
+      'Sell the cargo first. The new hull has no modules.',
+      'Sell a fleet ship (not the flagship) on the fleet screen (I).',
+      'Each ship that is not the flagship costs upkeep each day.',
+    ];
   }
 }
 

@@ -9,7 +9,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M3 Trade and ships | 3 | Done (owner check definition of 2026-10-28, Q-36). | 6 of 6 pass; the count in day 60–120 is a report (11 of 20). |
 | M4 Combat core | 4 | Done (owner accepted the combat data, Q-38). | 5 of 5 pass. |
 | M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
-| M6 Fleet (feature freeze) | 6 | Not started | — |
+| M6 Fleet (feature freeze) | 6 | Built. Fleet trade value waits on owner review (Q-51). | 5 of 6 checks pass; check 5 (2 ships earn more than 1) fails; check 6 (freeze) is in force. |
 | M7 Contracts, career, save | 7 | Not started | — |
 | M8 Polish and release | 8 | Not started | — |
 
@@ -422,6 +422,58 @@ Why the TU calibration is out of band: TU is one number, but the combat model no
 - **To do in M8:** a text pass for the screens that M6 and M7 change (Market with fleet capacity, Fleet screen, contracts, save).
 - **Known issues:** on the region map, a sector name near the right edge can run into the panel text (seen: "Ullo" + "Jumps from here", seed 11). This was there before the tutorial.
 - **Tool results:** `npm test`: 763 tests pass (10 new in `tests/tutorial.test.ts`, with the check that the same seed and actions give the same state with the tutorial ON and OFF). `npm run build`: passes. Browser: settings (also after a page reload), welcome, first-trade plan, goal line, location, market, first buy, region map, X, hail, battle, auto-resolve, defeat; no page errors.
+
+## M6 Fleet (2026-10-29)
+
+### What works
+
+- **Fleet rules:** up to 4 ships; buy a hull for the fleet (Shipyard, B); sell a non-flagship ship with no cargo (fleet screen, S, at a Shipyard); select the flagship at any location (F); the slowest ship sets the travel time; each ship uses its own fuel; refuel fills all ships; the tow takes the full fleet and charges each ship with 0 fuel; cargo uses the fleet capacity (flagship last).
+- **Upkeep:** 20 cr per size point per day for each ship that is not the flagship; counted before each fleet change, paid at each dock, tow, and Wait. The Trade Ledger subtracts it from profit per day.
+- **Encounters:** pirate chance x (1 + 0.1 x (fleet size - 1)).
+- **Fleet in combat:** only the flagship fights; a flee from pirates costs 50% of the cargo of one random non-flagship ship; a destroyed flagship gives the next ship as flagship; the last ship lost gives Clone Insurance or a game-over screen.
+- **Forced surrender (Q-50):** an NPC ship with engine value 0 and hull at 20% or less surrenders.
+- **After-battle screen:** surrendered ships: take as prize (loadout, damage, cargo, 25% fuel; +10 notoriety from a non-pirate; no capital ships), take cargo, or leave; scuttle a fleet ship; the screen closes only when each ship passes the required-module rules.
+- **Fleet management (Q-50):** the same screen at any location: move cargo and modules between ships (keys 1-8).
+- **Game name:** POL@RIS (title screen, page title, documents).
+- **Debug:** B opens the after-battle screen with a surrendered trader.
+
+### Exit checks
+
+| # | Check | Result |
+|---|---|---|
+| 1 | A fleet of 4 ships can travel, trade, and refuel. | PASS (test; `sim-trader --fleet` runs 4-ship fleets for 150 days). |
+| 2 | Flagship loss gives a new flagship. | PASS (test; browser). |
+| 3 | A prize ship joins the fleet. | PASS (test; browser, debug B). |
+| 4 | Upkeep is paid. | PASS (test). |
+| 5 | `sim-trader.ts` with a 2-ship fleet earns more per day than with 1 ship, after upkeep. | **FAIL**: median 271 vs 311 cr per day (-13%), 0 of 6 seeds. Q-51. |
+| 6 | Feature freeze. | In force: after M6, only M7 and M8 items, balance, and bug fixes. |
+| 7 | `PROGRESS.md` is updated. | PASS. |
+
+### sim-trader --fleet (6 seeds, 150 days, 20,000 cr at the start)
+
+| Seed | 1 ship | 2 ships | 4 ships |
+|---|---|---|---|
+| 1 | 384 | 287 | 87 |
+| 2 | 311 | 271 | 82 |
+| 3 | 314 | 298 | -92 |
+| 4 | 222 | 125 | -197 |
+| 5 | 511 | 367 | -182 |
+| 6 | 275 | 171 | -185 |
+| Median | 311 | 271 | -182 |
+
+Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not better than 1. With `volumeScale` 16, the medians are 581 (1 ship) and 573 (2 ships). Why: one Light Freighter already takes most of the profitable trade near it; most routes stop at the margin limit (each unit bought makes the next one dearer), not at the cargo space. Options are in Q-51.
+
+### Other tool results
+
+- `npm test`: 779 tests pass (16 new in `tests/fleet.test.ts`). `npm run build`: passes. `ship-report`: all PASS.
+- `sim-trader` (M3 check 1, 20 seeds): median day 94, 19/20 by day 150: PASS (the bot now fills free cargo space).
+- `sim-combat` (100 battles per pairing, with forced surrender): all pairing checks pass; Shuttle vs Raider 51%.
+- Browser: Shipyard B, fleet screen (module move, flagship, sell), after-battle screen (cargo, prize, close blocked by an unfit ship), flagship loss, game over; no page errors.
+
+### Known issues
+
+- Q-51 (fleet trade value) waits on the owner.
+- A bought hull has no modules and no fuel. With the flagship set to it, the fleet cannot leave until the player fits it (by design: M6-FLEET-06).
 
 <!--
 Template for each milestone:

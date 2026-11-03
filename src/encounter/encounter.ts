@@ -180,7 +180,9 @@ export function rollEncounter(cause: EncounterCause, sector: Sector, point: Vec,
   const level = data.security.levels.find((l) => l.level === sectorLevel(sector, data));
   if (!level) return null;
   const e = data.encounters;
-  const pirateChance = cause === 'arrival' ? level.pirateChanceArrival : cause === 'hunt' ? Math.min(1, level.pirateChanceTrip * e.huntMultiplier) : level.pirateChanceTrip;
+  const base = cause === 'arrival' ? level.pirateChanceArrival : cause === 'hunt' ? level.pirateChanceTrip * e.huntMultiplier : level.pirateChanceTrip;
+  // A larger fleet is a larger target (Section 11.9).
+  const pirateChance = Math.min(1, base * (1 + e.fleetFactor * (actor.fleet.length - 1)));
   if (rng.chance(pirateChance)) return pirateEncounter(sector, point, actor, rng, data);
   if (cause !== 'trip') return null;
   if (rng.chance(e.traderChance)) return traderEncounter(sector, point, locations, rng, data);
@@ -239,3 +241,23 @@ export function takeCargo(actor: Actor, cargo: Record<string, CargoLot>, data: G
   return taken;
 }
 
+
+/**
+ * M6-FCMB-03: when the flagship flees from pirates (on the hail screen or in a
+ * battle), the pirates take fleeCargoShare of the cargo of one random
+ * non-flagship ship. Returns the ship and the units taken, or null with no
+ * other ship.
+ */
+export function fleeCargoLoss(actor: Actor, rng: Rng, data: GameData): { ship: Ship; units: number } | null {
+  const others = actor.fleet.filter((_, i) => i !== actor.flagshipIndex);
+  if (others.length === 0) return null;
+  const ship = rng.pick(others);
+  let units = 0;
+  for (const [id, lot] of Object.entries(ship.cargo)) {
+    const take = lot.units * data.balance.fleet.fleeCargoShare;
+    lot.units -= take;
+    units += take;
+    if (lot.units <= 1e-9) delete ship.cargo[id];
+  }
+  return { ship, units };
+}

@@ -1,4 +1,4 @@
-# Space Trucking Sim (working title)
+# POL@RIS
 
 A browser game about an independent privateer. Trade cargo between locations, build a ship from a hull and modules, hunt pirates or become a pirate. A career has 730 game days and ends with a score and a title. The visuals are animated text mode (Code Page 437 characters).
 

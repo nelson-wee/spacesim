@@ -407,7 +407,9 @@ export class CombatScreen implements Screen {
     t.hline(30, 0, PANEL_X - 1, '─', ui.border);
     t.text(0, HINT_Y, fit(this.notice, PANEL_X - 1), ui.warning);
     if (this.battle.result) {
-      t.text(0, HINT_Y + 1, fit(`${resultText(this.battle)} Press Enter to leave the battle.`, PANEL_X - 1), ui.title);
+      // M6-UI-04: surrendered ships can be boarded (prize, cargo) after the battle.
+      const board = this.battle.result === 'win' && this.battle.ships.some((s) => s.side === 'other' && s.status === 'surrendered');
+      t.text(0, HINT_Y + 1, fit(`${resultText(this.battle)} Press Enter to ${board ? 'board the surrendered ships (prize, cargo)' : 'leave the battle'}.`, PANEL_X - 1), ui.title);
       drawKeyHints(t, zones, 0, HINT_Y + 2, [['Enter', 'Leave', press('Enter')]], ui, this.app.press);
     } else {
       drawKeyHints(

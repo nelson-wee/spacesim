@@ -175,7 +175,7 @@ export class TradeLedgerScreen implements Screen {
       if (!r) t.text(0, y++, start.id === dest.id ? 'Select a different destination.' : 'No profit, or a price is unknown.', ui.dim);
       else {
         t.text(0, y++, `Margin ${r.marginPerTonne.toFixed(1)} cr/t   Units ${r.units}   Buy ${Math.round(r.buyCost)} cr   Profit ${Math.round(r.profit)} cr   Full hold ${Math.round(r.fullHoldProfit)} cr`, ui.text);
-        t.text(0, y++, `Fuel ${Math.round(r.fuelCost)} cr   Trip ${r.days.toFixed(1)} days   Profit per day ${Math.round(r.profitPerDay)} cr   ${LIMIT[r.limitedBy]}${r.fuelOk ? '' : '   FUEL RANGE!'}`, r.profitPerDay > 0 ? ui.good : ui.danger);
+        t.text(0, y++, `Fuel ${Math.round(r.fuelCost)} cr   Upkeep ${Math.round(r.upkeepCost)} cr   Trip ${r.days.toFixed(1)} days   Profit per day ${Math.round(r.profitPerDay)} cr   ${LIMIT[r.limitedBy]}${r.fuelOk ? '' : '   FUEL RANGE!'}`, r.profitPerDay > 0 ? ui.good : ui.danger);
       }
     } else t.text(0, y++, 'Dock at a location, or mark a start (A), to plan a route.', ui.dim);
 
@@ -227,7 +227,7 @@ export class TradeLedgerScreen implements Screen {
     const toLoc = world.locations[r.toId];
     const from = fromLoc ? locationCode(world, fromLoc, g.data) : '?';
     const to = toLoc ? locationCode(world, toLoc, g.data) : '?';
-    const text = `${fit(commodityName(g.data, r.commodity), 12)} ${fit(`${from} -> ${to}`, 18)} ${String(r.units).padStart(4)} u  profit ${String(Math.round(r.profit)).padStart(6)}  fuel ${String(Math.round(r.fuelCost)).padStart(4)}  ${r.days.toFixed(1).padStart(5)} d  ${String(Math.round(r.profitPerDay)).padStart(5)}/day  ${r.limitedBy}`;
+    const text = `${fit(commodityName(g.data, r.commodity), 12)} ${fit(`${from} -> ${to}`, 18)} ${String(r.units).padStart(4)} u  profit ${String(Math.round(r.profit)).padStart(6)}  cost ${String(Math.round(r.fuelCost + r.upkeepCost)).padStart(4)}  ${r.days.toFixed(1).padStart(5)} d  ${String(Math.round(r.profitPerDay)).padStart(5)}/day  ${r.limitedBy}`;
     t.text(0, y, fit(text, 100), ui.text);
     // A click on a best route opens it in the planner: its start, commodity, and destination.
     this.app.zones.add(0, y, 100, () => {
@@ -300,8 +300,9 @@ export class TradeLedgerScreen implements Screen {
       'known prices; red: above it. Arrows: 14-day trend from a',
       "Merchants' Guild. Under each name: jumps and the day of the",
       'information ("now" for live prices).',
-      'The planner uses your free cargo space, your credits, the fuel',
-      'of all ships, and the speed of the slowest ship.',
+      'The planner uses the free cargo space of the fleet, your credits,',
+      'the fuel of all ships, the speed of the slowest ship, and the daily',
+      'upkeep of the fleet (profit per day is after fuel and upkeep).',
     ];
   }
 }

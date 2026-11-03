@@ -1,5 +1,6 @@
 // Fuel use, fuel price, tow, and recovery fee (Sections 8.2 to 8.6).
 // Fuel uses mass ^ fuelMassExponent (Q-01).
+import { payUpkeep } from './fleet';
 import { dockingRefusal } from '../career/notoriety';
 import type { Game } from '../core/game';
 import type { Actor, Location, Ship, Vec } from '../core/types';
@@ -151,6 +152,7 @@ export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: 
     'danger',
   );
   if (soldValue > 0) game.bus.message(`${location.name} buys cargo for ${Math.round(soldValue)} cr to pay the fee.`, 'warning');
+  payUpkeep(game, actor);
   if (actor.credits < 0) game.bus.message(`You are in debt: ${Math.round(actor.credits)} cr.`, 'danger');
   game.bus.emit({ type: 'towed', actorId: actor.id, locationId: location.id, fee });
   return { location, distance, fee, towedShips, soldValue };

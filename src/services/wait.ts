@@ -1,5 +1,6 @@
 // Wait (Section 8.8). At a docked location, pass 1 to 30 days. The economy
-// runs. There are no encounters. Upkeep is added in M6.
+// runs. There are no encounters. The fleet pays its upkeep (Section 11.9).
+import { payUpkeep } from '../actor/fleet';
 import { observe } from '../actor/knowledge';
 import { type Game, passTime } from '../core/game';
 import type { Actor, Location } from '../core/types';
@@ -15,5 +16,6 @@ export function wait(game: Game, actor: Actor, location: Location, days: number)
     passTime(game, 1);
     observe(game, actor);
   }
+  payUpkeep(game, actor);
   return done(`You wait ${n} day${n === 1 ? '' : 's'} at ${location.name}.`);
 }

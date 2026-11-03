@@ -2,8 +2,8 @@
 // the same code (M3-UI-13). A route uses only the actor's price information
 // (Section 9.12): the known buy price at the start and the known sell price
 // at the destination, unit by unit. Values use the fleet's free capacity, the
-// fuel use of all ships, the speed of the slowest ship, and the credits.
-// (Daily upkeep comes in M6.)
+// fuel use of all ships, the speed of the slowest ship, the daily upkeep of
+// the fleet (M6-UI-03), and the credits.
 import type { Game } from '../core/game';
 import type { Actor, Location, MarketEntry, Ship } from '../core/types';
 import type { GameData } from '../data';
@@ -13,6 +13,7 @@ import { basePrice, priceAt } from '../econ/prices';
 import { recipeOf } from '../econ/recipes';
 import { travelStats } from '../ship/stats';
 import { commodityMass, fleetFreeTonnes } from './cargo';
+import { upkeepPerDay } from './fleet';
 import { fuelUnitPrice } from './fuel';
 import { knowsLocation, priceView } from './knowledge';
 import { estimatePath, fleetWithCargo, type Path, pathBetween } from './paths';
@@ -35,6 +36,8 @@ export interface RouteValue {
   fullHoldProfit: number;
   /** Fuel cost of the trip (and of the trip to the start, if the fleet is not there). */
   fuelCost: number;
+  /** Fleet upkeep for the days of the route (Section 11.9). */
+  upkeepCost: number;
   /** Days of the trip (and of the trip to the start). */
   days: number;
   profitPerDay: number;
@@ -130,6 +133,7 @@ export function routeValue(game: Game, actor: Actor, from: Location, to: Locatio
   const days = startEst.days + tripEst.days;
   const fuelCost = (startEst.totalFuel + tripEst.totalFuel) * fuelPrice;
   if (!(days > 0 && days < Infinity)) return null;
+  const upkeepCost = upkeepPerDay(actor, data) * days;
   const profit = q.saleValue - q.buyCost;
   const fuelOk = startEst.enoughFuel && tripEst.fuel.every((f, i) => f <= travelStats(actor.fleet[i] as Ship, data).fuelCapacity + 1e-9);
   const days0 = [bp.day, sp.day].filter((d): d is number => d !== null);
@@ -144,8 +148,9 @@ export function routeValue(game: Game, actor: Actor, from: Location, to: Locatio
     profit,
     fullHoldProfit: full.saleValue - full.buyCost,
     fuelCost,
+    upkeepCost,
     days,
-    profitPerDay: (profit - fuelCost) / days,
+    profitPerDay: (profit - fuelCost - upkeepCost) / days,
     limitedBy: q.limitedBy,
     jumps: trip.jumps,
     infoDay: bp.source === 'live' && sp.source === 'live' ? null : Math.min(...days0),

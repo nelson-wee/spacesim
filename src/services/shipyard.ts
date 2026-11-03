@@ -2,10 +2,12 @@
 // in at 60% of the hull price and 60% of each module price. The new hull has
 // an empty loadout. The trade-in is blocked while the old ship has cargo.
 // While credits are below 0, the actor cannot buy hulls (Section 8.6).
-// From M6, a bought hull can also join the fleet.
+// M6 (Section 11.9): a bought hull can also join the fleet with an empty
+// loadout, and a non-flagship ship with no cargo sells at its trade-in value.
 import type { Game } from '../core/game';
 import type { Actor, Location, Ship } from '../core/types';
 import { type GameData, type Hull, slotSizes } from '../data';
+import { addShip, newShipName, removeShip } from '../actor/fleet';
 import { hullDef, maxEngineValue } from '../ship/hull';
 import { installedModules } from '../ship/loadout';
 import { moduleValues } from '../ship/modules';
@@ -88,4 +90,40 @@ export function buyHull(game: Game, actor: Actor, location: Location, shipIndex:
     ...done(`You trade in ${old.name} for ${Math.round(q.tradeIn)} cr and buy a ${hull.name} for ${Math.round(q.price)} cr. Fit an engine, a reactor if needed, and a fuel tank.`),
     net: q.net,
   };
+}
+
+/** Buys a hull that joins the fleet with an empty loadout and no fuel (M6-FLEET-02). */
+export function buyShip(game: Game, actor: Actor, location: Location, hullId: string): HullResult {
+  const { data } = game;
+  const problem = serviceProblem(actor, location, 'shipyard', data);
+  if (problem) return { ...refused(problem), net: 0 };
+  if (inDebt(actor)) return { ...refused(DEBT_TEXT), net: 0 };
+  const offer = hullOffers(location, data).find((o) => o.hullId === hullId);
+  if (!offer) return { ...refused(`${location.name} does not sell this hull.`), net: 0 };
+  if (actor.credits < offer.price - 1e-9) return { ...refused('You do not have sufficient credits.'), net: 0 };
+  if (actor.fleet.length >= data.balance.fleet.maxFleetSize) return { ...refused(`Your fleet is full (${data.balance.fleet.maxFleetSize} ships).`), net: 0 };
+  const hull = hullDef(data, hullId);
+  const ship = emptyShip(hull, `ship-${game.state.nextId++}`, newShipName(actor, hull.name), data);
+  const full = addShip(game, actor, ship);
+  if (full) return { ...refused(full), net: 0 };
+  actor.credits -= offer.price;
+  return {
+    ...done(`You buy a ${hull.name} for ${Math.round(offer.price)} cr. ${ship.name} joins the fleet. Fit an engine, a reactor if needed, and a fuel tank.`),
+    net: offer.price,
+  };
+}
+
+/** Sells a non-flagship ship with no cargo at its trade-in value (M6-FLEET-03, Q-14). */
+export function sellShip(game: Game, actor: Actor, location: Location, shipIndex: number): HullResult {
+  const { data } = game;
+  const problem = serviceProblem(actor, location, 'shipyard', data);
+  if (problem) return { ...refused(problem), net: 0 };
+  const ship = actor.fleet[shipIndex];
+  if (!ship) return { ...refused('There is no such ship.'), net: 0 };
+  if (shipIndex === actor.flagshipIndex) return { ...refused('You cannot sell the flagship. Select another flagship first.'), net: 0 };
+  if (Object.values(ship.cargo).some((lot) => lot.units > 1e-9)) return { ...refused(`Move or sell the cargo of ${ship.name} first.`), net: 0 };
+  const value = tradeInValue(ship, data);
+  removeShip(game, actor, shipIndex);
+  actor.credits += value;
+  return { ...done(`You sell ${ship.name} for ${Math.round(value)} cr.`), net: -value };
 }

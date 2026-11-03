@@ -8,7 +8,9 @@
 //    to the nearest known Shipyard.
 // 3. Refuel.
 // 4. Take the best known route by profit per day. If the route starts at a
-//    different location, go there first.
+//    different location, go there first. With free cargo space left (a
+//    fleet), also load other commodities from here that sell with a profit at
+//    the same destination.
 // 5. With no route: explore the nearest known location with no prices, or a
 //    sector next to a known sector. With nothing to explore: wait 1 day.
 import { fleetUnitCost, fleetUnits } from '../../src/actor/cargo';
@@ -200,6 +202,22 @@ function expectedPerDay(game: Game, r: RouteValue): number {
   return (profit - r.fuelCost) / r.days;
 }
 
+/** Loads other commodities for the same destination into the free cargo space, best profit first. */
+function fillHold(game: Game, actor: Actor, loc: Location, main: RouteValue, opts: BotOptions, bot: BotState): void {
+  // Each commodity one time: the known price of a commodity does not show the bot's own buy.
+  const bought = new Set([main.commodity]);
+  for (let i = 0; i < 4; i++) {
+    const extra = bestRoutes(game, actor, { hereId: loc.id, fromHere: true, maxJumps: opts.maxJumps, limit: 20 })
+      .filter((r) => r.toId === main.toId && !bought.has(r.commodity) && r.fuelOk && r.profit - r.fuelCost > 0)
+      .sort((a, b) => b.profit - a.profit)[0];
+    if (!extra) return;
+    bought.add(extra.commodity);
+    const r = buy(game, actor, loc, extra.commodity, extra.units);
+    if (!r.ok) return;
+    bot.events.push({ day: game.state.day, text: `  also ${r.units} ${extra.commodity} (profit ${Math.round(extra.profit)})` });
+  }
+}
+
 /** One bot turn at a docked location. */
 export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   encounterHandler = opts.onEncounter;
@@ -250,6 +268,7 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
           day: game.state.day,
           text: `${route.units} ${route.commodity} ${loc.name} -> ${to.name} (${route.jumps} j): buy ${Math.round(route.buyCost)}, profit ${Math.round(route.profit)}, fuel ${Math.round(route.fuelCost)}, ${route.days.toFixed(2)} d, ${Math.round(route.profitPerDay)}/d, ${route.limitedBy}`,
         });
+        fillHold(game, actor, loc, route, opts, bot);
         bot.trips++;
         goTo(game, actor, loc, game.state.world.locations[route.toId] as Location);
         return;

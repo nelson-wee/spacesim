@@ -73,6 +73,8 @@ export const balanceSchema = z.object({
     destroyNonPirate: z.number(),
     aggressorWhenPatrolArrives: z.number(),
     pirateKilledOrCaptured: z.number(),
+    /** A prize ship from a non-pirate (Section 13.7). */
+    prizeNonPirate: z.number(),
     perDay: z.number(),
   }),
   threat: z.object({
@@ -135,6 +137,8 @@ export const balanceSchema = z.object({
      * or at a munition launched at the player; turnDelayMs between auto turns on the screen.
      */
     auto: z.object({ retreatHull: prob, stopHull: prob, turnDelayMs: z.number().int().min(0) }),
+    /** Q-50: an NPC ship with engine value 0 and hull at or below this share surrenders with no roll. */
+    forcedSurrenderHull: prob,
     /**
      * Map (Section 13.1): random fill and cellular steps (rot.js Map.Cellular; fill 0.42 gives
      * about 11% obstacles), share of clusters that are debris clouds. Each side starts at
@@ -150,7 +154,18 @@ export const balanceSchema = z.object({
   }),
   fuel: z.object({ fuelPerHydrogen: pos }),
   recovery: z.object({ base: nonNeg, perDistance: nonNeg, fullTankShare: prob, fuelShareAfterTow: prob }),
-  fleet: z.object({ maxFleetSize: z.number().int().min(1) }),
+  /**
+   * Fleet (Section 11.9): upkeep per day of each non-flagship ship = upkeepPerShip x size points of
+   * its hull size class; a prize ship gets prizeFuelShare of its tank; when the flagship flees from
+   * pirates, they take fleeCargoShare of the cargo of one random non-flagship ship.
+   */
+  fleet: z.object({
+    maxFleetSize: z.number().int().min(1),
+    upkeepPerShip: nonNeg,
+    sizePoints: z.object({ small: nonNeg, medium: nonNeg, large: nonNeg, capital: nonNeg }),
+    prizeFuelShare: prob,
+    fleeCargoShare: prob,
+  }),
   economy: z.object({
     priceExponent: pos,
     priceClampMin: pos,
@@ -427,6 +442,8 @@ export const encountersSchema = z.object({
   patrolChance: prob,
   patrolMinSecurity: z.number().int(),
   huntMultiplier: pos,
+  /** Pirate chance x (1 + fleetFactor x (fleet size - 1)) (Section 11.9). */
+  fleetFactor: nonNeg,
   fleeChance: prob,
   tributeShare: prob,
 });

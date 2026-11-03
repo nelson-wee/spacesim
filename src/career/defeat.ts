@@ -4,8 +4,12 @@
 //   disable the ship and take all cargo of the fleet. The ship keeps
 //   `disabledHullShare` of its hull, and a tug tows the fleet to the nearest
 //   location (Section 8.6 recovery fee).
-// - Any other loss destroys the ship. With Clone Insurance, the player wakes
-//   at the insuring location (services/insurance.ts). Without it: game over.
+// - Any other loss destroys the ship. With other ships in the fleet, the next
+//   ship becomes the flagship and the career goes on (M6-FCMB-04); the lost
+//   ship's cargo is lost. If it was the last ship: with Clone Insurance, the
+//   player wakes at the insuring location (services/insurance.ts); without
+//   it, game over (M6-FCMB-05).
+import { removeShip } from '../actor/fleet';
 import { towFleet } from '../actor/fuel';
 import { actorPlace } from '../actor/travel';
 import type { Battle } from '../combat/types';
@@ -22,7 +26,7 @@ export function defeatKind(b: Battle): DefeatKind {
   return hostiles.length > 0 && hostiles.every((s) => s.faction === 'pirate') ? 'disabled' : 'destroyed';
 }
 
-export type DefeatOutcome = 'disabled' | 'cloned' | 'gameOver';
+export type DefeatOutcome = 'disabled' | 'flagshipLost' | 'cloned' | 'gameOver';
 
 /** Applies a lost battle to the actor. The battle result is already on the flagship (applyToShip). */
 export function applyDefeat(game: Game, actor: Actor, b: Battle): DefeatOutcome {
@@ -46,6 +50,12 @@ export function applyDefeat(game: Game, actor: Actor, b: Battle): DefeatOutcome 
     const place = actorPlace(game, actor);
     towFleet(game, actor, place.sectorId, place.point, 0, true);
     return 'disabled';
+  }
+  if (actor.fleet.length > 1) {
+    const lost = removeShip(game, actor, actor.flagshipIndex);
+    const next = actor.fleet[actor.flagshipIndex];
+    game.bus.message(`${lost?.name ?? 'Your flagship'} is destroyed, with its cargo. ${next?.name ?? '?'} is your new flagship.`, 'danger');
+    return 'flagshipLost';
   }
   game.bus.message('Your ship is destroyed.', 'danger');
   const claim = claimInsurance(game, actor);

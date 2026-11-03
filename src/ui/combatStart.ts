@@ -13,7 +13,9 @@ import type { BattleMapTemplate } from '../data/schemas';
 import { createShipFromLoadout } from '../ship/loadout';
 import type { App } from './app';
 import { CombatScreen, resultText } from './screens/combat';
-import { TitleScreen } from './screens/title';
+import { surrenderedShips } from '../career/prize';
+import { FleetScreen } from './screens/fleet';
+import { GameOverScreen } from './screens/gameOver';
 
 export interface EnemySpec {
   loadoutId: string;
@@ -81,17 +83,25 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
   app.push(new CombatScreen(app, battle, (b) => endBattle(app, b), { autoResolve: options.autoResolve }));
 }
 
-/** Applies the result (career/battleEnd.ts) and leaves the battle screen; game over goes to the title. */
+/**
+ * Applies the result (career/battleEnd.ts) and leaves the battle screen. A win
+ * with surrendered ships opens the after-battle screen (M6-UI-05); game over
+ * opens the game-over screen (M6-FCMB-05).
+ */
 export function endBattle(app: App, b: Battle): void {
   const game = app.game;
   if (!game) return;
   if (b.result !== 'loss') game.bus.message(resultText(b), b.result === 'win' ? 'good' : 'warning');
-  const end = finishBattle(game, game.state.player, b);
+  const boarded = b.result === 'win' ? surrenderedShips(b) : [];
+  const end = finishBattle(game, game.state.player, b, { boarding: 'manual' });
   if (end === 'gameOver') {
+    const { day } = game.state;
+    const credits = game.state.player.credits;
     app.game = null;
-    app.reset(new TitleScreen(app));
+    app.reset(new GameOverScreen(app, day, credits));
     return;
   }
-  if (end === 'disabled' || end === 'cloned') app.tutorial.notify('defeat');
+  if (end === 'disabled' || end === 'cloned' || end === 'flagshipLost') app.tutorial.notify('defeat');
   app.pop();
+  if (boarded.length > 0) app.push(new FleetScreen(app, { boarded }));
 }
