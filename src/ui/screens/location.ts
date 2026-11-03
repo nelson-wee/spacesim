@@ -20,6 +20,9 @@ import { OutfitterTab } from './outfitterTab';
 import { BountyTab, GuildTab, InsuranceTab, MechanicTab, RefuelTab, ShipyardTab } from './serviceTabs';
 import type { LocationTab, TabContext } from './tab';
 import { TradeLedgerScreen } from './tradeLedger';
+import { ContractsScreen } from './contracts';
+import { CareerEndScreen } from './careerEnd';
+import { retire } from '../../career/career';
 
 function makeTab(serviceId: string): LocationTab | null {
   switch (serviceId) {
@@ -56,6 +59,7 @@ function tabsFor(location: Location, game: Game): LocationTab[] {
 export class LocationScreen implements Screen {
   private readonly tabs: LocationTab[];
   private tab = 0;
+  private retireArmed = false;
 
   constructor(
     private readonly app: App,
@@ -93,8 +97,10 @@ export class LocationScreen implements Screen {
     x = t.text(x, 2, `  ${locationTypeName(loc, data)}  Tech ${loc.techLevel}  ${sector?.name ?? ''}`, ui.dim);
     x = 0;
     const zones = this.app.zones;
+    // Short names (the first word) when all full names do not fit in one row.
+    const full = this.tabs.reduce((w, tab, i) => w + ` ${i + 1} ${tab.title} `.length + 1, 0) <= 100;
     this.tabs.forEach((tab, i) => {
-      const label = ` ${i + 1} ${tab.title} `;
+      const label = ` ${i + 1} ${full ? tab.title : (tab.title.split(' ')[0] ?? tab.title)} `;
       const start = x;
       x = t.text(x, 3, label, i === this.tab ? ui.bright : ui.dim, i === this.tab ? ui.selectBg : undefined);
       zones.add(start, 3, x - start, () => {
@@ -102,7 +108,7 @@ export class LocationScreen implements Screen {
       });
       x++;
     });
-    drawKeyHints(t, zones, 62, 2, [['I', 'Fleet', press('i')], ['T', 'Ledger', press('t')], ['W', 'Wait', press('w')], ['Esc', 'Map', press('Escape')]], ui, this.app.press, 2);
+    drawKeyHints(t, zones, 52, 2, [['I', 'Fleet', press('i')], ['G', 'Contracts', press('g')], ['T', 'Ledger', press('t')], ['W', 'Wait', press('w')], ['Esc', 'Map', press('Escape')]], ui, this.app.press, 2);
     t.hline(4, 0, 99, '─', ui.border);
     const tab = this.tabs[this.tab];
     if (tab) tab.render(t, this.ctx());
@@ -111,6 +117,9 @@ export class LocationScreen implements Screen {
 
   onKey(k: KeyInput): boolean {
     const game = this.game;
+    const retireArmed = this.retireArmed;
+    this.retireArmed = false;
+    if (k.key === 'e' && retireArmed) this.retireArmed = true;
     const player = game.state.player;
     if (player.position.kind !== 'docked' || player.position.locationId !== this.locationId) {
       this.app.pop();
@@ -144,6 +153,20 @@ export class LocationScreen implements Screen {
       case 'l':
         this.app.push(new LogScreen(this.app));
         return true;
+      case 'g':
+        this.app.push(new ContractsScreen(this.app));
+        return true;
+      case 'e': {
+        // Retire (Section 16): press E twice.
+        if (!this.retireArmed) {
+          this.retireArmed = true;
+          game.bus.message('Retire and end your career here? Press E again to confirm.', 'warning');
+          return true;
+        }
+        const end = retire(game);
+        if (typeof end !== 'string') this.app.reset(new CareerEndScreen(this.app, game, end));
+        return true;
+      }
       default:
         return false;
     }
@@ -159,6 +182,8 @@ export class LocationScreen implements Screen {
       'T          Trade Ledger',
       'W          Wait 1 day (Shift+W: 7 days). The economy runs.',
       'L          Log',
+      'G          Your contracts',
+      'E, E       Retire: end the career here (score and title)',
       'Esc        Back to the sector map',
       '',
       ...(tab ? tab.help() : []),

@@ -107,7 +107,7 @@ function finishWorld(world: World, rng: Rng, data: GameData, keepStart: boolean)
 function warmUp(world: World, data: GameData, seed: number): void {
   const ctx = econContext(world, data);
   const rng = Rng.fromSeed(seed, 'validation');
-  for (let day = 0; day < data.balance.generator.warmupDays; day++) economyDay(ctx, world.economy, rng);
+  for (let day = 0; day < data.balance.generator.warmupDays; day++) economyDay(ctx, world.economy, rng, undefined, { events: false });
 }
 
 export interface GenerationAttempt {

@@ -1,1 +1,10 @@
-{}
+{
+  "maxActive": 3,
+  "dailyChance": 0.05,
+  "kinds": [
+    { "id": "shortage", "name": "Shortage", "weight": 3, "minDays": 20, "maxDays": 40, "useMult": 2 },
+    { "id": "boom", "name": "Boom", "weight": 2, "minDays": 20, "maxDays": 40, "batchMult": 1.5 },
+    { "id": "strike", "name": "Strike", "weight": 2, "minDays": 10, "maxDays": 20, "batchMult": 0 },
+    { "id": "pirateSurge", "name": "Pirate Surge", "weight": 2, "minDays": 0, "maxDays": 0, "change": "pirateSurge" }
+  ]
+}

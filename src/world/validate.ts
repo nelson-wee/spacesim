@@ -127,7 +127,7 @@ export function validateEconomy(world: World, data: GameData, seed: number): Eco
   const samples = new Map<string, number[]>();
   const warmup = Math.floor(g.validationDays / 4);
   for (let day = 0; day < g.validationDays; day++) {
-    economyDay(ctx, world.economy, rng);
+    economyDay(ctx, world.economy, rng, undefined, { events: false });
     for (const loc of ctx.producers) {
       const low = (loc.production?.outputRatio ?? 0) < g.lowOutputShare;
       const n = low ? (streak.get(loc.id) ?? 0) + 1 : 0;

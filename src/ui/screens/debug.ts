@@ -22,11 +22,14 @@ import type { Sector } from '../../core/types';
 import { templateTu } from '../../encounter/budget';
 import { type Encounter, patrolEncounterOf, pirateEncounterOf, traderEncounter } from '../../encounter/encounter';
 import { HailScreen } from './hail';
+import { bountyBoard, merchantsBoard } from '../../career/contractGen';
+import { econContext } from '../../econ/context';
+import type { Contract } from '../../core/types';
 import { FleetScreen } from './fleet';
 import { createBattle } from '../../combat/battle';
 import { createShipFromLoadout } from '../../ship/loadout';
 
-type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle' | 'encounter' | 'security';
+type Mode = 'menu' | 'teleport' | 'skip' | 'art' | 'prices' | 'ship' | 'battle' | 'encounter' | 'security' | 'contract';
 
 const ART_PAGES = ['Battle art 1', 'Battle art 2', 'Portraits (slot numbers shown)', 'Portraits, damaged', 'Portraits, critical', 'Module icons'];
 const MODULE_PAGE = 5;
@@ -90,6 +93,7 @@ export class DebugScreen implements Screen {
         ['E', 'Encounter with any template (hail screen)'],
         ['S', 'Set the security level of this sector (0-4)'],
         ['B', 'After-battle screen with a surrendered trader (M6)'],
+        ['K', 'Spawn a contract (Supply, Freight, Sweep, named bounty)'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -113,6 +117,12 @@ export class DebugScreen implements Screen {
       t.text(x + 2, y + 4, 'Encounter in this sector (pirates judge the odds against your flagship):', ui.title);
       this.encounterChoices().forEach((c, i) => t.text(x + 4, y + 6 + i, `${i === this.encounterRow ? '>' : ' '} ${c.label}`, i === this.encounterRow ? ui.bright : ui.text));
       t.text(x + 2, y + h - 2, 'Up/Down: select   Enter: hail   Esc: back', ui.highlight);
+      return;
+    }
+    if (this.mode === 'contract') {
+      t.text(x + 2, y + 4, 'Spawn an active contract (from a new board near you; contract limits do not apply):', ui.title);
+      ['1 Supply', '2 Freight', '3 Sweep', '4 Named bounty'].forEach((l, i) => t.text(x + 4, y + 6 + i, l, ui.text));
+      t.text(x + 2, y + h - 2, '1-4: spawn   Esc: back', ui.highlight);
       return;
     }
     if (this.mode === 'security') {
@@ -185,6 +195,15 @@ export class DebugScreen implements Screen {
         const enc = choices[this.encounterRow]?.build();
         this.app.pop();
         if (enc) this.app.push(new HailScreen(this.app, enc));
+      }
+      return true;
+    }
+    if (this.mode === 'contract') {
+      if (k.key === 'Escape') this.mode = 'menu';
+      const kind = (['supply', 'freight', 'sweep', 'named'] as const)[Number(k.key) - 1];
+      if (kind) {
+        game.bus.message(`[debug] ${debugSpawnContract(game, kind)}`, 'warning');
+        this.app.pop();
       }
       return true;
     }
@@ -272,6 +291,9 @@ export class DebugScreen implements Screen {
         return true;
       case 's':
         this.mode = 'security';
+        return true;
+      case 'k':
+        this.mode = 'contract';
         return true;
       case 'b': {
         // A won battle against a light freighter that surrendered with cargo (M6-UI-05).
@@ -429,4 +451,25 @@ export class DebugScreen implements Screen {
   help(): string[] {
     return ['DEBUG PANEL', '', 'Number keys run the actions. Esc closes the panel.'];
   }
+}
+
+/** M7-BG-10: an active contract of one kind, from new boards (the nearest guilds first). */
+function debugSpawnContract(game: Game, kind: Contract['kind']): string {
+  const { state } = game;
+  const place = actorPlace(game, state.player);
+  const r = rng(game, 'contracts');
+  const guild = kind === 'supply' || kind === 'freight' ? 'merchants_guild' : 'bounty_guild';
+  const jumps = econContext(state.world, game.data).sectorJumps[place.sectorId] ?? [];
+  const boards = state.world.locations.filter((l) => l.services.includes(guild)).sort((a, b) => (jumps[a.sectorId] ?? 99) - (jumps[b.sectorId] ?? 99));
+  for (const loc of boards) {
+    for (let tries = 0; tries < 5; tries++) {
+      const board = guild === 'merchants_guild' ? merchantsBoard(game, loc, r) : bountyBoard(game, loc, r);
+      const offer = board.offers.find((o) => o.kind === kind);
+      if (!offer) continue;
+      if (offer.kind === 'sweep') offer.deadline = state.day + game.data.contracts.sweep.deadlineDays;
+      state.contracts.active.push(offer);
+      return `Contract added: ${offer.reason}.`;
+    }
+  }
+  return `No ${kind} contract is possible near you now.`;
 }

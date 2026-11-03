@@ -17,6 +17,8 @@ import type { Actor, CargoLot } from '../core/types';
 import { fleeCargoLoss, takeCargo } from '../encounter/encounter';
 import { rng } from '../core/game';
 import { battleConsequences } from './consequences';
+import { battleContracts } from './contracts';
+import { endCareer } from './career';
 import { applyDefeat, type DefeatOutcome } from './defeat';
 
 export type BattleEnd = DefeatOutcome | 'ok';
@@ -32,8 +34,14 @@ export function finishBattle(game: Game, actor: Actor, b: Battle, options: Finis
   const flag = actor.fleet[actor.flagshipIndex];
   if (flag) applyToShip(b, flag);
   battleConsequences(game, actor, b);
+  if (actor === state.player) {
+    battleContracts(game, b);
+    if (b.result === 'win') state.career.stats.battlesWon++;
+  }
   if (b.result === 'loss') {
     const outcome = applyDefeat(game, actor, b);
+    // The last ship is lost with no insurance: the career ends (Section 16).
+    if (outcome === 'gameOver' && actor === state.player) endCareer(game, 'lost');
     if (outcome !== 'flagshipLost') return outcome;
   }
   if (b.result === 'fled' && b.ships.some((s) => s.side === 'other' && s.faction === 'pirate')) {

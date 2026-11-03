@@ -1,1 +1,53 @@
-{}
+{
+  "boardIntervalDays": 7,
+  "offersMin": 3,
+  "offersMax": 6,
+  "candidateJumps": 3,
+  "deficitStockShare": 0.6,
+  "capitalKShare": 0.75,
+  "starvationInputFactor": 0.7,
+  "surplusStockShare": 1.4,
+  "securityBelowBaseline": 10,
+  "securityMaxLevel": 1,
+  "securityDivisor": 50,
+  "securityMinSeverity": 0.2,
+  "securityScore": 1000,
+  "sizes": [
+    { "id": "small", "name": "Small", "tonnes": 10, "standing": 0 },
+    { "id": "medium", "name": "Medium", "tonnes": 30, "standing": 3 },
+    { "id": "large", "name": "Large", "tonnes": 80, "standing": 8 }
+  ],
+  "standingCompleted": 1,
+  "standingFailed": -2,
+  "supply": { "premiumBase": 0.1, "premiumPerSeverity": 0.2, "deadlineBase": 8, "deadlinePerJump": 4 },
+  "freight": {
+    "pickupJumps": 2,
+    "destMinJumps": 1,
+    "destMaxJumps": 3,
+    "depositShare": 0.25,
+    "feePerTonneJump": 4,
+    "riskPerLevel": 0.3,
+    "valueShare": 0.05,
+    "deadlineBase": 5,
+    "deadlinePerJump": 3,
+    "pickupDeadlineBase": 8,
+    "pickupDeadlinePerJump": 4
+  },
+  "sweep": { "minShips": 3, "maxShips": 6, "deadlineDays": 25, "rewardPerTu": 40, "levelBonus": 0.25, "change": "sweepComplete" },
+  "named": {
+    "maxLevel": 2,
+    "budgetMin": 1.5,
+    "budgetMax": 3.0,
+    "tier": 2,
+    "tier3Tu": 150,
+    "rewardPerTu": 150,
+    "levelBonus": 0.25,
+    "expiryDays": 28,
+    "change": "namedBounty",
+    "notoriety": -10,
+    "perBoardMin": 2,
+    "perBoardMax": 4
+  },
+  "kill": { "rewardPerTu": 25, "levelBonus": 0.25 },
+  "limits": { "merchants": 4, "named": 3, "sweep": 1 }
+}

@@ -125,6 +125,7 @@ export function sell(game: Game, actor: Actor, location: Location, commodity: st
   const cost = n * fleetUnitCost(actor, commodity);
   removeCargo(actor, commodity, n);
   game.bus.emit({ type: 'traded', actorId: actor.id, side: 'sell', locationId: location.id, commodity, units: n, total: q.total, profit: q.total - cost });
+  if (actor === game.state.player) game.state.career.stats.cargoTradedTonnes += n * commodityMass(data, commodity);
   entry.stock += n;
   actor.credits += q.total;
   const debtText = debt > 0 ? ` ${Math.round(Math.min(debt, q.total))} cr pays your debt.` : '';

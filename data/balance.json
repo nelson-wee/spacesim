@@ -103,6 +103,23 @@
     "fleeCargoShare": 0.5
   },
   "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Second Chance" },
+  "career": {
+    "days": 730,
+    "fleetValueShare": 0.6,
+    "titles": [
+      { "min": 0, "name": "Drifter" },
+      { "min": 20000, "name": "Hauler" },
+      { "min": 100000, "name": "Merchant Captain" },
+      { "min": 500000, "name": "Sector Magnate" }
+    ],
+    "dreadPirateNotoriety": 50,
+    "dreadPirateTitle": "Dread Pirate",
+    "pirateHunterBounties": 10,
+    "pirateHunterTitle": "Pirate Hunter",
+    "wardenFromLevel": 1,
+    "wardenToLevel": 3,
+    "wardenTitle": "Warden of"
+  },
   "economy": {
     "priceExponent": 0.6,
     "priceClampMin": 0.3,

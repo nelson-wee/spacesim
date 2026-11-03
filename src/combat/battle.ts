@@ -34,6 +34,8 @@ export interface BattleSpec {
   /** Sector of the battle, for reinforcements (Section 13.5). */
   sectorId?: number;
   sector?: { securityValue: number; development: 'core' | 'middle' | 'frontier' };
+  /** A named bounty group (Section 14.6). */
+  namedId?: number;
 }
 
 /**
@@ -164,6 +166,7 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     sectorId: spec.sectorId ?? null,
     sector: spec.sector ? { ...spec.sector } : null,
     reinforced: { patrol: false, pirate: false },
+    namedId: spec.namedId ?? null,
   };
   let id = 0;
   const groups: [Side, BattleShipSpec[]][] = [

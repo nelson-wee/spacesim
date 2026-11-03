@@ -10,12 +10,14 @@ import { resolveTurn } from '../combat/resolver';
 import type { AiKind, Battle, Faction, Side } from '../combat/types';
 import type { CargoLot, Sector } from '../core/types';
 import type { BattleMapTemplate } from '../data/schemas';
+import type { Tier } from '../data';
 import { createShipFromLoadout } from '../ship/loadout';
 import type { App } from './app';
 import { CombatScreen, resultText } from './screens/combat';
 import { surrenderedShips } from '../career/prize';
 import { FleetScreen } from './screens/fleet';
-import { GameOverScreen } from './screens/gameOver';
+import { CareerEndScreen } from './screens/careerEnd';
+import { endCareer } from '../career/career';
 
 export interface EnemySpec {
   loadoutId: string;
@@ -24,6 +26,8 @@ export interface EnemySpec {
   /** Escort of the ship with this index in the list (Patrol AI). */
   escortOf?: number | null;
   cargo?: Record<string, CargoLot>;
+  /** Module tier of all modules (named groups). */
+  tier?: Tier;
 }
 
 export interface BattleOptions {
@@ -37,6 +41,9 @@ export interface BattleOptions {
   intro?: string;
   /** Auto-resolve the battle at once (Q-47): the screen opens on the result. */
   autoResolve?: boolean;
+  /** A named bounty group (Section 14.6): its contract and the name of its ships. */
+  namedId?: number;
+  shipName?: string;
 }
 
 function sectorOf(sectors: Sector[], id: number | undefined): { securityValue: number; development: Sector['development'] } | undefined {
@@ -56,7 +63,7 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
     {
       player: [{ ship: flag, ai: 'human' }],
       other: enemies.map((e, i) => {
-        const ship = createShipFromLoadout(data, e.loadoutId, `enemy-${i}`, `${data.loadoutById.get(e.loadoutId)?.name ?? e.loadoutId} ${i + 1}`);
+        const ship = createShipFromLoadout(data, e.loadoutId, `enemy-${i}`, `${options.shipName ?? data.loadoutById.get(e.loadoutId)?.name ?? e.loadoutId} ${i + 1}`, e.tier);
         if (e.cargo) ship.cargo = structuredClone(e.cargo);
         return {
           ship,
@@ -71,6 +78,7 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
       map: options.map,
       sectorId: options.sectorId,
       sector: sectorOf(state.world.sectors, options.sectorId),
+      namedId: options.namedId,
     },
     data,
   );
@@ -95,10 +103,9 @@ export function endBattle(app: App, b: Battle): void {
   const boarded = b.result === 'win' ? surrenderedShips(b) : [];
   const end = finishBattle(game, game.state.player, b, { boarding: 'manual' });
   if (end === 'gameOver') {
-    const { day } = game.state;
-    const credits = game.state.player.credits;
-    app.game = null;
-    app.reset(new GameOverScreen(app, day, credits));
+    // The last ship is lost with no insurance: the career ends (M6-FCMB-05, Section 16).
+    const over = game.state.career.end ?? endCareer(game, 'lost');
+    app.reset(new CareerEndScreen(app, game, over));
     return;
   }
   if (end === 'disabled' || end === 'cloned' || end === 'flagshipLost') app.tutorial.notify('defeat');

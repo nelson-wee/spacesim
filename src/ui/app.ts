@@ -7,6 +7,9 @@ import { type KeyInput, isDebugKey } from './input';
 import { ClickZones } from './widgets/clicks';
 import type { TutorialTrigger } from '../data/schemas';
 import { TutorialRunner } from './tutorialRunner';
+import { SaveRunner } from './saveRunner';
+import { careerDue, endCareer } from '../career/career';
+import { CareerEndScreen } from './screens/careerEnd';
 
 export interface Screen {
   render(t: Term): void;
@@ -31,6 +34,8 @@ export class App {
   helpScreen: ((app: App, lines: string[]) => Screen) | null = null;
   /** Tutorial tips (Q-48). */
   readonly tutorial = new TutorialRunner();
+  /** Autosave at each dock (Section 17.7). */
+  readonly saves = new SaveRunner();
 
   constructor(
     readonly term: Term,
@@ -58,6 +63,13 @@ export class App {
   }
 
   render(): void {
+    this.saves.attach(this.game);
+    // The career ends at its last day (Section 16).
+    if (this.game && careerDue(this.game)) {
+      const end = endCareer(this.game, 'day');
+      this.reset(new CareerEndScreen(this, this.game, end));
+      return;
+    }
     // A tutorial tip can be due after any change; it shows on top (Q-48).
     this.tutorial.check(this);
     this.term.clear();

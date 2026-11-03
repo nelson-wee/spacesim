@@ -38,7 +38,7 @@ function fight(game: Game, actor: Actor, enc: Encounter, enemyFirst: boolean, lo
     {
       player: [{ ship: flag, ai: 'attack' }],
       other: enc.ships.map((s, i) => {
-        const ship = createShipFromLoadout(data, s.loadoutId, `e${i}`, s.loadoutId);
+        const ship = createShipFromLoadout(data, s.loadoutId, `e${i}`, s.loadoutId, s.tier);
         ship.cargo = structuredClone(s.cargo);
         return { ship, ai: s.ai, faction: s.faction, escortOf: s.escortOf ?? undefined, powerPriority: data.loadoutById.get(s.loadoutId)?.powerPriority };
       }),
@@ -47,6 +47,7 @@ function fight(game: Game, actor: Actor, enc: Encounter, enemyFirst: boolean, lo
       map: sector ? battleMapFor(sector, enc.point, state.world.locations, data) : undefined,
       sectorId: enc.sectorId,
       sector: sector ? { securityValue: sector.securityValue, development: sector.development } : undefined,
+      namedId: enc.namedId,
     },
     data,
   );

@@ -4,7 +4,7 @@ import type { Development, SlotSize, Tier } from '../data';
 import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
 
 export interface Vec {
   x: number;
@@ -80,8 +80,23 @@ export interface Shipment {
   arriveDay: number;
 }
 
+/** A market event (Section 9.11): active from startDay until endDay (economy days). */
+export interface MarketEvent {
+  id: number;
+  kind: 'shortage' | 'boom' | 'strike' | 'pirateSurge';
+  startDay: number;
+  endDay: number;
+  locationId?: number;
+  commodity?: string;
+  sectorId?: number;
+}
+
 export interface EconomyState {
   days: number;
+  events: MarketEvent[];
+  nextEventId: number;
+  /** The newest event of the last economy day (the game tick logs it), or null. */
+  newEvent: MarketEvent | null;
   region: Record<string, RegionCommodityStats>;
   /** Carrier goods in transit. */
   shipments: Shipment[];
@@ -205,6 +220,122 @@ export interface LogEntry {
   kind: LogKind;
 }
 
+/** Contracts (Section 14). A board offer and an accepted contract use the same object. */
+interface ContractBase {
+  id: number;
+  /** The location of the board that posted it. */
+  boardId: number;
+  postedDay: number;
+  /** Why the world needs it, for example "Vashti Ice Mine: output 65%, needs Machinery" (Section 14.1). */
+  reason: string;
+}
+
+export interface SupplyContract extends ContractBase {
+  kind: 'supply';
+  destId: number;
+  commodity: string;
+  sizeId: string;
+  units: number;
+  delivered: number;
+  /** Price per unit, fixed at posting. */
+  price: number;
+  severity: number;
+  deadline: number;
+}
+
+export interface FreightContract extends ContractBase {
+  kind: 'freight';
+  fromId: number;
+  toId: number;
+  commodity: string;
+  sizeId: string;
+  units: number;
+  jumps: number;
+  riskMult: number;
+  cargoValue: number;
+  deposit: number;
+  fee: number;
+  /** Null until the player picks the cargo up at `fromId`. */
+  pickedDay: number | null;
+  /** The pickup deadline before pickup; the delivery deadline after it. */
+  deadline: number;
+}
+
+export interface SweepContract extends ContractBase {
+  kind: 'sweep';
+  sectorId: number;
+  ships: number;
+  kills: number;
+  reward: number;
+  /** Set at acceptance (acceptance + deadlineDays); null on the board. */
+  deadline: number | null;
+}
+
+export interface NamedShip {
+  loadoutId: string;
+  tier: Tier;
+}
+
+export interface NamedBounty extends ContractBase {
+  kind: 'named';
+  sectorId: number;
+  /** "Oriel the Saltless, aboard the Low Tide". */
+  name: string;
+  templateId: string;
+  ships: NamedShip[];
+  tu: number;
+  reward: number;
+  expiry: number;
+}
+
+export type Contract = SupplyContract | FreightContract | SweepContract | NamedBounty;
+
+export interface Board {
+  locationId: number;
+  guild: 'merchants' | 'bounty';
+  day: number;
+  offers: Contract[];
+}
+
+export interface ContractState {
+  boards: Board[];
+  active: Contract[];
+  /** Merchants' Guild standing counts (Section 14.4: standing = completed - 2 x failed, at least 0). */
+  completed: number;
+  failed: number;
+  /** Kill bounty credits to collect at a Bounty Guild (Section 14.6). */
+  killBounty: number;
+  nextId: number;
+}
+
+/** Career statistics, recorded from the career start (Section 16, M7-CAR-05). */
+export interface CareerStats {
+  jumps: number;
+  cargoTradedTonnes: number;
+  battlesWon: number;
+  shipsCaptured: number;
+  namedBounties: number;
+  sweeps: number;
+  contractsCompleted: number;
+  contractsFailed: number;
+  /** Security value and level of each sector at the career start. */
+  startSecurity: number[];
+  startLevels: number[];
+}
+
+export interface CareerEnd {
+  reason: 'day' | 'retire' | 'lost';
+  day: number;
+  score: number;
+  title: string;
+  secondTitles: string[];
+}
+
+export interface CareerState {
+  stats: CareerStats;
+  end: CareerEnd | null;
+}
+
 /** The first-trade plan of the tutorial (Q-48): a best route at the career start. */
 export interface TutorialPlan {
   commodity: string;
@@ -236,4 +367,6 @@ export interface GameState {
   log: LogEntry[];
   nextId: number;
   tutorial: TutorialState;
+  contracts: ContractState;
+  career: CareerState;
 }

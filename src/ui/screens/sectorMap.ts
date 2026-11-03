@@ -1,5 +1,8 @@
 // Sector map (Sections 17.1 and 17.2): star, orbit rings, locations, jump
 // points, and the player. Travel in the sector and jumps start here.
+import { ContractsScreen } from './contracts';
+import { TitleScreen } from './title';
+import { saveGame } from '../saveStore';
 import type { TutorialTrigger } from '../../data/schemas';
 import { goalLine, wrap } from '../tutorial';
 import {
@@ -43,6 +46,8 @@ const JUMP_KEYS = '1234';
 
 export class SectorMapScreen implements Screen {
   private selected: Destination | null = null;
+  /** Save and quit waits for a second Q. */
+  private quitArmed = false;
   /** Route view: the selected commodity, or null. */
   private routeCommodity: string | null = null;
 
@@ -247,7 +252,8 @@ export class SectorMapScreen implements Screen {
     drawKeyHints(t, zones, x, y++, [['I', 'Fleet', press('i')], ['T', 'Trade Ledger', press('t')]], pal.ui, this.app.press, 2);
     keyLine('V', 'Route view');
     keyLine('M', 'Region map');
-    drawKeyHints(t, zones, x, y++, [['L', 'Log', press('l')], ['?', 'Help', press('?')]], pal.ui, this.app.press, 2);
+    drawKeyHints(t, zones, x, y++, [['G', 'Contracts', press('g')], ['L', 'Log', press('l')], ['?', 'Help', press('?')]], pal.ui, this.app.press, 2);
+    drawKeyHints(t, zones, x, y++, [['Q', 'Save and quit', press('q')]], pal.ui, this.app.press, 2);
   }
 
   private planLines(plan: TripPlan, line: (text: string, fg?: string) => void): void {
@@ -267,6 +273,8 @@ export class SectorMapScreen implements Screen {
   onKey(k: KeyInput): boolean {
     const game = this.game;
     const player = game.state.player;
+    const quitArmed = this.quitArmed;
+    this.quitArmed = k.key === 'q' && quitArmed;
     const li = LOCATION_KEYS.indexOf(k.key);
     if (k.key.length === 1 && li >= 0) {
       const loc = this.locations()[li];
@@ -351,6 +359,22 @@ export class SectorMapScreen implements Screen {
       case 'l':
         this.app.push(new LogScreen(this.app));
         return true;
+      case 'g':
+        this.app.push(new ContractsScreen(this.app));
+        return true;
+      case 'q': {
+        // Save and quit to the title screen (Section 17.7): press Q twice.
+        if (!this.quitArmed) {
+          this.quitArmed = true;
+          game.bus.message('Save and quit to the title screen? Press Q again to confirm.', 'warning');
+          return true;
+        }
+        const ok = saveGame(game);
+        this.app.game = null;
+        this.app.reset(new TitleScreen(this.app));
+        if (!ok) console.warn('The game could not be saved (no storage).');
+        return true;
+      }
       case 'Escape':
         if (!this.selected) return false;
         this.selected = null;
@@ -393,6 +417,8 @@ export class SectorMapScreen implements Screen {
       'V        Route view: prices of one commodity (Shift+V: off)',
       'M        Region map',
       'L        Log',
+      'G        Your contracts',
+      'Q, Q     Save and quit to the title screen',
       'Esc      Clear the target',
       '',
       'Travel uses time and fuel. Docking at a planet uses fuel',

@@ -262,6 +262,22 @@ export const balanceSchema = z.object({
     }),
   }),
   start: z.object({ credits: z.number(), loadoutId: z.string(), shipName: z.string() }),
+  /**
+   * Career end and score (Section 16). `days`: the career end (one value: after the MVP the owner wants
+   * no limit). Score = credits + fleetValueShare x hull and module prices + cargo at local prices.
+   */
+  career: z.object({
+    days: pos,
+    fleetValueShare: prob,
+    titles: z.array(z.object({ min: nonNeg, name: z.string() })).min(1),
+    dreadPirateNotoriety: nonNeg,
+    dreadPirateTitle: z.string(),
+    pirateHunterBounties: z.number().int().min(1),
+    pirateHunterTitle: z.string(),
+    wardenFromLevel: z.number().int().min(0),
+    wardenToLevel: z.number().int().min(0),
+    wardenTitle: z.string(),
+  }),
 });
 
 export const commoditiesSchema = z.object({
@@ -461,6 +477,8 @@ export const namesSchema = z.object({
   location: syllablesSchema,
   nameAttempts: z.number().int().positive(),
   middleChance: prob,
+  /** Named bounties (Section 14.6): "<captain> <epithet>, aboard the <ship>". */
+  pirate: z.object({ captains: z.array(z.string()).min(1), epithets: z.array(z.string()).min(1), ships: z.array(z.string()).min(1) }),
 });
 
 export const hullsSchema = z.object({
@@ -622,6 +640,76 @@ export const servicesSchema = z.object({
 
 // Filled in later milestones (M5: encounters, templates, battleMaps; M7: events, contracts).
 export const plannedSchema = z.object({}).strict();
+
+/** Contracts and guilds (Section 14). Change ids refer to security.json `changes`. */
+export const contractsSchema = z.object({
+  boardIntervalDays: z.number().int().min(1),
+  offersMin: z.number().int().min(0),
+  offersMax: z.number().int().min(1),
+  candidateJumps: z.number().int().min(0),
+  deficitStockShare: prob,
+  capitalKShare: prob,
+  starvationInputFactor: prob,
+  surplusStockShare: pos,
+  securityBelowBaseline: nonNeg,
+  securityMaxLevel: z.number().int().min(0),
+  securityDivisor: pos,
+  securityMinSeverity: prob,
+  securityScore: pos,
+  sizes: z.array(z.object({ id: z.string(), name: z.string(), tonnes: pos, standing: nonNeg })).min(1),
+  standingCompleted: z.number(),
+  standingFailed: z.number(),
+  supply: z.object({ premiumBase: nonNeg, premiumPerSeverity: nonNeg, deadlineBase: nonNeg, deadlinePerJump: nonNeg }),
+  freight: z.object({
+    pickupJumps: z.number().int().min(0),
+    destMinJumps: z.number().int().min(1),
+    destMaxJumps: z.number().int().min(1),
+    depositShare: prob,
+    feePerTonneJump: nonNeg,
+    riskPerLevel: nonNeg,
+    valueShare: nonNeg,
+    deadlineBase: nonNeg,
+    deadlinePerJump: nonNeg,
+    /** Before pickup (the brief gives no rule): acceptance day + base + perJump x jumps from the board to A. */
+    pickupDeadlineBase: nonNeg,
+    pickupDeadlinePerJump: nonNeg,
+  }),
+  sweep: z.object({ minShips: z.number().int().min(1), maxShips: z.number().int().min(1), deadlineDays: pos, rewardPerTu: nonNeg, levelBonus: nonNeg, change: z.string() }),
+  named: z.object({
+    maxLevel: z.number().int().min(0),
+    budgetMin: pos,
+    budgetMax: pos,
+    tier: z.number().int().min(1).max(3),
+    tier3Tu: pos,
+    rewardPerTu: nonNeg,
+    levelBonus: nonNeg,
+    expiryDays: pos,
+    change: z.string(),
+    notoriety: z.number(),
+    perBoardMin: z.number().int().min(0),
+    perBoardMax: z.number().int().min(0),
+  }),
+  kill: z.object({ rewardPerTu: nonNeg, levelBonus: nonNeg }),
+  limits: z.object({ merchants: z.number().int().min(0), named: z.number().int().min(0), sweep: z.number().int().min(0) }),
+});
+
+/** Market events (Section 9.11). */
+export const eventsSchema = z.object({
+  maxActive: z.number().int().min(0),
+  dailyChance: prob,
+  kinds: z.array(
+    z.object({
+      id: z.enum(['shortage', 'boom', 'strike', 'pirateSurge']),
+      name: z.string(),
+      weight: nonNeg,
+      minDays: nonNeg,
+      maxDays: nonNeg,
+      useMult: nonNeg.optional(),
+      batchMult: nonNeg.optional(),
+      change: z.string().optional(),
+    }),
+  ),
+});
 
 const glyph = z.string().length(1);
 const grid = z.array(z.string()).min(1);
