@@ -117,8 +117,16 @@ export class OutfitterTab implements LocationTab {
 
     // Ship, portrait (slot marks are decoration only, Q-29).
     const hull = data.hullById.get(ship.hullId);
-    t.text(0, TAB_Y, fit(`${ship.name} (${hull?.name ?? ship.hullId})`, LEFT_W - 12), ui.title);
-    if (game.state.player.fleet.length > 1) t.text(LEFT_W - 12, TAB_Y, '[ ] Ship', ui.dim);
+    // Ship selection (owner bug report, 2026-11-03): [ and ] or a click on the arrows.
+    const fleetSize = game.state.player.fleet.length;
+    if (fleetSize > 1) {
+      t.key(0, TAB_Y, '[', ui.key, ui.keyBg);
+      ctx.zones.add(0, TAB_Y, 1, () => ctx.press(press('[')));
+      t.text(2, TAB_Y, fit(`${ship.name} (${hull?.name ?? ship.hullId})`, LEFT_W - 16), ui.title);
+      t.text(LEFT_W - 13, TAB_Y, `ship ${this.ship + 1}/${fleetSize}`, ui.dim);
+      t.key(LEFT_W - 3, TAB_Y, ']', ui.key, ui.keyBg);
+      ctx.zones.add(LEFT_W - 3, TAB_Y, 1, () => ctx.press(press(']')));
+    } else t.text(0, TAB_Y, fit(`${ship.name} (${hull?.name ?? ship.hullId})`, LEFT_W - 2), ui.title);
     const art = data.art.ships.ships[ship.hullId];
     if (art) drawArt(t, data, art.portrait, 1, TAB_Y + 1, { side: 'player' });
 
@@ -193,6 +201,7 @@ export class OutfitterTab implements LocationTab {
         ['Enter', 'Buy and install', press('Enter')],
         ['X', 'Sell module', press('x')],
         ['O', 'ON/OFF', press('o')],
+        ...(game.state.player.fleet.length > 1 ? [['[ ]', 'Other ship', press(']')] as const] : []),
       ],
       ui,
       ctx.press,
@@ -226,11 +235,12 @@ export class OutfitterTab implements LocationTab {
         this.focus = 'shop';
         return true;
       case '[':
-        this.ship = Math.max(0, this.ship - 1);
+      case ']': {
+        // Wraps around the fleet.
+        const n = actor.fleet.length;
+        this.ship = (this.ship + (k.key === ']' ? 1 : n - 1)) % n;
         return true;
-      case ']':
-        this.ship = Math.min(actor.fleet.length - 1, this.ship + 1);
-        return true;
+      }
       case 'Enter': {
         const o = offers[this.shop];
         if (this.focus !== 'shop' || !sel || !o) {
@@ -267,7 +277,7 @@ export class OutfitterTab implements LocationTab {
       'Enter        Buy the module and install it in the empty slot',
       'X            Sell the module in the slot (60% of its price)',
       'O            Switch the module ON or OFF for travel',
-      '[ ]          Select a different fleet ship',
+      '[ ]          Select another fleet ship (or click [ or ] at the top)',
       '',
       'A module fits a slot of its size or larger. The stat panel shows',
       'old -> new values: green is better, red is worse. A ship needs an',

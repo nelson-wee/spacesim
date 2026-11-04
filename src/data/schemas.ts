@@ -659,7 +659,26 @@ export const contractsSchema = z.object({
   sizes: z.array(z.object({ id: z.string(), name: z.string(), tonnes: pos, standing: nonNeg })).min(1),
   standingCompleted: z.number(),
   standingFailed: z.number(),
-  supply: z.object({ premiumBase: nonNeg, premiumPerSeverity: nonNeg, deadlineBase: nonNeg, deadlinePerJump: nonNeg }),
+  /** Supply offers for chain alerts that each board posts first (owner, 2026-11-03). */
+  alertOffersPerBoard: z.number().int().min(0),
+  /**
+   * Supply (owner, 2026-11-03): open quantity, paid per tonne delivered (up to the destination's need),
+   * until the need ends. Each tonne pays the goods at the destination sell price at posting, plus a flat
+   * fee per tonne = (feePerTonne + feePerTonneJump x jumps from the nearest maker) x riskMult
+   * x (1 + urgencyPerSeverity x severity) x (alertFeeMult for a chain alert);
+   * riskMult = 1 + riskPerLevel x (4 - lowest security level from the nearest maker to the destination).
+   * The contract ends when the need ends or maxDays after acceptance (Q-53 (c); the board can post it
+   * again at new prices). It counts as done (standing) when the player delivered minDoneTonnes.
+   */
+  supply: z.object({
+    feePerTonne: nonNeg,
+    feePerTonneJump: nonNeg,
+    riskPerLevel: nonNeg,
+    urgencyPerSeverity: nonNeg,
+    alertFeeMult: pos,
+    minDoneTonnes: nonNeg,
+    maxDays: z.number().int().min(1),
+  }),
   freight: z.object({
     pickupJumps: z.number().int().min(0),
     destMinJumps: z.number().int().min(1),

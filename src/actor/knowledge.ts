@@ -34,6 +34,8 @@ export interface KnownMarket {
 export interface ChainAlert {
   locationId: number;
   text: string;
+  /** The commodity that would fix it (an input, Machinery, or a population need), if one does. */
+  commodity?: string;
 }
 
 export interface Knowledge {
@@ -87,17 +89,22 @@ export function sectorsWithin(world: World, data: GameData, sectorId: number, ju
  * producer with low output and its cause, and population deficits.
  */
 export function chainAlerts(world: World, data: GameData, sectorIds: number[]): ChainAlert[] {
+  const sectors = new Set(sectorIds);
+  return world.locations.filter((l) => sectors.has(l.sectorId)).flatMap((l) => chainAlertsAt(world, data, l));
+}
+
+/** Chain alerts of one location (the Merchants' Guild posts Supply contracts for them, Section 14.3). */
+export function chainAlertsAt(world: World, data: GameData, loc: Location): ChainAlert[] {
   const a = data.serviceRules.alerts;
   const ctx = econContext(world, data);
   const alerts: ChainAlert[] = [];
-  const sectors = new Set(sectorIds);
-  for (const loc of world.locations) {
-    if (!sectors.has(loc.sectorId)) continue;
+  {
     const p = loc.production;
     if (loc.producer && p && p.outputRatio < a.lowOutputRatio) {
       const r = recipeOf(data, loc.producer);
       const type = loc.producer.replace(/_/g, ' ');
       let cause = 'low security';
+      let commodity: string | undefined;
       if (p.inputFactor < 1 - 1e-6) {
         // The hard input with the lowest stock against its need.
         const worst = r.inputs
@@ -105,15 +112,18 @@ export function chainAlerts(world: World, data: GameData, sectorIds: number[]): 
           .sort((x, y) => x.ratio - y.ratio)[0];
         const name = worst ? (data.commodityById.get(worst.c)?.name ?? worst.c) : 'inputs';
         cause = p.inputFactor < 0.05 ? `no ${name}` : `low ${name}`;
-      } else if (p.capitalFactor < 1 - 1e-6) cause = 'low Machinery';
-      else if (loc.capacity < 1 - 1e-6) cause = 'low capacity';
-      alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name} ${type}: ${cause}, output ${Math.round(p.outputRatio * 100)}%` });
+        commodity = worst?.c;
+      } else if (p.capitalFactor < 1 - 1e-6) {
+        cause = 'low Machinery';
+        commodity = r.softInput;
+      } else if (loc.capacity < 1 - 1e-6) cause = 'low capacity';
+      alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name} ${type}: ${cause}, output ${Math.round(p.outputRatio * 100)}%`, commodity });
     }
     for (const u of ctx.uses[loc.id] ?? []) {
       const entry = loc.market[u.commodity];
       if (!entry || u.amount <= 0) continue;
       if (entry.stock < u.amount * a.deficitDays) {
-        alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name}: short of ${data.commodityById.get(u.commodity)?.name ?? u.commodity}` });
+        alerts.push({ locationId: loc.id, text: `${locationCode(world, loc, data)} ${loc.name}: short of ${data.commodityById.get(u.commodity)?.name ?? u.commodity}`, commodity: u.commodity });
       }
     }
   }

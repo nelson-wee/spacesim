@@ -12,7 +12,7 @@ import { priceView } from '../../src/actor/knowledge';
 import { type EncounterHandler, estimatePath, followPath, pathBetween } from '../../src/actor/paths';
 import { bestRoutes } from '../../src/actor/routes';
 import { acceptContract, deliverSupply } from '../../src/career/contracts';
-import { lowestLevelOnPath } from '../../src/career/contractGen';
+import { lowestLevelOnPath, supplyRoom } from '../../src/career/contractGen';
 import { econContext } from '../../src/econ/context';
 import type { Game } from '../../src/core/game';
 import type { Actor, Location, SupplyContract } from '../../src/core/types';
@@ -24,11 +24,22 @@ export interface ContractLog {
   ratios: number[];
   accepted: number;
   delivered: number;
+  /** Completed deliveries (for the chain alert follow-up in sim-contracts). */
+  deliveries: { destId: number; commodity: string; day: number; alert: boolean }[];
+  /** Alert offers that the bot saw on a board and did not take. */
+  unserved: { destId: number; commodity: string; day: number }[];
 }
 
 export function newContractLog(): ContractLog {
-  return { ratios: [], accepted: 0, delivered: 0 };
+  return { ratios: [], accepted: 0, delivered: 0, deliveries: [], unserved: [] };
 }
+
+/**
+ * 'best': accept an offer only if it pays more per day than the best known
+ * open-market route of similar length (a greedy trader). 'first': accept any
+ * offer that makes a profit, chain alerts first (a guild-minded trader).
+ */
+export type ContractPolicy = 'best' | 'first';
 
 interface SupplyValue {
   source: Location;
@@ -51,7 +62,10 @@ export function supplyValue(game: Game, actor: Actor, here: Location, c: SupplyC
     if (l.id === dest.id || !l.market[c.commodity]) continue;
     const view = priceView(game, actor, l, c.commodity);
     if (view.source === 'unknown') continue;
-    const units = Math.min(c.units - c.delivered, Math.floor(fleetFreeTonnes(actor, data) / mass), Math.floor(actor.credits / Math.max(1, view.buy)));
+    // Perishable goods: buy a little more; keep 10% of the credits for price moves; no more than the stock there.
+    const extra = (data.commodityById.get(c.commodity)?.perishablePerDay ?? 0) > 0 ? 1.05 : 1;
+    const stock = Math.floor(l.market[c.commodity]?.stock ?? 0);
+    const units = Math.min(Math.floor(supplyRoom(game, c) * extra), Math.floor(fleetFreeTonnes(actor, data) / mass), Math.floor((0.9 * actor.credits) / Math.max(1, view.buy)), stock);
     if (units <= 0) continue;
     const toSource = l.id === here.id ? null : pathBetween(state.world, data, here, l);
     const trip = pathBetween(state.world, data, l, dest);
@@ -63,7 +77,7 @@ export function supplyValue(game: Game, actor: Actor, here: Location, c: SupplyC
     const entry = { ...(l.market[c.commodity] as NonNullable<Location['market'][string]>) };
     const cost = quoteBuy(entry, basePrice(data, c.commodity), units, data).total;
     const fuel = (a.totalFuel + b.totalFuel) * fuelUnitPrice(data, here);
-    const perDay = (units * c.price - cost - fuel - upkeepPerDay(actor, data) * days) / days;
+    const perDay = (units * (c.price + c.feePerTonne * mass) - cost - fuel - upkeepPerDay(actor, data) * days) / days;
     if (!best || perDay > best.perDay) best = { source: l, units, days, perDay };
   }
   return best;
@@ -82,16 +96,29 @@ function goTo(game: Game, actor: Actor, from: Location, to: Location, onEncounte
 
 /** The commodities that the bot keeps for its Supply contract (it must not sell them on the way). */
 export function contractGoods(game: Game): Set<string> {
-  return new Set(game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply').map((c) => c.commodity));
+  return new Set(game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply' && supplyRoom(game, c) > 0).map((c) => c.commodity));
 }
 
 /** One contract step at a docked location. Returns true if the bot acted (and the turn is over). */
-export function contractTurn(game: Game, actor: Actor, log: ContractLog, maxJumps: number, onEncounter?: EncounterHandler, minSecurity = 0): boolean {
+export function contractTurn(
+  game: Game,
+  actor: Actor,
+  log: ContractLog,
+  maxJumps: number,
+  onEncounter?: EncounterHandler,
+  minSecurity = 0,
+  policy: ContractPolicy = 'best',
+  fill?: (here: Location, main: { toId: number; commodity: string }) => void,
+): boolean {
   const { state } = game;
   const here = loc(game, (actor.position as { locationId: number }).locationId);
   let c = state.contracts.active.find((x): x is SupplyContract => x.kind === 'supply');
   if (c && c.destId === here.id && fleetUnits(actor, c.commodity) > 0) {
-    if (deliverSupply(game, c.id).ok) log.delivered++;
+    const done = c;
+    if (deliverSupply(game, c.id).ok) {
+      log.delivered++;
+      if (!state.contracts.active.includes(done)) log.deliveries.push({ destId: done.destId, commodity: done.commodity, day: state.day, alert: done.alert });
+    }
     c = state.contracts.active.find((x): x is SupplyContract => x.kind === 'supply');
   }
   if (!c && here.services.includes('merchants_guild')) {
@@ -105,25 +132,31 @@ export function contractTurn(game: Game, actor: Actor, log: ContractLog, maxJump
       if (open === null || open <= 0) continue;
       const ratio = v.perDay / open;
       log.ratios.push(ratio);
-      // Accept only an offer that the fleet can finish in one trip before its deadline.
+      // Accept an offer worth one trip (open quantity: at least 5 t).
       const ctx = econContext(state.world, game.data);
       const dest = loc(game, o.destId);
       const safe = minSecurity === 0 || (lowestLevelOnPath(ctx, here.sectorId, v.source.sectorId, game.data) >= minSecurity && lowestLevelOnPath(ctx, v.source.sectorId, dest.sectorId, game.data) >= minSecurity);
-      const fits = safe && v.units >= o.units - o.delivered && state.day + v.days + 1 <= o.deadline;
-      if (fits && ratio > 1 && (!pick || v.perDay > pick.v.perDay)) pick = { c: o, v, ratio };
+      const fits = safe && v.units * (game.data.commodityById.get(o.commodity)?.massPerUnit ?? 1) >= 5;
+      const wanted = policy === 'first' ? v.perDay > 0 : ratio > 1;
+      const better = (x: SupplyContract, xv: SupplyValue) =>
+        !pick || (policy === 'first' ? Number(x.alert) - Number(pick.c.alert) || xv.perDay - pick.v.perDay : xv.perDay - pick.v.perDay) > 0;
+      if (fits && wanted && better(o, v)) pick = { c: o, v, ratio };
     }
+    for (const o of board?.offers ?? []) if (o.kind === 'supply' && o.alert && o !== pick?.c) log.unserved.push({ destId: o.destId, commodity: o.commodity, day: state.day });
     if (pick && acceptContract(game, here.id, pick.c.id).ok) {
       log.accepted++;
       c = pick.c;
     }
   }
   if (!c) return false;
-  const left = c.units - c.delivered;
-  if (fleetUnits(actor, c.commodity) >= left - 1e-6) return goTo(game, actor, here, loc(game, c.destId), onEncounter);
+  // Open quantity: carry what the fleet holds to the destination; at the destination with goods left, the need is full for now.
+  if (fleetUnits(actor, c.commodity) > 1e-6) return c.destId === here.id ? false : goTo(game, actor, here, loc(game, c.destId), onEncounter);
   const v = supplyValue(game, actor, here, c);
   if (!v) return false;
   if (v.source.id === here.id) {
-    buy(game, actor, here, c.commodity, Math.min(left - fleetUnits(actor, c.commodity), v.units));
+    buy(game, actor, here, c.commodity, Math.max(0, v.units - fleetUnits(actor, c.commodity)));
+    // Fill the rest of the hold with trade goods for the same destination, as a player would.
+    if (fill) fill(here, { toId: c.destId, commodity: c.commodity });
     return goTo(game, actor, here, loc(game, c.destId), onEncounter);
   }
   return goTo(game, actor, here, v.source, onEncounter);

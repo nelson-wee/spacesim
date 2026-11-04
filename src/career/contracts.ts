@@ -10,6 +10,7 @@ import type { Actor, Contract, FreightContract, Location, NamedBounty, Sector, S
 import type { GameData } from '../data';
 import { type Encounter, isWanted, pirateBehavior } from '../encounter/encounter';
 import { DEBT_TEXT, done, inDebt, refused, type ServiceResult } from '../services/common';
+import { supplyNeedOpen, supplyRoom } from './contractGen';
 import { shipTu } from '../ship/threat';
 import { changeSecurity, securityLevel } from '../world/security';
 import { addNotoriety } from './notoriety';
@@ -67,6 +68,7 @@ export function acceptContract(game: Game, boardLocationId: number, offerId: num
   if (why) return refused(why);
   board.offers = board.offers.filter((o) => o.id !== offerId);
   if (offer.kind === 'sweep') offer.deadline = state.day + data.contracts.sweep.deadlineDays;
+  if (offer.kind === 'supply') offer.acceptedDay = state.day;
   state.contracts.active.push(offer);
   return done(`You accept the contract: ${offer.reason}.`);
 }
@@ -92,26 +94,56 @@ function fail(game: Game, c: Contract, text: string): void {
   game.bus.message(text, 'danger');
 }
 
-/** Delivers Supply cargo at the destination: partial deliveries are paid at once; goods go into the market stock (Section 14.4). */
+/**
+ * Delivers Supply cargo at the destination (owner, 2026-11-03): as much as the
+ * fleet has, up to what the destination still needs (its target stock). Each
+ * unit pays the goods price and the fee per tonne at once; the goods go into
+ * the market stock. When the need ends, the contract ends.
+ */
 export function deliverSupply(game: Game, contractId: number): ServiceResult {
   const { state, data } = game;
   const actor = state.player;
   const c = state.contracts.active.find((x): x is SupplyContract => x.id === contractId && x.kind === 'supply');
   if (!c) return refused('There is no such Supply contract.');
   if (docked(actor) !== c.destId) return refused(`Deliver at ${loc(game, c.destId).name}.`);
-  const units = Math.min(c.units - c.delivered, fleetUnits(actor, c.commodity));
-  if (units <= 1e-9) return refused(`You have no ${name(data, c.commodity)} to deliver.`);
+  const held = fleetUnits(actor, c.commodity);
+  if (held <= 1e-9) return refused(`You have no ${name(data, c.commodity)} to deliver.`);
+  const units = Math.min(held, supplyRoom(game, c));
+  if (units <= 1e-9) return refused(`${loc(game, c.destId).name} needs no more ${name(data, c.commodity)} now.`);
   removeCargo(actor, c.commodity, units);
   const dest = loc(game, c.destId);
   const entry = dest.market[c.commodity];
   if (entry) entry.stock += units;
-  const pay = units * c.price;
+  const mass = data.commodityById.get(c.commodity)?.massPerUnit ?? 1;
+  const pay = units * (c.price + c.feePerTonne * mass);
   actor.credits += pay;
   c.delivered += units;
   state.career.stats.cargoTradedTonnes += units * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
   const text = `You deliver ${Math.round(units)} ${name(data, c.commodity)} to ${dest.name} for ${Math.round(pay)} cr.`;
-  if (c.delivered >= c.units - 1e-6) complete(game, c, `Supply contract done: ${text}`);
+  if (!supplyNeedOpen(game, c)) endSupply(game, c);
   return done(text);
+}
+
+/**
+ * A Supply contract ends when its need ends. It counts as done (standing +1)
+ * if the player delivered at least minDoneTonnes; else it ends with no
+ * penalty (owner, 2026-11-03: no deadline, no fail).
+ */
+/** The day a Supply contract ends if the need is still open (Q-53 (c)). */
+export function supplyEndDay(game: Game, c: SupplyContract): number {
+  return (c.acceptedDay ?? c.postedDay) + game.data.contracts.supply.maxDays;
+}
+
+function endSupply(game: Game, c: SupplyContract, timeUp = false): void {
+  const { data, state } = game;
+  const tonnes = c.delivered * (data.commodityById.get(c.commodity)?.massPerUnit ?? 1);
+  const where = loc(game, c.destId).name;
+  const why = timeUp ? `its ${data.contracts.supply.maxDays} days are over; the guild can post a new offer` : `${where} has its ${name(data, c.commodity)}`;
+  if (tonnes >= data.contracts.supply.minDoneTonnes - 1e-6) complete(game, c, `Supply contract done: ${why} (you delivered ${Math.round(tonnes)} t).`);
+  else {
+    state.contracts.active = state.contracts.active.filter((x) => x.id !== c.id);
+    game.bus.message(timeUp ? `Supply contract ended: ${why}.` : `Supply contract ended: ${where} no longer needs ${name(data, c.commodity)}.`, 'warning');
+  }
 }
 
 /** Picks up Freight cargo at A: it leaves A's stock; the deposit is paid (Section 14.4). */
@@ -164,9 +196,13 @@ export function deliverFreight(game: Game, contractId: number): ServiceResult {
 export function contractDay(game: Game): void {
   const { state, data } = game;
   const actor = state.player;
+  // A Supply offer whose need ended leaves the board (open contracts, owner 2026-11-03).
+  for (const b of state.contracts.boards) b.offers = b.offers.filter((o) => o.kind !== 'supply' || supplyNeedOpen(game, o));
   for (const c of [...state.contracts.active]) {
-    if (c.kind === 'supply' && state.day > c.deadline) {
-      fail(game, c, `Supply contract failed: ${c.reason}. Standing ${data.contracts.standingFailed}.`);
+    if (c.kind === 'supply') {
+      // Q-53 (c): at most maxDays after acceptance; the board can post the need again at new prices.
+      if (!supplyNeedOpen(game, c)) endSupply(game, c);
+      else if (state.day >= supplyEndDay(game, c)) endSupply(game, c, true);
     } else if (c.kind === 'freight') {
       const lost = c.pickedDay !== null && fleetUnits(actor, c.commodity) < c.units - 1e-6;
       if (state.day > c.deadline || lost) {

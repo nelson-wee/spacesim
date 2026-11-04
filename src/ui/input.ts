@@ -42,3 +42,30 @@ export class DigitInput {
     return null;
   }
 }
+
+/** A small input field for a name: letters (Shift: capitals), digits, space, and - ' . */
+export class TextInput {
+  value: string;
+
+  constructor(
+    initial = '',
+    readonly maxLength = 20,
+  ) {
+    this.value = initial;
+  }
+
+  /** Returns 'enter' or 'cancel' when the input ends, 'edit' when it changes, or null. */
+  handle(k: KeyInput): 'enter' | 'cancel' | 'edit' | null {
+    if (k.key === 'Enter') return 'enter';
+    if (k.key === 'Escape') return 'cancel';
+    if (k.key === 'Backspace') {
+      this.value = this.value.slice(0, -1);
+      return 'edit';
+    }
+    if (k.key.length === 1 && /^[a-z0-9 '.-]$/i.test(k.key) && this.value.length < this.maxLength) {
+      this.value += k.shift && /[a-z]/.test(k.key) ? k.key.toUpperCase() : k.key;
+      return 'edit';
+    }
+    return null;
+  }
+}

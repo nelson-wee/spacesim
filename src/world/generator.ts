@@ -94,6 +94,9 @@ function finishWorld(world: World, rng: Rng, data: GameData, keepStart: boolean)
   setTechLevels(world, data);
   placeServices(world, data);
   if (!keepStart) chooseStart(world, rng);
+  // The start location always has a Merchants' Guild (owner, 2026-11-03), also when chooseStart or a repair falls back.
+  const start = world.locations[world.startLocationId];
+  if (start && !start.services.includes('merchants_guild')) start.services.push('merchants_guild');
   initMarkets(world, data);
   for (const loc of world.locations) {
     loc.production = null;

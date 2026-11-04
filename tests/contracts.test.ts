@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { bountyBoard, lowestLevelOnPath, merchantsBoard, needsAt, securityProblem, sizeFor, surplusesAt } from '../src/career/contractGen';
+import { bountyBoard, lowestLevelOnPath, merchantsBoard, needsAt, securityProblem, sizeFor, supplyFee, surplusesAt } from '../src/career/contractGen';
+import { chainAlertsAt } from '../src/actor/knowledge';
 import { kRef } from '../src/econ/capital';
 import { econContext } from '../src/econ/context';
 import { recipeOf } from '../src/econ/recipes';
@@ -119,18 +120,19 @@ describe('boards (Section 14.3, 14.4)', () => {
     expect(checked).toBeGreaterThan(20);
   });
 
-  it('supply offer: price = sell price x (1 + 0.10 + 0.20 x severity); deadline = posting + 8 + 4 x jumps; units from the size class', () => {
+  it('supply offer: goods at the sell price; a flat fee per tonne (jumps, risk, urgency, alert); open quantity, no deadline', () => {
     const g = fresh();
-    const ctx = econContext(g.state.world, data);
     const loc = g.state.world.locations.find((l) => l.services.includes('merchants_guild')) as Location;
     const offer = merchantsBoard(g, loc, rngOf(3)).offers.find((o) => o.kind === 'supply');
     if (!offer || offer.kind !== 'supply') return;
     const dest = g.state.world.locations[offer.destId]!;
     const sell = sellPrice(dest.market[offer.commodity]!, basePrice(data, offer.commodity), data);
-    expect(offer.price).toBeCloseTo(sell * (1 + c.supply.premiumBase + c.supply.premiumPerSeverity * offer.severity));
-    expect(offer.deadline).toBe(g.state.day + c.supply.deadlineBase + c.supply.deadlinePerJump * (ctx.sectorJumps[loc.sectorId]![dest.sectorId] as number));
-    const size = c.sizes.find((s) => s.id === offer.sizeId)!;
-    expect(offer.units).toBe(Math.round(size.tonnes / data.commodityById.get(offer.commodity)!.massPerUnit));
+    expect(offer.price).toBeCloseTo(sell);
+    expect(offer.feePerTonne).toBeCloseTo(
+      (c.supply.feePerTonne + c.supply.feePerTonneJump * offer.sourceJumps) * offer.riskMult * (1 + c.supply.urgencyPerSeverity * offer.severity) * (offer.alert ? c.supply.alertFeeMult : 1),
+    );
+    expect('deadline' in offer).toBe(false);
+    expect('units' in offer).toBe(false);
   });
 
   it('freight offer: deposit 25% of value; fee = tonnes x jumps x 4 x riskMult + 5% of value; riskMult from the lowest level on the path', () => {
@@ -178,7 +180,11 @@ describe('boards (Section 14.3, 14.4)', () => {
     const g = createGame(11, data);
     const first = structuredClone(g.state.contracts.boards);
     passTime(g, 6);
-    expect(g.state.contracts.boards).toEqual(first);
+    // Same boards; only Supply offers whose need ended leave (owner, 2026-11-03).
+    expect(g.state.contracts.boards.map((b) => b.day)).toEqual(first.map((b) => b.day));
+    const ids = (bs: typeof first) => bs.flatMap((b) => b.offers.map((o) => o.id));
+    expect(ids(first)).toEqual(expect.arrayContaining(ids(g.state.contracts.boards)));
+    expect(ids(first).filter((id) => !ids(g.state.contracts.boards).includes(id)).every((id) => first.some((b) => b.offers.some((o) => o.id === id && o.kind === 'supply')))).toBe(true);
     passTime(g, 1);
     expect(g.state.contracts.boards[0]!.day).toBe(7);
   });
@@ -196,8 +202,8 @@ function withOffer<T extends import('../src/core/types').Contract>(offer: T, at:
   return g;
 }
 
-function supply(destId: number, commodity = 'water', units = 10): SupplyContract {
-  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, sizeId: 'small', units, delivered: 0, price: 50, severity: 0.5, deadline: 20 };
+function supply(destId: number, commodity = 'water'): SupplyContract {
+  return { kind: 'supply', id: 900, boardId: destId, postedDay: 0, reason: 'test', destId, commodity, delivered: 0, price: 50, feePerTonne: 0, sourceJumps: 1, riskMult: 1, severity: 0.5, alert: false, acceptedDay: null };
 }
 
 describe('contract play (Sections 14.4-14.7)', () => {
@@ -225,28 +231,36 @@ describe('contract play (Sections 14.4-14.7)', () => {
     expect(standing(g)).toBe(1);
   });
 
-  it('supply: partial deliveries are paid at once and go into the market stock; done adds standing; a late contract fails', () => {
-    const dest = template.world.locations.find((l) => l.market.water)!;
-    const g = withOffer(supply(dest.id), dest.id);
+  it('supply: each delivery is paid at once (goods + fee per tonne), up to the need; it ends when the need ends; done adds standing', () => {
+    const dest = template.world.locations.find((l) => l.market.water && l.market.water.target > 100)!;
+    const g = withOffer({ ...supply(dest.id), feePerTonne: 10 }, dest.id);
+    const entry = g.state.world.locations[dest.id]!.market.water!;
+    entry.stock = 0;
+    entry.target = 40;
     acceptContract(g, dest.id, 900);
     const p = g.state.player;
-    const stock = g.state.world.locations[dest.id]!.market.water!.stock;
     addCargo(p, data, 'water', 4, 10);
     const c0 = p.credits;
     expect(deliverSupply(g, 900).ok).toBe(true);
-    expect(p.credits).toBeCloseTo(c0 + 4 * 50);
-    expect(g.state.world.locations[dest.id]!.market.water!.stock).toBeCloseTo(stock + 4);
-    addCargo(p, data, 'water', 20, 10);
+    expect(p.credits).toBeCloseTo(c0 + 4 * (50 + 10 * data.commodityById.get('water')!.massPerUnit));
+    expect(entry.stock).toBeCloseTo(4);
+    expect(g.state.contracts.active.length).toBe(1);
+    // Deliver more than the need: only up to the target stock is taken; the need ends, and the contract is done.
+    addCargo(p, data, 'water', 56, 10);
     deliverSupply(g, 900);
-    expect(fleetUnits(p, 'water')).toBeCloseTo(14);
+    expect(entry.stock).toBeCloseTo(entry.target);
+    expect(fleetUnits(p, 'water')).toBeCloseTo(20);
     expect(g.state.contracts.active.length).toBe(0);
     expect(g.state.contracts.completed).toBe(1);
+    // The need ends with no delivery: the contract ends with no penalty.
     const g2 = withOffer(supply(dest.id), dest.id);
+    g2.state.world.locations[dest.id]!.market.water!.stock = 0;
     acceptContract(g2, dest.id, 900);
-    g2.state.day = 21;
+    g2.state.world.locations[dest.id]!.market.water!.stock = 10 * g2.state.world.locations[dest.id]!.market.water!.target;
     contractDay(g2);
-    expect(g2.state.contracts.failed).toBe(1);
     expect(g2.state.contracts.active.length).toBe(0);
+    expect(g2.state.contracts.failed).toBe(0);
+    expect(g2.state.contracts.completed).toBe(0);
   });
 
   it('freight: pickup takes A stock and the deposit; delivery pays fee and deposit into B; lost cargo fails the contract', () => {
@@ -366,7 +380,7 @@ describe('contract play (Sections 14.4-14.7)', () => {
     loc.market[recipe.softInput]!.stock = 0;
     const control = structuredClone(g.state);
     const units = 0.6 * kRef(loc, recipe);
-    const c: SupplyContract = { ...supply(loc.id, recipe.softInput, Math.ceil(units)), id: 905 };
+    const c: SupplyContract = { ...supply(loc.id, recipe.softInput), id: 905 };
     g.state.contracts.active = [c];
     g.state.player.position = { kind: 'docked', locationId: loc.id };
     addCargo(g.state.player, data, recipe.softInput, Math.ceil(units), 0);
@@ -386,3 +400,72 @@ describe('contract play (Sections 14.4-14.7)', () => {
     expect(run(g.state)).toBeGreaterThan(run(control));
   });
 });
+
+describe('Supply contracts v2 (owner, 2026-11-03)', () => {
+  it('a chain alert is a need, and boards post it first', () => {
+    const g = fresh();
+    const board = g.state.world.locations.find((l) => l.services.includes('merchants_guild')) as Location;
+    const ctx = econContext(g.state.world, data);
+    const loc = g.state.world.locations.find((l) => l.sectorId === board.sectorId && (ctx.uses[l.id] ?? []).length > 0) as Location;
+    const use = ctx.uses[loc.id]![0]!;
+    loc.market[use.commodity]!.stock = 0;
+    const alerts = chainAlertsAt(g.state.world, data, loc);
+    expect(alerts.some((a) => a.commodity === use.commodity)).toBe(true);
+    expect(needsAt(g, loc).find((n) => n.commodity === use.commodity)?.alert).toBe(true);
+    for (let s = 0; s < 5; s++) {
+      const offers = merchantsBoard(g, board, rngOf(s)).offers;
+      expect(offers.some((o) => o.kind === 'supply' && o.alert)).toBe(true);
+    }
+  });
+
+  it('the fee per tonne does not follow the value of the goods; low security raises it (risk pay); urgency and a chain alert (x1.5) raise it', () => {
+    const g = fresh();
+    const dest = g.state.world.locations.find((l) => l.market.water && l.market.electronics) as Location;
+    const a = supplyFee(g, dest, 'water', 0.5, false);
+    const b = supplyFee(g, dest, 'electronics', 0.5, false);
+    const base = (x: typeof a) => x.feePerTonne / (x.riskMult * (c.supply.feePerTonne + c.supply.feePerTonneJump * x.sourceJumps));
+    expect(base(a)).toBeCloseTo(base(b));
+    expect(supplyFee(g, dest, 'water', 1, false).feePerTonne).toBeGreaterThan(a.feePerTonne);
+    expect(supplyFee(g, dest, 'water', 0.5, true).feePerTonne).toBeCloseTo(a.feePerTonne * c.supply.alertFeeMult);
+    for (const s of g.state.world.sectors) s.securityValue = 0;
+    const risky = supplyFee(g, dest, 'water', 0.5, false);
+    expect(risky.riskMult).toBeCloseTo(1 + 4 * c.supply.riskPerLevel);
+    expect(risky.feePerTonne).toBeGreaterThan(a.feePerTonne);
+  });
+
+  it('a contract lasts while the need exists, at most maxDays after acceptance (Q-53 (c))', () => {
+    const dest = template.world.locations.find((l) => l.market.water && l.market.water.target > 100)!;
+    const g = withOffer(supply(dest.id), dest.id);
+    const entry = g.state.world.locations[dest.id]!.market.water!;
+    entry.stock = 0;
+    acceptContract(g, dest.id, 900);
+    const c0 = g.state.contracts.active[0] as SupplyContract;
+    expect(c0.acceptedDay).toBe(g.state.day);
+    for (let d = 1; d < c.supply.maxDays; d++) {
+      g.state.day++;
+      entry.stock = 0;
+      contractDay(g);
+    }
+    expect(g.state.contracts.active.length).toBe(1);
+    // 10 t or more delivered: the time limit counts as done.
+    c0.delivered = 100;
+    g.state.day++;
+    contractDay(g);
+    expect(g.state.contracts.active.length).toBe(0);
+    expect(g.state.contracts.completed).toBe(1);
+    expect(g.state.contracts.failed).toBe(0);
+  });
+
+  it('a Supply offer leaves the board when its need ends', () => {
+    const dest = template.world.locations.find((l) => l.market.water && l.market.water.target > 100)!;
+    const g = withOffer(supply(dest.id), dest.id);
+    const entry = g.state.world.locations[dest.id]!.market.water!;
+    entry.stock = 0;
+    contractDay(g);
+    expect(g.state.contracts.boards[0]!.offers.length).toBe(1);
+    entry.stock = 10 * entry.target;
+    contractDay(g);
+    expect(g.state.contracts.boards[0]!.offers.length).toBe(0);
+  });
+});
+

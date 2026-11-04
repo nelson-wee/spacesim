@@ -19,7 +19,8 @@
   ],
   "standingCompleted": 1,
   "standingFailed": -2,
-  "supply": { "premiumBase": 0.45, "premiumPerSeverity": 0.2, "deadlineBase": 8, "deadlinePerJump": 4 },
+  "alertOffersPerBoard": 2,
+  "supply": { "feePerTonne": 12, "feePerTonneJump": 9, "riskPerLevel": 0.3, "urgencyPerSeverity": 1, "alertFeeMult": 1.5, "minDoneTonnes": 10, "maxDays": 28 },
   "freight": {
     "pickupJumps": 2,
     "destMinJumps": 1,
@@ -27,7 +28,7 @@
     "depositShare": 0.25,
     "feePerTonneJump": 4,
     "riskPerLevel": 0.3,
-    "valueShare": 0.05,
+    "valueShare": 0,
     "deadlineBase": 5,
     "deadlinePerJump": 3,
     "pickupDeadlineBase": 8,

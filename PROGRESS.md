@@ -495,6 +495,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 - **Career:** statistics from the start; the end at day 730 (`career.days`), at Retire (E twice at a location), or at a total loss; score and titles (Drifter to Sector Magnate, Dread Pirate, Pirate Hunter, Warden of a sector); career end screen with the summary, the title, and the seed.
 - **Save and load:** autosave at each dock; Q twice on the sector map saves and quits; Continue on the title screen; another save version or a damaged save shows a message.
 - **Screens:** contracts screen (G), guild boards, kill bounty (K), debug K spawns any contract. Location tabs use short names when they do not fit.
+- **Supply contracts v2 (owner, 2026-11-03):** chain alerts make Supply offers first; Supply pays the goods at the market price plus a flat fee (tonnes, jumps from the nearest maker, urgency, risk pay for low security); Freight fee is flat.
 
 ### Exit checks
 
@@ -502,7 +503,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 |---|---|---|
 | 1 | 90% of boards have 3 or more offers. | PASS: 98.0% of 76,680 boards (Merchants' Guild 100%, Bounty Guild 96.9%), 1,000 days x 20 seeds. |
 | 2 | 100% of Supply and Freight offers point to a real deficit at posting. | PASS: test, and 123,206/123,206 offers in `sim-economy`. |
-| 3 | Median Supply contract gives 1.0x-1.5x the profit per day of the best known open-market route of similar length. | PASS: 1.14x (10 seeds, 1,487 offers valued; quartiles 0.32-2.74). Needs `premiumBase` 0.45 (brief 0.10: 0.56x). |
+| 3 | Median Supply contract gives 1.0x-1.5x the profit per day of the best known open-market route of similar length. | PASS: 1.14x with the flat fee of Supply contracts v2 (6 seeds, 1,009 offers valued; quartiles 0.37-2.93). |
 | 4 | A completed Machinery Supply contract to a producer with low K increases its output. | PASS (test). |
 | 5 | A full career to day 730 runs without errors. | PASS: `sim-career` 6/6 careers. |
 | 6 | Save and load give the same state. | PASS (tests: deep-equal state and RNG streams; the next 30 days are the same). |
@@ -515,7 +516,7 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 | `sim-economy` (1,000 days, 20 seeds, with events) | All M2 checks pass (20/20); contract board checks pass. Busts (61-365 days) on 3/20 seeds. |
 | `gen-report` (100 seeds) | 98 pass with 2 tries or fewer (need 95). |
 | `sim-trader` (20 seeds) | Light Freighter by day 150 on 20/20 (PASS); median day 54 (report); Shuttle 331 cr per day in the first 30 days (monitor 100-250). |
-| `sim-trader --contracts` (10 seeds) | Check 3 PASS (1.14x); 63 contracts accepted, 60 deliveries. |
+| `sim-trader --contracts` (6 seeds, Supply v2) | Check 3 PASS (1.14x); 47 contracts accepted, 39 deliveries. |
 | `sim-combat` (100 battles per pairing) | All pairing checks pass. |
 | `ship-report` | All PASS. |
 | `sim-career` (6 careers) | 6/6 with no errors. Net worth at day 730: 19,929; 2,694,878; 5,974,115; 881,801; 10,119; 1,355,241 cr (median 881,801). |
@@ -527,8 +528,60 @@ Profit per day after upkeep. With no upkeep (3 seeds), 2 ships are still not bet
 | Good trader net worth at day 730: 250,000-600,000 cr | Outside: median 881,801 cr; 2 of 6 bot careers stay poor after early pirate losses, 4 of 6 end with 0.9-6.0 million cr (large markets, Q-51, and Machinery Supply contracts). Q-52. |
 | Shuttle profit 100-250 cr per day | Outside: 331 (larger markets, Q-51). |
 
+### Guild contracts against open-market trade (`sim-contracts`, 2026-11-03)
+
+Same seeds, three trader policies: **trade** (open market only), **best** (a Supply contract only when it pays more per day than the best known route of similar length), **first** (any profitable Supply contract first, chain alerts first). Score = career score (credits + 60% of ship value + cargo). Median of 10 seeds, 150 days; "fill" = a contract trip also carries trade goods for the same destination.
+
+| Policy | Day 15 | Day 30 | Day 60 | Day 90 | Day 150 | vs trade at day 150 |
+|---|---|---|---|---|---|---|
+| trade | 16,259 | 23,828 | 28,117 | 38,243 | 63,724 | - |
+| best | 16,108 | 23,295 | 32,321 | 34,794 | 72,348 | +14% |
+| first | 16,108 | 20,675 | 32,321 | 33,858 | 61,560 | -3% |
+| best, fill | 16,108 | 23,295 | 32,321 | 34,794 | 65,476 | +3% |
+| first, fill | 16,108 | 20,675 | 34,047 | 38,174 | 76,189 | +20% |
+| first, fill, fee x2 | 16,108 | 21,242 | 39,565 | 37,631 | 90,270 | +42% |
+
+- 365 days (6 seeds, no fill): trade 226,569 cr; first 102,881 cr (-55%). Contract sizes stop at 80 t and the fee does not grow with capital; open-market trade grows with capital and capacity.
+- First 15-30 days: no gain from contracts. A Small fee (10 t, about 350-700 cr) is small against a full 30 t hold of trade. (Correction: the start location has a Merchants' Guild on 100 of 100 seeds. The early limit is price information: the player knows only the prices near the start.)
+- Chain alerts: 13% of Supply offers come from alerts (5 seeds, 300 days); alerts occur on 18-87% of days. 14 days after an offer, the alert is gone for 80-100% of the alerts that the bot served and for 77-100% of those that it did not serve: no measurable effect of the player's deliveries. The carriers fix most alerts; 10-80 t is small against markets at `volumeScale` 16.
+- Fixes found by the traces: Supply contracts are done at 98% (Food spoils on the way); the bot checks the seller's stock and keeps a credit margin (failed contracts 33 -> 17 of about 75).
+
+### Per-tonne Supply contracts (owner, 2026-11-03, Q-53)
+
+- Supply pays per tonne delivered (goods price at posting + flat fee per tonne, risk pay, 1.5x for chain alerts). No size, no deadline: the contract lasts while the destination has the need, and cannot fail. An offer leaves the board when its need ends.
+- The start location always has a Merchants' Guild. N on the fleet screen renames a fleet ship.
+- Check 3 (`sim-trader --contracts`, 20 seeds, 150 days): PASS, 1.00x with `feePerTonne` 12 and `feePerTonneJump` 9 (quartiles 0.60-2.82). Light Freighter by day 150 on 17/20 seeds (median day 41). Shuttle profit in the first 30 days: median 638 cr per day (open market only: 331).
+- `sim-economy` board checks: PASS (98.0% of boards with 3+ offers; 100% of offers point to a real deficit).
+- `sim-contracts` (career score, median of 10 seeds; day 365: 6 seeds):
+
+| Policy | Day 15 | Day 30 | Day 60 | Day 150 | Day 365 |
+|---|---|---|---|---|---|
+| trade | 16,259 | 23,828 | 28,117 | 63,724 | 226,569 |
+| best | 19,658 | 29,807 | 68,231 | 187,037 | 450,448 |
+| first | 14,663 | 22,521 | 34,451 | 176,171 | 394,810 |
+
+- Contracts now give more early (day 15-60), as the owner expected, and they stay ahead to day 365. The cause: a deficit that does not end (example: Water at an Agri World with 102% output) keeps one contract open for the full run, and the player's deliveries take the place of the carriers. On seeds 2 and 8, one contract gives about 600,000 cr in 150 days. Q-53 lists options to limit it.
+
+### Q-53 option (c), fleet hold, and outfitter fix (owner, 2026-11-03)
+
+- A Supply contract ends when the need ends or 28 days after acceptance. The board can post the need again at new prices.
+- Check 3: PASS, 1.41x (20 seeds, quartiles 0.73-3.15). Light Freighter by day 150 on 20/20 seeds (median day 35). Open-market only: unchanged (20/20, median day 54).
+- `sim-contracts`, career score, median:
+
+| Policy | Day 30 | Day 60 | Day 150 (10 seeds) | Day 365 (6 seeds) |
+|---|---|---|---|---|
+| trade | 23,828 | 28,117 | 63,724 | 226,569 |
+| best | 28,800 | 52,339 | 148,447 | 319,165 |
+| first | 26,743 | 31,172 | 106,743 | 282,404 |
+
+- The gap is smaller than with open contracts (best at day 365: +41%, before +99%), but contracts still lead. Seed 2 (the Water deficit) gives 362,000 cr at day 150 (before 575,000): the board posts the same need again.
+- Fleet screen: U uninstalls a module into the fleet hold; Enter installs it. The screen closes only with an empty hold and loadouts that pass; else R reverts all module changes, D discards the held modules (warning), S sells them at an Outfitter.
+- Bugs fixed: a module moves into the smallest empty slot that takes it (a small module took the only large slot); the Outfitter shows `[` and `]` to select another ship (also clickable).
+- Trader bot: it sells cargo that has no plan, at a loss if necessary (it waited forever with goods from an ended contract).
+
 ### Known issues
 
+- Q-53: Supply contracts still give much more than open-market trade (see above). Look again in the M8 balance pass.
 - Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
 - Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
 - The tutorial text needs a pass for the M6 and M7 screens (M8).

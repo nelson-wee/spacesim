@@ -31,7 +31,7 @@ import { lowestLevelOnPath } from '../../src/career/contractGen';
 import { refuel } from '../../src/services/refuel';
 import { buyHull, quoteHull } from '../../src/services/shipyard';
 import { wait } from '../../src/services/wait';
-import { type ContractLog, contractGoods, contractTurn } from './contractBot';
+import { type ContractLog, type ContractPolicy, contractGoods, contractTurn } from './contractBot';
 import { mapDistance } from '../../src/world/geometry';
 
 export interface BotOptions {
@@ -47,6 +47,10 @@ export interface BotOptions {
   contracts?: ContractLog;
   /** A careful trader: no routes through sectors below this security level (default 0: all routes). */
   minSecurity?: number;
+  /** How the bot takes Supply contracts (default 'best'). */
+  contractPolicy?: ContractPolicy;
+  /** On a contract trip, fill the rest of the hold with trade goods for the same destination. */
+  contractFill?: boolean;
 }
 
 export interface BotEvent {
@@ -118,7 +122,8 @@ function sellCargo(game: Game, actor: Actor, loc: Location, bot: BotState): void
     if (!entry) continue;
     const atPlan = bot.plan !== null && bot.plan.toId === loc.id && bot.plan.commodity === c;
     const price = sellPrice(entry, game.data.commodityById.get(c)?.basePrice ?? 0, game.data);
-    if (atPlan || price > fleetUnitCost(actor, c)) {
+    // Cargo with no plan (for example, goods left after a Supply contract ended) is sold, at a loss if necessary.
+    if (atPlan || price > fleetUnitCost(actor, c) || bot.plan === null) {
       const cost = fleetUnits(actor, c) * fleetUnitCost(actor, c);
       const r = sell(game, actor, loc, c, fleetUnits(actor, c));
       if (r.ok) bot.events.push({ day: game.state.day, text: `  sold ${r.units.toFixed(1)} ${c} at ${loc.name}: ${Math.round(r.total)} (paid ${Math.round(cost)}, ${Math.round(r.total - cost)})` });
@@ -213,7 +218,7 @@ function expectedPerDay(game: Game, r: RouteValue): number {
 }
 
 /** Loads other commodities for the same destination into the free cargo space, best profit first. */
-function fillHold(game: Game, actor: Actor, loc: Location, main: RouteValue, opts: BotOptions, bot: BotState): void {
+export function fillHold(game: Game, actor: Actor, loc: Location, main: Pick<RouteValue, 'toId' | 'commodity'>, opts: Pick<BotOptions, 'maxJumps'>, bot: BotState): void {
   // Each commodity one time: the known price of a commodity does not show the bot's own buy.
   const bought = new Set([main.commodity]);
   for (let i = 0; i < 4; i++) {
@@ -263,13 +268,9 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   const loc = here(game, actor);
   sellCargo(game, actor, loc, bot);
   bot.plan = null;
-  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity)) {
-    // The trip can end in space after an encounter; the next turn docks first.
-    if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
-    bot.trips++;
-    return;
-  }
-
+  const fill = opts.contractFill ? (at: Location, main: { toId: number; commodity: string }) => fillHold(game, actor, at, main, opts, bot) : undefined;
+  // The upgrade comes before contracts: open Supply contracts (owner, 2026-11-03) do not end
+  // on a deadline, so a bot with contracts would otherwise never stop to buy the ship.
   if (bot.upgradeDay === null && actor.fleet[0]?.hullId !== opts.targetHull) {
     const cost = upgradeCost(game, actor, loc, opts);
     const empty = actor.fleet.every((ship) => Object.keys(ship.cargo).length === 0);
@@ -279,7 +280,7 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
       // Can the bot pay at the nearest known Shipyard? Estimate with this location's prices.
       const yard = nearest(game, actor, loc, (l) => hasService(l, 'shipyard') && upgradeCost(game, actor, l, opts) !== null);
       const yardCost = yard ? upgradeCost(game, actor, yard, opts) : null;
-      if (yard && yardCost !== null && actor.credits >= yardCost + opts.reserve) {
+      if (yard && yardCost !== null && actor.credits >= yardCost + opts.reserve && empty) {
         refuel(game, actor, loc);
         if (goTo(game, actor, loc, yard)) {
           bot.trips++;
@@ -287,6 +288,13 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
         }
       }
     }
+  }
+
+  if (opts.contracts && contractTurn(game, actor, opts.contracts, opts.maxJumps, opts.onEncounter, opts.minSecurity, opts.contractPolicy, fill)) {
+    // The trip can end in space after an encounter; the next turn docks first.
+    if (actor.position.kind === 'docked') refuel(game, actor, here(game, actor));
+    bot.trips++;
+    return;
   }
 
   firstModule(game, actor, loc, opts, bot);

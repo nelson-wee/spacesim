@@ -22,7 +22,10 @@ export function contractTask(game: Game, c: Contract): string {
   const { world } = game.state;
   const name = (id: number) => world.locations[id]?.name ?? '?';
   const com = (id: string) => game.data.commodityById.get(id)?.name ?? id;
-  if (c.kind === 'supply') return `Deliver ${Math.round(c.units - c.delivered)} of ${c.units} ${com(c.commodity)} to ${name(c.destId)} at ${Math.round(c.price)} cr each.`;
+  if (c.kind === 'supply') {
+    const m = game.data.commodityById.get(c.commodity)?.massPerUnit ?? 1;
+    return `Deliver ${com(c.commodity)} to ${name(c.destId)} until the need ends: ${Math.round(c.price + c.feePerTonne * m)} cr per unit (${Math.round(c.price)} goods + ${Math.round(c.feePerTonne)} cr/t fee${c.riskMult > 1.01 ? `, risk x${c.riskMult.toFixed(1)}` : ''}${c.alert ? ', chain alert' : ''}). Delivered ${Math.round(c.delivered)}.`;
+  }
   if (c.kind === 'freight') {
     return c.pickedDay === null
       ? `Pick up ${c.units} ${com(c.commodity)} at ${name(c.fromId)} (deposit ${Math.round(c.deposit)} cr), deliver to ${name(c.toId)}.`
@@ -109,7 +112,9 @@ export class ContractsScreen implements Screen {
       'P        Pick up Freight cargo (docked at the pickup location)',
       'Esc, G   Back',
       '',
-      'Supply: buy the goods anywhere; each delivery is paid at once.',
+      'Supply: buy the goods anywhere; each delivery is paid at once, per',
+      'tonne. It ends when the need ends or after its days (done at 10 t',
+      'or more); it cannot fail.',
       'Freight: the guild supplies the cargo; you pay a deposit at pickup',
       'and get it back with the fee. A late or lost delivery fails.',
       'A failed Merchants\' Guild contract costs 2 standing.',
