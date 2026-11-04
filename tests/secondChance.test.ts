@@ -71,6 +71,23 @@ describe('second chance (M8-SC)', () => {
     expect(g.state.career.secondChance.offer?.kind).toBe('relief');
   });
 
+  it('relief with a full hold: the guild sells cargo here to make room; no repair if nothing fits', () => {
+    const g = fresh();
+    const p = g.state.player;
+    const loc = g.state.world.locations.find((l) => level(g, l) >= 2 && reliefPlan(g, l.id))!;
+    dockAt(g, loc);
+    const plan = reliefPlan(g, loc.id)!;
+    const other = Object.keys(loc.market).find((c) => c !== plan.commodity)!;
+    const ship = p.fleet[0]!;
+    const cap = travelStats(ship, data).cargoCapacity;
+    ship.cargo = { [other]: { units: cap / data.commodityById.get(other)!.massPerUnit, unitCost: 1 } };
+    p.credits = -800;
+    noteTow(g, p, loc.id);
+    expect(acceptSecondChance(g).ok).toBe(true);
+    expect(p.credits).toBeGreaterThan(-800);
+    expect(ship.cargo[plan.commodity]!.units * data.commodityById.get(plan.commodity)!.massPerUnit).toBeCloseTo(data.contracts.secondChance.relief.tonnes);
+  });
+
   it('a tow into debt sets the offer (towFleet)', () => {
     const g = fresh();
     const p = g.state.player;

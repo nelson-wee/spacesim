@@ -11,7 +11,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
 | M6 Fleet (feature freeze) | 6 | Done (owner decision of 2026-11-03, Q-51). Markets are twice as large (`volumeScale` 16). | 6 of 6 pass; check 5 (fleet trade value) is a report; the feature freeze is in force. |
 | M7 Contracts, career, save | 7 | Done. Balance pass: monitors in the M7 section. | 7 of 7 pass. |
-| M8 Polish and release | 8 | Not started | — |
+| M8 Polish and release | 8 | Built. Final deploy waits for the merge into `main`; the manual careers (M8-REL-03) wait for the owner. | 3 of 5 pass; check 1 passes with automated play only; check 4 needs the merge. Balance results are reports (owner, 2026-11-04). |
 
 ## M1 Foundation (2026-10-26)
 
@@ -581,11 +581,58 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 
 ### Known issues
 
-- Q-53: Supply contracts still give much more than open-market trade (see above). Look again in the M8 balance pass.
-- Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
-- Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
-- The tutorial text needs a pass for the M6 and M7 screens (M8).
-- The `sim-trader --encounters` numbers in the M5 section are from `volumeScale` 8.
+- Q-53: Supply contracts still give much more than open-market trade (see above). Report (owner, 2026-11-04).
+- Q-52: done in M8 (the second chance; the stuck message offers Retire).
+- Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target. Report (owner, 2026-11-04).
+- Tutorial text pass: done in M8. `sim-trader --encounters`: new numbers in the M8 section.
+
+## M8 Polish and release (2026-11-04)
+
+### What works
+
+- **Second chance (M8-SC-01 to SC-06):** the first tow into debt shows a one-time offer. Security level 2-4: guild relief (free repair and refuel; deliver 10 t of free guild cargo in 8 + 4 x jumps days; done clears the debt). Level 0-1: pirate offer (the flagship is traded for a Raiding Wasp; capture a spawned trader and deliver it to a Pirate Haven in 25 days; done clears the debt and the Haven sells the old ship back, key Y). The stuck message offers Retire. The starting ship is "Fresh Start". Debug C and Shift+C show the offers.
+- **Codex (M8-UI-01):** key X on the sector map; the chain by tier, and for each commodity who makes it and who buys it, from the data files.
+- **Help (M8-UI-02):** the title-screen help explains the core loop and the main keys. Each screen has `?` help.
+- **Animation (M8-ART-06, ART-07, ART-03):** the `@` moves along the trip path on the sector map (1.2 s or less, any key skips); the region map shows the route to the selected sector in the bright color, with its jump count; reinforcements arrive with speed streaks from `effects.json`.
+- **Checked (M8-ART-01, 02, 04):** damaged and critical art, hot tint, overheat flash, the 1.2 s effect budget, and Space to skip (built in M4).
+- **Tutorial:** new tips for the fleet screen and hold, the after-battle screen, the Merchants' Guild board, and the contracts screen; the welcome tip names the save rule and the Codex.
+- **Tests:** 830 tests in 30 files pass; typecheck and build pass.
+
+### Acceptance checks (M8-REL-02, 2026-11-04)
+
+| Section | Tool | Result |
+|---|---|---|
+| §6.11 | `gen-report` (100 seeds) | PASS: 98 of 100 seeds pass with 2 tries or fewer (need 95). |
+| §8.7, §9.13 | `sim-economy` (20 seeds) | PASS: no systemic clamp, no stock below 0, no permanent stop, capital responds. Reports: busts on 3/20 seeds, gradient 18/20, raw margins 15/20. |
+| §8.7 (M3) | `sim-trader` (20 seeds) | PASS: Light Freighter by day 150 on 20/20 (median day 54, report). |
+| §10.9, §13.9 | `sim-combat` | PASS: all 6 checks (Shuttle vs Raider 51%; Wasp vs Shuttle 100%; Wasp vs Raider 98%; lasers, ballistics, torpedoes win more often). Reports: Wasp vs 2 Raiders 50%; TU pairings 40%, 82%, 94%, 79%. |
+| M5 | `sim-trader --encounters` | PASS: Light Freighter by day 150 on 19/20 (median day 63). Report: one pirate encounter per 21 trips; 60 battles (21 won, 39 disabled). |
+| M6 | `sim-trader --fleet` (6 seeds, 300 days) | Report: 1 ship 758, 2 ships 686, 4 ships 464 cr per day after upkeep (check 5 is a report, Q-51). |
+| §14.9 | `sim-economy` boards, `sim-trader --contracts` | PASS: 98.0% of boards with 3+ offers; 100% of offers point to a real deficit; check 3 = 1.41x. |
+| M7 | `sim-career` (6 careers) | PASS: 6/6 careers end with no errors. Report: median net worth 1,138,604 cr (Section 22: 250,000-600,000). |
+| §19 | tests, typecheck, build, browser smoke test | PASS: no console errors in a 20-step browser run (trade, travel, region map, encounter, auto-battle, contracts, Codex, save and continue, second-chance offer). |
+
+### Exit checks (§23)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | New career, trade, loadout, fleet, fight, pirate or hunter, security change, career end. | PASS with automated play: the browser smoke test and the unit tests cover each step (the after-battle screen, prizes, the fleet hold, security +3 after a won battle, retire). M8-REL-03 (one trader and one pirate career played by hand) waits for the owner. |
+| 2 | All acceptance checks pass. | PASS (see above; balance results are reports). |
+| 3 | No known crash bugs. | PASS. |
+| 4 | The game runs from GitHub Pages. | Waits for the owner: merge this branch into `main`; `deploy.yml` then deploys (the last deploy of `main` passed on 2026-11-04). |
+| 5 | `PROGRESS.md` and `DECISIONS.md` are up to date. | PASS. |
+
+### Bugs found and fixed in M8
+
+- Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.
+- The region map route counted one jump too many (the path holds its start sector).
+
+### Known issues
+
+- 6 of 12 seeds have no Pirate Haven (the generator puts a Haven only in a low-security station slot). On those worlds the pirate offer becomes the guild relief, and the Haven buyback cannot happen. Not changed in M8: a generator change needs a new economy calibration.
+- Q-52 and Q-53 balance (reports): net worth at day 730 above the target; Supply contracts give more than open-market trade.
+- The trader bots of the tools do not answer the second-chance offer (it stays open in their games).
+- Codex: station use shows the scaled value (x `volumeScale`); population use shows the per-unit value.
 
 <!--
 Template for each milestone:

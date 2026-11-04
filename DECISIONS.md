@@ -519,6 +519,30 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-04 [M8-SC-04] The buyback ship joins the fleet only if there is room; it does not become the flagship by itself. Reason: the fleet has at most 4 ships.
 - 2026-11-04 [M8-SC-05] "Fresh Start" applies to new careers only; saved careers keep their names.
 
+## M8: Polish and release (2026-11-04)
+
+### Second chance (M8-SC)
+
+- 2026-11-04 [M8-SC-01] The offer is made only if it can be done: if the one for the security level cannot be made (no relief destination; no target sector or no Pirate Haven in range), the other one is used; if neither fits, no offer shows and the second chance stays unused. Reason: an offer that cannot be done is worse than none. On 6 of 12 seeds the world has no Pirate Haven (see Known issues in PROGRESS.md).
+- 2026-11-04 [M8-SC-01] The offer box shows on the sector map or the location screen (not over combat, the hail, or the fleet screen) and takes all keys: Enter accepts, D declines; the pirate offer also has I (fleet screen first).
+- 2026-11-04 [M8-SC-02] Relief cargo: the commodity with the highest-scoring need among raw goods at locations 0-1 jumps away (not the tow location); else a location in range that trades a raw good. If the hold is full, the guild first sells enough of the player's cargo at the tow location (the sale pays the debt); the free repair and refuel happen only when Accept succeeds. Relief standing counts like a Merchants' Guild contract (+1 / -2) but not toward the 4-contract limit.
+- 2026-11-04 [M8-SC-03] Target sector: the nearest sector 1-2 jumps away with security level 2 or lower (lower id first on a tie); Haven: the nearest Pirate Haven within 3 jumps. Both sectors become known. The target is the `light_freighter_trader` loadout with the trader cargo and escort rules of a normal trader encounter; its name comes from `secondChance.raid.targetNames`. The battle ships of a named or raid group have ids `named-<contract>-<index>`, so the prize can be traced to the contract.
+- 2026-11-04 [M8-SC-03] The job fails at once if the target is destroyed or flees in the battle. If the player flees, the target stays and meets the player again. Reason: the brief says "escapes or is destroyed"; a player who flees did not lose the target.
+- 2026-11-04 [M8-SC-03] Done when docked at the Haven with the captured vessel: the pirates take it; its cargo sells at the Haven (70% rule) for the player; credits become max(0, credits) + sale. The check runs on arrival and each day.
+- 2026-11-04 [M8-SC-04] Buyback: key Y on the location screen of that Haven; the price is the trade-in value at the time of the trade. No buyback after a failed job (the pirates keep the ship).
+- 2026-11-04 [M8-SC-06] Stuck = in debt, no cargo, one ship, no module that can come out with a valid loadout, no second-chance contract or offer. The message shows once for each stuck period (docked). R retires; Esc goes on.
+- 2026-11-04 [§17.7] saveVersion 6 -> 7 (career.secondChance, new contract kinds).
+- 2026-11-04 [debug] Debug C makes the second-chance offer at the current location (credits -500); Shift+C as in a lawless sector.
+
+### Screens and animation (M8-UI, M8-ART)
+
+- 2026-11-04 [M8-UI-01] Codex: key X on the sector map. Commodities by tier in four columns; the selected one is bright, its inputs green, the goods it goes into amber; below: "Made by" (recipes) and "Bought by" (recipes, machinery installs, population use, station use).
+- 2026-11-04 [M8-UI-02] The title-screen help explains the core loop and the main keys.
+- 2026-11-04 [M8-ART-06] Travel animation: `sectorMap.travelAnimCellMs` 30 and `travelAnimMaxMs` 1200; the trail shows as dim dots; tips and offers wait until it ends.
+- 2026-11-04 [M8-ART-03] Reinforcement arrival: the `row` frames of `reinforcement_arrival` lie behind each arriving ship from the map edge where it enters; the art length (against the ship at x 6 in the art preview) scales to the real distance; pirate reinforcements use the pirate colors.
+- 2026-11-04 [M8-ART-01, ART-02, ART-04] Damage art, the hot tint, the overheat flash, the 1.2 s effect budget, and Space to skip were built in M4; M8 checked them (tests for the budget).
+- 2026-11-04 [Q-48] Tutorial tips for the fleet screen, the after-battle screen, the Merchants' Guild board, and the contracts screen; the welcome tip names the save rule and the Codex.
+
 ## Cuts
 
 None.

@@ -20,7 +20,7 @@ import { econContext } from '../econ/context';
 import { type Encounter, traderEncounter } from '../encounter/encounter';
 import { basePrice, quoteSell } from '../econ/prices';
 import { DEBT_TEXT, done, inDebt, isPirateHaven, refused, type ServiceResult } from '../services/common';
-import { sellEntryOf, sellShare } from '../services/market';
+import { sell, sellEntryOf, sellShare } from '../services/market';
 import { tradeInValue } from '../services/shipyard';
 import { createShipFromLoadout } from '../ship/loadout';
 import { checkLoadout } from '../ship/rules';
@@ -157,11 +157,23 @@ function acceptRelief(game: Game, fromId: number): ServiceResult {
   if (!plan) return refused('The guild has no relief task here.');
   const rel = data.contracts.secondChance.relief;
   const mass = data.commodityById.get(plan.commodity)?.massPerUnit ?? 1;
-  repairAndRefuel(game, actor);
+  // A full hold: the guild sells enough of the player's cargo here to make room (the sale pays the debt).
+  const here = locOf(game, fromId);
+  let sold = 0;
+  for (const id of Object.keys(Object.assign({}, ...actor.fleet.map((sh) => sh.cargo)))) {
+    const short = rel.tonnes - fleetFreeTonnes(actor, data);
+    if (short <= 1e-6) break;
+    if (id === plan.commodity) continue;
+    const m = data.commodityById.get(id)?.massPerUnit ?? 1;
+    const r = sell(game, actor, here, id, Math.min(fleetUnits(actor, id), short / m));
+    sold += r.total;
+  }
   // The guild cargo, free (purchase price 0); as much as fits.
   const units = Math.min(rel.tonnes, fleetFreeTonnes(actor, data)) / mass;
-  if (units <= 1e-6) return refused('Your fleet has no free cargo space for the guild cargo.');
+  if (units <= 1e-6) return refused('Your fleet has no free cargo space for the guild cargo, and this location does not buy your cargo.');
+  repairAndRefuel(game, actor);
   addCargo(actor, data, plan.commodity, units, 0);
+  if (sold > 0) game.bus.message(`To make room, the guild sells some of your cargo for ${Math.round(sold)} cr. It pays your debt.`, 'warning');
   const c: ReliefContract = {
     kind: 'relief',
     id: state.contracts.nextId++,
