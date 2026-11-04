@@ -515,3 +515,45 @@ describe('resolver (M4-TURN)', () => {
     expect(E(b).side).toBe('other');
   });
 });
+
+describe('play-test fixes (2026-11-04)', () => {
+  const battle = (aggressor: 'player' | 'other', otherAi: 'trader' | 'raider', playerAi: 'human' | 'attack' = 'human') =>
+    createBattle(
+      {
+        player: [{ ship: Object.assign(createShipFromLoadout(data, 'laser_wasp', 'p', 'P'), { fuel: 2 }), ai: playerAi }],
+        other: [{ ship: createShipFromLoadout(data, 'light_freighter_trader', 't', 'T'), ai: otherAi, faction: otherAi === 'trader' ? 'trader' : 'pirate' }],
+        aggressor,
+        rng: createRngState(3, 'combat'),
+      },
+      data,
+    );
+
+  it('an attack on traders starts as an intercept: the traders start interceptGap cells from the player', () => {
+    const near = battle('player', 'trader');
+    const far = battle('other', 'raider');
+    const gap = (b: Battle) => Math.abs((b.ships[1]!.pos.x + 1) - (b.ships[0]!.pos.x + 1));
+    expect(gap(near)).toBeLessThan(gap(far));
+    expect(gap(near)).toBeLessThanOrEqual(c.map.interceptGap + 4);
+  });
+
+  it('the AI aims at the engines of a ship that runs (trader), and at the hull of others', () => {
+    const b = battle('player', 'trader', 'attack');
+    b.cells = b.cells.map((row) => '.'.repeat(row.length));
+    let now = b;
+    const effects: import('../src/combat/types').Effect[] = [];
+    for (let i = 0; i < 10 && !now.result; i++) {
+      const out = resolveTurn(now, null, data);
+      effects.push(...out.effects);
+      now = out.battle;
+    }
+    const hits = effects.filter((e) => e.kind === 'shot' && e.shipId === b.playerId && e.hit);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(effects.some((e) => e.kind === 'engine')).toBe(true);
+  });
+
+  it("the player's ships keep their own fuel in a battle, also with an AI; others get the combat reserve", () => {
+    const b = battle('other', 'raider', 'attack');
+    expect(b.ships[0]!.ship.fuel).toBe(2);
+    expect(b.ships[1]!.ship.fuel).toBeGreaterThanOrEqual(c.npcFuelReserve);
+  });
+});

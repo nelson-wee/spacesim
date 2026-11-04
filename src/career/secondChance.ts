@@ -12,7 +12,7 @@
 import { addCargo, fleetFreeTonnes, fleetUnits, removeCargo } from '../actor/cargo';
 import { addShip, removeShip } from '../actor/fleet';
 import { moveCargo } from '../actor/fleetManage';
-import { rng } from '../core/game';
+import { newId, rng } from '../core/game';
 import type { Game } from '../core/game';
 import type { Actor, Location, RaidContract, ReliefContract, Sector, Ship, Vec } from '../core/types';
 import type { CombatShip } from '../combat/types';
@@ -20,7 +20,8 @@ import { econContext } from '../econ/context';
 import { type Encounter, traderEncounter } from '../encounter/encounter';
 import { basePrice, quoteSell } from '../econ/prices';
 import { DEBT_TEXT, done, inDebt, isPirateHaven, refused, type ServiceResult } from '../services/common';
-import { sell, sellEntryOf, sellShare } from '../services/market';
+import { cargoSaleValue, sell, sellEntryOf, sellShare } from '../services/market';
+import { moduleOffers, moduleSellValue } from '../services/outfitter';
 import { tradeInValue } from '../services/shipyard';
 import { createShipFromLoadout } from '../ship/loadout';
 import { checkLoadout } from '../ship/rules';
@@ -200,7 +201,7 @@ function acceptPirate(game: Game, fromId: number): ServiceResult {
   if (!flag) return refused('You have no ship.');
   // The flagship's cargo moves to the other ships as far as it fits; the rest is lost.
   const lost = moveCargoToFleet(actor, flag, data);
-  const wasp = createShipFromLoadout(data, r.loadoutId, `ship-${state.nextId++}`, r.shipName);
+  const wasp = createShipFromLoadout(data, r.loadoutId, newId(game, 'ship'), r.shipName);
   wasp.fuel = travelStats(wasp, data).fuelCapacity;
   state.career.secondChance.traded = { ship: structuredClone(flag), price: tradeInValue(flag, data) };
   actor.fleet[actor.flagshipIndex] = wasp;
@@ -354,7 +355,7 @@ export function buyBack(game: Game): ServiceResult {
   if (inDebt(actor)) return refused(DEBT_TEXT);
   if (actor.credits < b.price - 1e-9) return refused(`You need ${Math.round(b.price)} cr.`);
   const ship = structuredClone(b.ship);
-  ship.id = `ship-${state.nextId++}`;
+  ship.id = newId(game, 'ship');
   const full = addShip(game, actor, ship);
   if (full) return refused(`${full} Sell or scuttle a ship first.`);
   actor.credits -= b.price;
@@ -363,17 +364,37 @@ export function buyBack(game: Game): ServiceResult {
 }
 
 /**
- * M8-SC-06: stuck = in debt, no cargo, one ship, no module that can come out
- * with the loadout still valid, and no second-chance contract active.
+ * M8-SC-06: stuck = one ship, no second-chance contract or offer, and either
+ *  - in debt, no cargo, and no module can come out with the loadout still valid; or
+ *  - the ship cannot leave (no engine, or too little power), and the credits
+ *    plus the sale of all its modules and of the cargo that sells here do not pay for the cheapest engine and
+ *    reactor on sale here (play-test find, 2026-11-04: a player sold the engine of the
+ *    last ship and could not buy one).
  */
 export function isStuck(game: Game): boolean {
   const { state, data } = game;
   const actor = state.player;
-  if (actor.credits >= 0 || actor.fleet.length !== 1) return false;
+  if (actor.fleet.length !== 1) return false;
   if (state.contracts.active.some((c) => c.kind === 'relief' || c.kind === 'raid')) return false;
   if (state.career.secondChance.offer) return false;
   const ship = actor.fleet[0] as Ship;
-  if (Object.values(ship.cargo).some((l) => l.units > 1e-6)) return false;
+  const hasCargo = Object.values(ship.cargo).some((l) => l.units > 1e-6);
+  const installed = [...ship.hardpoints, ...ship.internal].filter((m) => m !== null);
+  if (checkLoadout(ship, data).errors.length > 0) {
+    const pos = actor.position;
+    const here = pos.kind === 'docked' ? state.world.locations[pos.locationId] : undefined;
+    // The ship cannot leave: only cargo that sells here helps.
+    const cargoHere = here ? Object.keys(ship.cargo).reduce((sum, c) => sum + (cargoSaleValue(actor, here, c, data) ?? 0), 0) : 0;
+    const offers = here && here.services.includes('outfitter') ? moduleOffers(here, data) : [];
+    const cheapest = (cat: string) => offers.filter((o) => data.moduleById.get(o.moduleId)?.category === cat).reduce((min, o) => Math.min(min, o.price), Infinity);
+    // What is missing: an engine, and a reactor if the power is too low (an approximation: the cheapest of each).
+    const hasEngine = installed.some((m) => data.moduleById.get(m.moduleId)?.category === 'engine');
+    const st = travelStats(ship, data);
+    const need = (hasEngine ? 0 : cheapest('engine')) + (st.powerSupply < st.enginePowerDraw || (!hasEngine && !installed.some((m) => data.moduleById.get(m.moduleId)?.category === 'reactor')) ? cheapest('reactor') : 0);
+    const cash = actor.credits + cargoHere + installed.reduce((sum, m) => sum + moduleSellValue(m, data), 0);
+    return cash < need;
+  }
+  if (actor.credits >= 0 || hasCargo) return false;
   for (const kind of ['hardpoints', 'internal'] as const) {
     for (let i = 0; i < ship[kind].length; i++) {
       const m = ship[kind][i];

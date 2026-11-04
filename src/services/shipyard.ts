@@ -4,7 +4,7 @@
 // While credits are below 0, the actor cannot buy hulls (Section 8.6).
 // M6 (Section 11.9): a bought hull can also join the fleet with an empty
 // loadout, and a non-flagship ship with no cargo sells at its trade-in value.
-import type { Game } from '../core/game';
+import { type Game, newId } from '../core/game';
 import type { Actor, Location, Ship } from '../core/types';
 import { type GameData, type Hull, slotSizes } from '../data';
 import { addShip, newShipName, removeShip } from '../actor/fleet';
@@ -103,7 +103,7 @@ export function buyShip(game: Game, actor: Actor, location: Location, hullId: st
   if (actor.credits < offer.price - 1e-9) return { ...refused('You do not have sufficient credits.'), net: 0 };
   if (actor.fleet.length >= data.balance.fleet.maxFleetSize) return { ...refused(`Your fleet is full (${data.balance.fleet.maxFleetSize} ships).`), net: 0 };
   const hull = hullDef(data, hullId);
-  const ship = emptyShip(hull, `ship-${game.state.nextId++}`, newShipName(actor, hull.name), data);
+  const ship = emptyShip(hull, newId(game, 'ship'), newShipName(actor, hull.name), data);
   const full = addShip(game, actor, ship);
   if (full) return { ...refused(full), net: 0 };
   actor.credits -= offer.price;

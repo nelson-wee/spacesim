@@ -133,8 +133,8 @@ export class StuckScreen implements Screen {
       this.app,
       'You cannot trade any more',
       [
-        'You are in debt, with no cargo, one ship, and no module that you can sell.',
-        'You can wait for a contract payment or a bounty, or retire now.',
+        'You have no cargo and one ship, and nothing to sell that would let you trade',
+        'or travel again. You can wait for a contract payment or a bounty, or retire.',
       ],
       [['R', 'Retire', press('r')], ['Esc', 'Go on', press('Escape')]],
     );

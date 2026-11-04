@@ -629,6 +629,31 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 - **Checks again:** generator 98 of 100 (PASS); `sim-economy` all PASS (20 seeds); `sim-trader` 20/20 (median day 57); `--contracts` 20/20, check 3 = 1.18x; `--encounters` 18/20 (median day 64); `sim-career` 6/6 (median net worth 1,557,635 cr, report); `sim-combat` all 6 PASS; 851 tests pass.
 - **Effects v0.2 (Claude Design):** scope only, in `docs/proposals/effects-v2.md`.
 
+### Play test (2026-11-04)
+
+`tools/sim-playtest.ts` plays careers in 6 styles and checks the state after each turn (finite values, fuel and cargo in range, unique ids, positions, markets, contracts) and saves and loads every 40 turns. A browser fuzz test pressed about 17,000 random keys in 6 runs (with and without the debug panel): no script errors.
+
+| Style | Careers | Ends | Median score | Problems found (final run) |
+|---|---|---|---|---|
+| trader (careful) | 30 | 30 to day 730 | 1,797,591 | none after the bot fixes |
+| contractor | 30 | 30 to day 730 | 1,159,777 | 1 idle (bot) |
+| reckless | 30 | 30 to day 730 | about 19,500 | idle after the second chance (see below) |
+| pirate | 30 | 18 to day 730, 12 lost | 161,379 | 5 idle (a failed pirate job leaves a Wasp with no hold) |
+| chaos (random actions) | 150 | 115 lost, 34 retire, 1 day 730 | 1,060 | none |
+| calm (random, no attacks, insured) | 120 | all retire (stuck) or day 730 | 2,050 | none |
+
+Bugs found and fixed:
+- Duplicate ship ids (the first bought ship, prize, or Wasp got the start ship's id `ship-1`); the pirate job could remove the wrong ship.
+- A player's ship played by an AI got the combat fuel reserve and kept fuel above its tank capacity.
+- Soft-lock: the only ship with no engine (or too little power) and no money for one did not count as stuck; now the stuck message offers Retire. Cargo that the location does not buy does not count.
+- Piracy could not work: in 2,400 test battles every attacked trader reached its map edge. Now an attack on traders starts as an intercept (`interceptGap` 10), and the AI aims at the engines of a ship that runs. Light Freighter captured: Raiding Wasp 48%, Laser Wasp 69%, Gunship 77% (before 0%). `sim-combat`: all 6 checks still pass.
+- Trader bot (tools only): docking refusals, cargo the location does not buy, a tow into a sector below its minimum security, guild relief cargo (it sold it and never delivered it), debt with no weapon left, no fuel tank.
+
+Findings for the owner (not changed):
+- After the guild relief the player has 0 cr and no cargo. On 7 of 9 reckless careers that took the relief, the player stayed at about 19,000 cr net worth for the rest of the career (a Light Freighter with nothing to trade).
+- A failed pirate job leaves the player with the Raiding Wasp (no cargo hold) and the debt. The player can refit (a cargo rack in place of the fuel tank, now that hulls hold fuel) or hunt bounties.
+- A pirate with trade ships still takes few prizes (1 prize in 498 battles of the pirate style): most traders are Heavy Freighters, which only a Gunship-class ship can stop.
+
 ### Bugs found and fixed in M8
 
 - Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.

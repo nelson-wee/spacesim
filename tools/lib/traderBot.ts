@@ -13,19 +13,23 @@
 //    the same destination.
 // 5. With no route: explore the nearest known location with no prices, or a
 //    sector next to a known sector. With nothing to explore: wait 1 day.
+import { deliverRelief } from '../../src/career/secondChance';
+import type { ReliefContract } from '../../src/core/types';
+import { checkLoadout, fitProblem } from '../../src/ship/rules';
+import { securityLevel } from '../../src/world/security';
 import { fleetUnitCost, fleetUnits } from '../../src/actor/cargo';
 import { knowsLocation } from '../../src/actor/knowledge';
 import { type EncounterHandler, estimatePath, followPath, pathBetween } from '../../src/actor/paths';
 import { bestRoutes, type RouteValue } from '../../src/actor/routes';
 import { nearestLocation } from '../../src/actor/fuel';
-import { actorPlace, travelInSector } from '../../src/actor/travel';
+import { actorPlace, travelInSector, jump } from '../../src/actor/travel';
 import type { Game } from '../../src/core/game';
 import type { Actor, Location } from '../../src/core/types';
 import { transitDays, transportCost } from '../../src/econ/carriers';
 import { econContext } from '../../src/econ/context';
 import { sellPrice } from '../../src/econ/prices';
 import { hasService } from '../../src/services/common';
-import { buy, sell } from '../../src/services/market';
+import { buy, sell, sellEntryOf } from '../../src/services/market';
 import { buyModule, moduleOffers, sellModule } from '../../src/services/outfitter';
 import { lowestLevelOnPath } from '../../src/career/contractGen';
 import { refuel } from '../../src/services/refuel';
@@ -252,6 +256,41 @@ function sellForCapital(game: Game, actor: Actor, loc: Location, bot: BotState):
       }
     }
   }
+  // With no capital and no weapon or shield left: any module that the loadout can do without, except cargo racks (a fuel tank).
+  for (const [i, ship] of actor.fleet.entries()) {
+    for (const kind of ['hardpoint', 'internal'] as const) {
+      const slots = kind === 'hardpoint' ? ship.hardpoints : ship.internal;
+      for (let idx = 0; idx < slots.length; idx++) {
+        const mod = slots[idx];
+        // Not the cargo rack: a trader needs its hold.
+        if (!mod || game.data.moduleById.get(mod.moduleId)?.category === 'cargo') continue;
+        const copy = structuredClone(ship);
+        (kind === 'hardpoint' ? copy.hardpoints : copy.internal)[idx] = null;
+        if (checkLoadout(copy, game.data).errors.length > 0) continue;
+        if (sellModule(game, actor, loc, i, kind, idx).ok) {
+          bot.events.push({ day: game.state.day, text: `Sold a module to pay the debt at ${loc.name}` });
+          return;
+        }
+      }
+    }
+  }
+}
+
+/** A ship with no fuel tank (sold for capital) gets one back when the credits allow: the hull fuel alone is too little for most jumps. */
+function refitFuelTank(game: Game, actor: Actor, loc: Location, bot: BotState): void {
+  if (!hasService(loc, 'outfitter') || actor.credits < 1500) return;
+  const data = game.data;
+  for (const [i, ship] of actor.fleet.entries()) {
+    if (ship.internal.some((m) => m && data.moduleById.get(m.moduleId)?.category === 'fuel')) continue;
+    const offers = moduleOffers(loc, data).filter((o) => o.moduleId === 'fuel_tank' && o.tier === 1).sort((a, b) => b.price - a.price);
+    for (const o of offers) {
+      const slot = ship.internal.findIndex((m, idx) => m === null && fitProblem(ship, 'internal', idx, o.moduleId, o.size, data) === null);
+      if (slot >= 0 && o.price < actor.credits - 500 && buyModule(game, actor, loc, i, 'internal', slot, o).ok) {
+        bot.events.push({ day: game.state.day, text: `Bought a fuel tank at ${loc.name}` });
+        return;
+      }
+    }
+  }
 }
 
 /** One bot turn at a docked location. */
@@ -262,12 +301,36 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
     // After an encounter battle the bot is in space or at a jump point: dock at the nearest location.
     const place = actorPlace(game, actor);
     const near = nearestLocation(game, place.sectorId, place.point, actor).location;
-    const out = travelInSector(game, actor, { kind: 'location', locationId: near.id });
-    if ((actor.position as { kind: string }).kind !== 'docked') throw new Error(`The bot cannot dock (${out.result})`);
+    let out = travelInSector(game, actor, { kind: 'location', locationId: near.id });
+    // A refusal (notoriety): try the other locations of the sector, then leave by the nearest jump point.
+    const sector = game.state.world.sectors[place.sectorId];
+    for (const id of sector?.locationIds ?? []) {
+      if ((actor.position as { kind: string }).kind === 'docked') break;
+      out = travelInSector(game, actor, { kind: 'location', locationId: id });
+    }
+    if ((actor.position as { kind: string }).kind !== 'docked') {
+      for (const jpId of sector?.jumpPointIds ?? []) {
+        if (actor.position.kind !== 'jumpPoint') travelInSector(game, actor, { kind: 'jumpPoint', jumpPointId: jpId });
+        if (actor.position.kind === 'jumpPoint' && jump(game, actor).result !== 'refused') return;
+      }
+      throw new Error(`The bot cannot dock or leave the sector (${out.result})`);
+    }
   }
   const loc = here(game, actor);
   sellCargo(game, actor, loc, bot);
   bot.plan = null;
+  // Guild relief (second chance): deliver it first.
+  const relief = game.state.contracts.active.find((c): c is ReliefContract => c.kind === 'relief');
+  if (relief) {
+    if (relief.destId === loc.id) deliverRelief(game, relief.id);
+    else {
+      refuel(game, actor, loc);
+      if (goTo(game, actor, loc, game.state.world.locations[relief.destId] as Location)) {
+        bot.trips++;
+        return;
+      }
+    }
+  }
   const fill = opts.contractFill ? (at: Location, main: { toId: number; commodity: string }) => fillHold(game, actor, at, main, opts, bot) : undefined;
   // The upgrade comes before contracts: open Supply contracts (owner, 2026-11-03) do not end
   // on a deadline, so a bot with contracts would otherwise never stop to buy the ship.
@@ -298,14 +361,18 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
   }
 
   firstModule(game, actor, loc, opts, bot);
+  refitFuelTank(game, actor, loc, bot);
   sellForCapital(game, actor, loc, bot);
   refuel(game, actor, loc);
   const ctx = econContext(game.state.world, game.data);
+  // In a sector below the bot's minimum (after a tow), any route out is accepted: the bot must leave.
+  const hereLevel = securityLevel(game.state.world.sectors[loc.sectorId]?.securityValue ?? 0, game.data);
+  const minSecurity = opts.minSecurity && hereLevel >= opts.minSecurity ? opts.minSecurity : 0;
   const safe = (r: RouteValue) => {
-    if (!opts.minSecurity) return true;
+    if (!minSecurity) return true;
     const from = game.state.world.locations[r.fromId] as Location;
     const to = game.state.world.locations[r.toId] as Location;
-    return lowestLevelOnPath(ctx, loc.sectorId, from.sectorId, game.data) >= opts.minSecurity && lowestLevelOnPath(ctx, from.sectorId, to.sectorId, game.data) >= opts.minSecurity;
+    return lowestLevelOnPath(ctx, loc.sectorId, from.sectorId, game.data) >= minSecurity && lowestLevelOnPath(ctx, from.sectorId, to.sectorId, game.data) >= minSecurity;
   };
   const route = bestRoutes(game, actor, { maxJumps: opts.maxJumps, limit: 20 })
     .filter((r) => r.fuelOk && safe(r))
@@ -332,7 +399,18 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
       return;
     }
   }
-  if (explore(game, actor, loc, opts.minSecurity)) return;
+  // Cargo that this location does not buy (left from a trip that an encounter cut short): take it to the nearest buyer.
+  const held = Object.keys(Object.assign({}, ...actor.fleet.map((sh) => sh.cargo)));
+  const stuck = held.find((c) => !sellEntryOf(loc, c, game.data));
+  if (stuck) {
+    const safeTo = (l: Location) => !minSecurity || lowestLevelOnPath(ctx, loc.sectorId, l.sectorId, game.data) >= minSecurity;
+    const buyer = nearest(game, actor, loc, (l) => sellEntryOf(l, stuck, game.data) !== undefined && safeTo(l));
+    if (buyer && goTo(game, actor, loc, buyer)) {
+      bot.trips++;
+      return;
+    }
+  }
+  if (explore(game, actor, loc, minSecurity)) return;
   wait(game, actor, loc, 1);
 }
 

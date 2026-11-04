@@ -220,7 +220,9 @@ function aiFire(b: Battle, s: CombatShip, target: CombatShip | null, data: GameD
         }
       }
     }
-    if (pick) applyOrder(b, s, { kind: 'fire', slot, target: pick.id, aim: 'hull' }, data, rng, effects);
+    // A ship that runs (trader, evader) is stopped by its engines (play test, 2026-11-04): engine value 0 starts its morale roll.
+    const runs = pick && (pick.ai === 'trader' || pick.ai === 'evader') && pick.ship.engineValue > 0;
+    if (pick) applyOrder(b, s, { kind: 'fire', slot, target: pick.id, aim: runs ? 'engines' : 'hull' }, data, rng, effects);
   }
 }
 

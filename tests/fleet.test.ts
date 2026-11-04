@@ -278,6 +278,18 @@ describe('fleet rules (M6-FLEET)', () => {
     expect(r.ship!.fuel).toBeCloseTo(base);
   });
 
+  it('ship ids stay unique: the start ship, a bought ship, and a prize (play-test bug, 2026-11-04)', () => {
+    const { game, loc } = setup();
+    const p = game.state.player;
+    expect(buyShip(game, p, loc, 'light_freighter').ok).toBe(true);
+    const wasp = createShipFromLoadout(data, 'pirate_raider', 'e0', 'W');
+    const b = createBattle({ player: [{ ship: p.fleet[0]!, ai: 'human' }], other: [{ ship: wasp, ai: 'raider', faction: 'pirate' }], aggressor: 'other', rng: createRngState(5, 'combat') }, data);
+    const cs = b.ships.find((s) => s.side === 'other')!;
+    cs.status = 'surrendered';
+    expect(takePrize(game, p, cs).ok).toBe(true);
+    expect(new Set(p.fleet.map((s) => s.id)).size).toBe(p.fleet.length);
+  });
+
   it('fleet problems list ships that break the required-module rules', () => {
     const { game } = withFleet(['start_shuttle', 'light_freighter_starter']);
     const p = game.state.player;

@@ -153,6 +153,12 @@ export const balanceSchema = z.object({
       debrisShare: prob,
       startColumn: z.number().int().min(1),
       startAreaHalfWidth: z.number().int().min(0),
+      /**
+       * Play test (2026-11-04): when the player attacks traders (and their escorts), the player
+       * closed in before the battle: the other side starts this many cells from the player's
+       * start column, not at its own side. Else traders always reach their edge first.
+       */
+      interceptGap: z.number().int().min(1),
     }),
   }),
   fuel: z.object({ fuelPerHydrogen: pos }),

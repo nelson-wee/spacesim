@@ -93,7 +93,7 @@
     "surrenderChance": { "trader": 0.7, "evader": 0.6, "raider": 0.4, "patrol": 0, "attack": 0 },
     "auto": { "retreatHull": 0.25, "stopHull": 0.5, "turnDelayMs": 250 },
     "forcedSurrenderHull": 0.2,
-    "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6 }
+    "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6, "interceptGap": 10 }
   },
   "fuel": { "fuelPerHydrogen": 2 },
   "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },

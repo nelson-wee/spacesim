@@ -5,7 +5,7 @@
 // notoriety. Battleships (capital hulls) cannot be prizes.
 import { addShip } from '../actor/fleet';
 import type { Battle, CombatShip } from '../combat/types';
-import type { Game } from '../core/game';
+import { type Game, newId } from '../core/game';
 import type { Actor, Ship } from '../core/types';
 import { hullDef } from '../ship/hull';
 import { travelStats } from '../ship/stats';
@@ -36,7 +36,7 @@ export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boole
   const why = prizeProblem(game, actor, cs.ship);
   if (why) return { ok: false, text: why };
   const ship: Ship = structuredClone(cs.ship);
-  ship.id = `ship-${game.state.nextId++}`;
+  ship.id = newId(game, 'ship');
   ship.name = cs.name;
   // At least the hull's own fuel (owner, 2026-11-04): a prize with no fuel tank can reach a location in the sector.
   const cap = travelStats(ship, data).fuelCapacity;

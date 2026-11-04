@@ -219,5 +219,13 @@ describe('second chance (M8-SC)', () => {
     expect(isStuck(g)).toBe(true);
     p.credits = 0;
     expect(isStuck(g)).toBe(false);
+    // No engine and too few credits for one (play-test find): stuck also with no debt.
+    const loc = g.state.world.locations.find((l) => l.services.includes('outfitter'))!;
+    p.position = { kind: 'docked', locationId: loc.id };
+    ship.internal = ship.internal.map(() => null);
+    p.credits = 57;
+    expect(isStuck(g)).toBe(true);
+    p.credits = 1e6;
+    expect(isStuck(g)).toBe(false);
   });
 });

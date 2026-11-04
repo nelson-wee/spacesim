@@ -93,8 +93,10 @@ function makeCombatShip(sp: BattleShipSpec, side: Side, id: number, mirrored: bo
 /** AI fuel reserve, power setting, full shields, and a full capacitor. */
 function readyShip(b: Battle, s: CombatShip, data: GameData, rng: Rng): void {
   const c = data.balance.combat;
-  // AI ships come from outside travel: they have at least a combat fuel reserve.
-  if (s.ai !== 'human') s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
+  // Ships from outside travel (enemies, and patrols or escorts that join either side) have at least a
+  // combat fuel reserve. The player's own ship keeps its fuel, also with an AI (play test, 2026-11-04:
+  // an auto-played flagship got fuel above its capacity).
+  if (s.id !== b.playerId) s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
   const st = combatStats(s, data);
   if (s.ai !== 'human' || st.powerReserve > st.powerSupply) aiPower(b, s, data, rng, []);
   const ready = combatStats(s, data);
@@ -173,6 +175,8 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     ['player', spec.player],
     ['other', spec.other],
   ];
+  // An intercept (play test, 2026-11-04): the player attacks traders and their escorts only.
+  const intercept = spec.aggressor === 'player' && spec.other.length > 0 && spec.other.some((o) => o.ai === 'trader') && spec.other.every((o) => o.ai === 'trader' || o.escortOf !== undefined);
   for (const [side, specs] of groups) {
     const mirrored = side !== 'player';
     const ships = specs.map((sp) => makeCombatShip(sp, side, id++, mirrored, data));
@@ -186,7 +190,8 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
     for (const s of ships) {
       const { w, h } = maskSize(s.mask);
       // The start column is the ship's center column.
-      const x = side === 'player' ? c.map.startColumn - Math.floor(w / 2) : b.width - 1 - c.map.startColumn - Math.floor(w / 2);
+      const center = side === 'player' ? c.map.startColumn : intercept ? c.map.startColumn + c.map.interceptGap : b.width - 1 - c.map.startColumn;
+      const x = center - Math.floor(w / 2);
       b.ships.push(s);
       s.pos = place(b, s, { x, y });
       y += h + 2;
