@@ -10,6 +10,7 @@ const ships = shipArtJson(readFileSync('data/art/ships.yaml', 'utf8'));
 writeFileSync('data/art/ships.json', ships);
 console.log(`data/art/ships.json: ${Object.keys(JSON.parse(ships).ships).length} ships from data/art/ships.yaml`);
 
-const effects = effectsJson(readFileSync('data/art/effects.yaml', 'utf8'));
+const style = JSON.parse(readFileSync('data/art/style.json', 'utf8')) as { colors: Record<string, string> };
+const effects = effectsJson(readFileSync('data/art/effects.yaml', 'utf8'), style.colors);
 writeFileSync('data/art/effects.json', effects);
 console.log(`data/art/effects.json: ${Object.keys(JSON.parse(effects).effects).length} effects from data/art/effects.yaml`);

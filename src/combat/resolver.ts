@@ -111,7 +111,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     // Flak (Section 12.2): an area around the nearest target cell; a flat hit chance on each hostile ship in it.
     const half = Math.floor(w.area / 2);
     const center = lof.to;
-    effects.push({ kind: 'flak', shipId: s.id, from: lof.from, center });
+    effects.push({ kind: 'flak', shipId: s.id, from: lof.from, center, tier: m.tier });
     clearMunitionsInArea(b, s, center, half, effects);
     for (const o of b.ships) {
       if (!isActive(o) || !hostile(s, o)) continue;
@@ -126,7 +126,7 @@ export function applyOrder(b: Battle, s: CombatShip, order: Order, data: GameDat
     return null;
   }
   const hit = rng.chance(chance);
-  effects.push({ kind: 'shot', shipId: s.id, moduleId: m.moduleId, from: lof.from, to: lof.to, targetId: t.id, hit });
+  effects.push({ kind: 'shot', shipId: s.id, moduleId: m.moduleId, from: lof.from, to: lof.to, targetId: t.id, hit, tier: m.tier });
   if (hit) {
     applyHit(t, w, aim, lof.to, data, effects);
     destroyIfDead(t, effects, b, data);

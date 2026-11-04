@@ -35,7 +35,7 @@ import type { Aim, Battle, CombatShip, Effect, Order, SlotRef, Vec2 } from '../.
 import type { Game } from '../../core/game';
 import type { Term } from '../../render/display';
 import { HEIGHT, WIDTH } from '../../render/display';
-import { buildTimeline, overlayAt, type Timeline } from '../../render/effects';
+import { applyOverlay, buildTimeline, effectColor, effectVersion, overlayAt, persistCells, renderOps, sideOf, type Timeline } from '../../render/effects';
 import { drawModuleIcon, moduleShort } from '../../render/icons';
 import { palette, styleColor } from '../../render/palette';
 import { type DamageState, drawArt } from '../../render/shipArt';
@@ -51,12 +51,6 @@ const LOG_Y = 35;
 const LOG_ROWS = 5;
 const POWER_KEYS = '1234567890';
 
-/** Side color by AI kind (style.json `sides`). */
-/** Art side colors by faction: player, pirate, trader (escorts too), patrol. Allies of the player keep their faction color. */
-function sideOf(s: CombatShip): string {
-  if (s.ai === 'human') return 'player';
-  return s.faction === 'player' ? 'player' : s.faction;
-}
 
 export class CombatScreen implements Screen {
   private battle: Battle;
@@ -72,6 +66,8 @@ export class CombatScreen implements Screen {
   private confirmed: 'move' | 'fire' | null = null;
   private log: string[] = [];
   private timeline: Timeline | null = null;
+  /** The battle before the turn that the timeline plays (the ships' look until their move or end). */
+  private before: Battle | null = null;
   private animStart = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
   /** Auto until (Q-47): the AI plays turn after turn until a stop reason or a key. */
@@ -317,12 +313,13 @@ export class CombatScreen implements Screen {
     this.preview = structuredClone(out.battle);
     this.orders = [];
     this.notice = '';
-    this.playEffects(out.effects);
+    this.playEffects(out.effects, before);
     if (this.battle.result) this.log.push(resultText(this.battle));
   }
 
-  private playEffects(effects: Effect[]): void {
-    const tl = buildTimeline(effects, this.battle, this.game.data);
+  private playEffects(effects: Effect[], before: Battle): void {
+    const tl = buildTimeline(effects, this.battle, this.game.data, before);
+    this.before = before;
     if (tl.duration <= 0) return;
     this.timeline = tl;
     this.animStart = Date.now();
@@ -355,33 +352,46 @@ export class CombatScreen implements Screen {
         else t.put(x, y, (x + y) % 6 === 0 ? '·' : ' ', ui.border);
       }
     }
-    // Reachable anchors of the player ship.
+    // Cells that are not empty (soft effect cells do not paint them): asteroids, debris, ships, pods, munitions.
+    const solid = new Set<string>();
+    for (let y = 0; y < b.height; y++) for (let x = 0; x < b.width; x++) if ((b.cells[y]?.[x] ?? '.') !== '.') solid.add(`${x},${y}`);
+    // Move preview (effects v0.2 move_preview): the reachable anchors on the moveBg color.
     const me = this.me();
     const planning = !this.battle.result && !this.timeline;
     if (planning && isActive(me)) {
       const budget = moveBudget(me, data);
+      const bg = effectColor(data, 'moveBg');
       if (budget > 0) for (const key of reachable(b, me, budget).steps.keys()) {
         const [x, y] = key.split(',').map(Number) as [number, number];
-        t.put(x, y, '·', ui.dim, ui.raised);
+        if (solid.has(key)) continue;
+        t.put(x, y, (x + y) % 6 === 0 ? '·' : ' ', ui.border, bg);
       }
     }
     // Cargo pods (Section 13.7).
-    for (const pod of b.pods) t.put(pod.pos.x, pod.pos.y, '$', color(data, 'cargoPod'));
-    // Ships, then guided munitions (the glyph of effects.json "persist", turned toward the target).
-    for (const s of b.ships) this.drawShip(t, s);
+    for (const pod of b.pods) {
+      t.put(pod.pos.x, pod.pos.y, '$', color(data, 'cargoPod'));
+      solid.add(`${pod.pos.x},${pod.pos.y}`);
+    }
+    // Ships, then guided munitions (the glyph of the effect's "persist", turned toward the target).
+    for (const s of b.ships) this.drawShip(t, s, solid);
+    if (planning) this.drawPlannedMove(t, solid);
     for (const mu of b.munitions) {
-      const def = data.art.effects.effects[mu.moduleId === 'torpedo_tube' ? 'torpedo_move' : 'missile_move'];
-      const proj = (def as { persist?: { proj?: { g?: string; fg?: string } } } | undefined)?.persist?.proj;
+      if (this.timeline?.movingMunitions.includes(mu.id)) continue;
+      const v = effectVersion(data, mu.moduleId === 'torpedo_tube' ? 'torpedo_move' : 'missile_move', mu.tier);
+      const proj = ((v?.persist?.o as { k?: string; g?: string; fg?: string }[] | undefined) ?? []).find((o) => o.k === 'proj');
       const target = b.ships.find((s) => s.id === mu.targetId);
       const left = target ? target.pos.x < mu.pos.x : mu.side !== 'player';
       const glyphs = Array.from(proj?.g ?? '►').map((g) => (left ? g.replace('►', '◄') : g));
       const fg = color(data, proj?.fg ?? 'guided');
       // The head is on the munition cell; a body glyph (torpedo) is behind it.
-      glyphs.reverse().forEach((g, k) => t.put(mu.pos.x + (left ? k : -k), mu.pos.y, g, fg));
+      glyphs.reverse().forEach((g, k) => {
+        t.put(mu.pos.x + (left ? k : -k), mu.pos.y, g, fg);
+        solid.add(`${mu.pos.x + (left ? k : -k)},${mu.pos.y}`);
+      });
     }
     // Target brackets and line of fire.
     const tgt = this.target();
-    if (tgt && isActive(me)) {
+    if (tgt && isActive(me) && !this.timeline) {
       const lof = lineOfFire(b, me, tgt);
       if (planning) for (const c of lineCells(lof.from, lof.to)) if (b.cells[c.y]?.[c.x] === '.') t.put(c.x, c.y, '·', lof.clear ? ui.borderHi : ui.danger);
       const cells = shipCells(tgt);
@@ -398,9 +408,9 @@ export class CombatScreen implements Screen {
     }
     // Effects on top.
     if (this.timeline) {
-      for (const c of overlayAt(this.timeline, Date.now() - this.animStart)) {
+      applyOverlay(overlayAt(this.timeline, Date.now() - this.animStart), (x, y) => solid.has(`${x},${y}`), (c) => {
         if (c.x >= 0 && c.y >= 0 && c.x < b.width && c.y < b.height) t.put(c.x, c.y, c.ch, c.fg);
-      }
+      });
     }
     this.renderPanel(t);
     // Notice, keys, log.
@@ -450,8 +460,23 @@ export class CombatScreen implements Screen {
     this.log.slice(-LOG_ROWS).forEach((l, i) => t.text(0, LOG_Y + i, fit(l, PANEL_X - 1), ui.text));
   }
 
-  private drawShip(t: Term, s: CombatShip): void {
+  /**
+   * Draws a ship. While the turn's effects play: a ship that moves shows at
+   * its start cell until its move starts (the effect draws it while it
+   * moves); a ship that is destroyed, flees, or surrenders shows as it was
+   * until that effect starts; a reinforcement shows when its arrival ends.
+   */
+  private drawShip(t: Term, s0: CombatShip, solid: Set<string>): void {
     const { data } = this.game;
+    let s = s0;
+    const a = this.timeline?.ships[s0.id];
+    if (this.timeline && a) {
+      const now = Date.now() - this.animStart;
+      if ((a.appearAt !== undefined && now < a.appearAt) || a.hidden.some(([from, to]) => now >= from && now < to)) return;
+      const old = this.before?.ships.find((x) => x.id === s0.id);
+      const pos = a.path && a.moveStart !== undefined && now < a.moveStart ? (a.path[0] ?? s0.pos) : s0.pos;
+      s = old && a.settleAt !== undefined && now < a.settleAt ? { ...old, pos } : { ...s0, pos };
+    }
     const art = data.art.ships.ships[s.ship.hullId];
     // A planned flee still shows the player's ship until the turn ends.
     const plannedFlee = s.id === this.preview.playerId && !this.battle.result;
@@ -459,14 +484,19 @@ export class CombatScreen implements Screen {
     // Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28).
     const disabled = s.status === 'destroyed' && s.id === this.battle.playerId && defeatKind(this.battle) === 'disabled';
     if (s.status === 'destroyed' && !disabled) {
-      for (const c of shipCells(s)) t.put(c.x, c.y, ',', styleColor(data.art.style, 'dim'));
+      // Debris: the "persist" of the destroy effect (effects v0.2).
+      const size = data.hullById.get(s.ship.hullId)?.sizeClass;
+      const id = size === 'capital' ? 'destroy_capital' : size === 'small' ? 'destroy_small' : 'destroy_medium';
+      for (const c of persistCells(data, id, s, this.preview.width, this.preview.height)) t.put(c.x, c.y, c.ch, c.fg);
       return;
     }
+    for (const c of shipCells(s)) solid.add(`${c.x},${c.y}`);
     const st = combatStats(s, data);
     const share = s.ship.hullHp / Math.max(1, st.maxHullHp);
     const state: DamageState = share < 1 / 3 ? 'critical' : share < 2 / 3 ? 'damaged' : 'normal';
     drawArt(t, data, art.battle, s.pos.x, s.pos.y, {
-      side: sideOf(s),
+      // A surrendered ship shows in neutral colors (effects v0.2 surrender).
+      side: s.status === 'surrendered' ? 'neutral' : sideOf(s),
       state: disabled ? 'critical' : state,
       mirrored: s.mirrored,
       hot: heatState(s, data, st) !== 'normal',
@@ -484,6 +514,25 @@ export class CombatScreen implements Screen {
         this.targetId = s.id;
       }, h);
     }
+  }
+
+  /**
+   * Move preview (effects v0.2 move_preview): after a planned move, the ship
+   * shows at its planned cell; a ghost in playerDeep stays at the start cell,
+   * and a dotted path in playerDeep goes from the start to the planned cell.
+   */
+  private drawPlannedMove(t: Term, solid: Set<string>): void {
+    const { data } = this.game;
+    const now = shipById(this.battle, this.battle.playerId);
+    const me = this.me();
+    if (!now || !isActive(me) || (now.pos.x === me.pos.x && now.pos.y === me.pos.y)) return;
+    const path = pathTo(reachable(this.battle, now, Math.max(1, moveBudget(now, data))), me.pos) ?? [now.pos, me.pos];
+    const ghost = renderOps([{ k: 'ship', key: now.ship.hullId, x: now.pos.x, y: now.pos.y, mirror: now.mirrored, ghost: 'playerDeep' }], { data, paths: {} });
+    const { w, h } = maskSize(now.mask);
+    const dx = now.mirrored ? -1 : w;
+    const dy = Math.floor((h - 1) / 2);
+    const dots = renderOps([{ k: 'line', path: 'mv', set: 'dot', fg: 'playerDeep', dx, dy, i0: 1, soft: 1 }], { data, paths: { mv: path } });
+    applyOverlay([...ghost.filter((c) => !solid.has(`${c.x},${c.y}`)), ...dots], (x, y) => solid.has(`${x},${y}`), (c) => t.put(c.x, c.y, c.ch, c.fg));
   }
 
   private renderPanel(t: Term): void {
@@ -716,7 +765,7 @@ export class CombatScreen implements Screen {
 }
 
 function color(data: import('../../data').GameData, name: string): string {
-  return data.art.effects.colors[name] ?? styleColor(data.art.style, name);
+  return effectColor(data, name);
 }
 
 export function resultText(b: Battle): string {

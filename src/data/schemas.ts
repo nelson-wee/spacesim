@@ -89,6 +89,8 @@ export const balanceSchema = z.object({
     groupBonus: nonNeg,
   }),
   combat: z.object({
+    /** Ship move animation (effects v0.2): the moves of one turn take at most this time in all; times scale down if over. */
+    moveAnimBudgetMs: pos,
     gridWidth: z.number().int().positive(),
     gridHeight: z.number().int().positive(),
     /**
@@ -842,12 +844,12 @@ export const artStyleSchema = z.object({
     titlePrefix: z.string(),
   }),
 });
-/** data/art/effects.json: generated from data/art/effects.yaml by tools/import-art.ts. M4 plays the frames. */
+/** data/art/effects.json: generated from data/art/effects.yaml (v0.2) by tools/import-art.ts. */
+const effectFrame = z.record(z.string(), z.unknown());
 export const artEffectsSchema = z.object({
   source: z.string(),
   lineSets: z.record(z.string(), z.array(z.string()).length(4)),
   patterns: z.record(z.string(), z.array(z.array(z.union([z.number(), z.string()])))),
-  travel: z.string(),
   queue: z.object({
     staggerMs: nonNeg,
     staggerMs5Plus: nonNeg,
@@ -857,12 +859,32 @@ export const artEffectsSchema = z.object({
     skipKey: z.string(),
   }),
   colors: z.record(z.string(), color),
+  movement: z.object({
+    combat: z.object({
+      msPerCell: pos,
+      cellsPerFrameLongPath: z.number().int().positive(),
+      longPath: z.number().int().positive(),
+      igniteMs: nonNeg,
+      exhaustIgnite: z.string(),
+      exhaustMove: z.string(),
+      wakeFrames: z.number().int().min(0),
+    }),
+    map: z.object({
+      glyph: z.string(),
+      cellsPerFrame: z.number().int().positive(),
+      msPerFrame: pos,
+      trail: z.number().int().min(0),
+      trailColors: z.array(z.string()).min(1),
+    }),
+  }),
   effects: z.record(
     z.string(),
     z.object({
-      totalMsAt18Cells: nonNeg,
-      frames: z.array(z.record(z.string(), z.unknown())).min(1),
-      persist: z.record(z.string(), z.unknown()).optional(),
+      scene: z.string(),
+      versions: z
+        .array(z.object({ totalMs: nonNeg, frames: z.array(effectFrame).min(1), persist: effectFrame.optional() }))
+        .min(1)
+        .max(3),
       loop: z.boolean().optional(),
       static: z.boolean().optional(),
     }),

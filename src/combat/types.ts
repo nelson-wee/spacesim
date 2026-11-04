@@ -130,8 +130,8 @@ export type Order =
 /** What happened, for the renderer (effects.json) and the log. */
 export type Effect =
   | { kind: 'move'; shipId: number; path: Vec2[] }
-  | { kind: 'shot'; shipId: number; moduleId: string; from: Vec2; to: Vec2; targetId: number; hit: boolean }
-  | { kind: 'flak'; shipId: number; from: Vec2; center: Vec2 }
+  | { kind: 'shot'; shipId: number; moduleId: string; from: Vec2; to: Vec2; targetId: number; hit: boolean; tier?: Tier }
+  | { kind: 'flak'; shipId: number; from: Vec2; center: Vec2; tier?: Tier }
   | { kind: 'shield'; shipId: number; amount: number; broken: boolean }
   | { kind: 'hull'; shipId: number; amount: number; at: Vec2 }
   | { kind: 'armor'; shipId: number; at: Vec2 }
@@ -140,9 +140,9 @@ export type Effect =
   | { kind: 'online'; shipId: number }
   | { kind: 'unpowered'; shipId: number; moduleId: string }
   | { kind: 'launch'; shipId: number; moduleId: string; munitionId: number; at: Vec2 }
-  | { kind: 'munitionMove'; munitionId: number; moduleId: string; path: Vec2[] }
-  | { kind: 'munitionHit'; munitionId: number; moduleId: string; targetId: number; at: Vec2; hit: boolean }
-  | { kind: 'pd'; shipId: number; munitionId: number; from: Vec2; to: Vec2; hit: boolean }
+  | { kind: 'munitionMove'; munitionId: number; moduleId: string; path: Vec2[]; tier?: Tier }
+  | { kind: 'munitionHit'; munitionId: number; moduleId: string; targetId: number; at: Vec2; hit: boolean; tier?: Tier }
+  | { kind: 'pd'; shipId: number; munitionId: number; from: Vec2; to: Vec2; hit: boolean; tier?: Tier }
   | { kind: 'munitionDown'; munitionId: number; at: Vec2 }
   | { kind: 'munitionLost'; munitionId: number; at: Vec2 }
   | { kind: 'pod'; shipId: number; at: Vec2 }

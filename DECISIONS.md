@@ -566,6 +566,18 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 
 - 2026-11-04 [owner, §8.5, M6-UI-06] Fleet screen B balances fuel: it moves fuel between the fleet ships so that all ships can go the same distance (fuel in proportion to mass factor x engine fuel rate, up to each tank), anywhere, with no fee and no time. Reason: owner: one empty ship caused a tow of the fleet while other ships had fuel. Equal range, not equal tank share, because the fleet stops at the first empty ship.
 
+### Combat effects v0.2 (2026-11-04)
+
+- 2026-11-04 [M8-ART-05] `effects.yaml` v0.2 replaces v0.1. The importer also reads `style.json`: a color that `style.json` has keeps its style value; the ramp rule makes only the missing colors (`laserCore`, `ballisticCore`, `defenseCore`, `jumpDim`). Reason: one source for each color; the style values of `laserHi` and the other Hi colors differ a little from the ramp.
+- 2026-11-04 [M8-ART-05] The examples in fixed preview coordinates map to the battle: `origin` is the first cell of the shot path, `target` the impact cell, an `at` offset (`[-2, -1]`) is from the impact cell, a capital `blast` position scales from the 15 x 5 preview hull (mirrored for a ship that faces right). A miss passes one row beside the target and goes on to the grid edge. A munition flies its whole path of the turn (the preview `start` and `cells` do not apply). Reason: the brief gives one preview scene for each effect.
+- 2026-11-04 [M8-ART-05] `ship_move`, `sector_travel`, `jump_out`, `jump_in`, and `region_travel` frames come from the `movement` table and the real path (ship moves, map trips); `jump_out` and `jump_in` use the YAML frames, moved to the jump point. Reason: the YAML frames are examples for one path.
+- 2026-11-04 [M8-ART-04, open point 1] Ship moves play in turn order: a move starts when the effects before it end, and the effects after it wait for it. The moves of one turn have their own budget, `combat.moveAnimBudgetMs` 1500 ms (scale down if over); shots and damage keep the 1.2 s budget. Reason: shots are aimed from and at the ships' positions in turn order, so a shot must not play before the move it follows; a single 1.2 s budget would make the moves too fast to read.
+- 2026-11-04 [M8-ART-05] Move preview: the reachable anchors show on `moveBg` (not a disc); after a planned move, the ship shows at the planned cell and a ghost in `playerDeep` stays at the start cell. Reason: the game previews orders on the ship itself (targeting and line of fire use the planned cell).
+- 2026-11-04 [M8-ART-05] A surrendered ship shows in neutral colors (the `surrender` persist), and a destroyed ship shows the debris of its destroy effect's `persist` (`,` and `;`). Reason: the brief.
+- 2026-11-04 [M8-ART-07] Region route brackets go 2 cells left and right of the sector glyph (not 1), and sector route brackets 1 left and 2 right of the target. Reason: the jump key, `@`, and the security number are in the cells next to the glyph.
+- 2026-11-04 [M8-ART-06] The map trip keeps `sectorMap.travelAnimMaxMs` (1.2 s): a long trip moves more than 3 cells a frame. The region map now also animates its jump, and any key skips it. Reason: the owner's time limit for map animation.
+- 2026-11-04 [M8-ART-03] Not used from v0.2: `cargo_drop` blink (pods stay static), `shield_regenerate` (no regeneration event), and `noMunition` (the screen hides moving munitions while the travel plays). Reason: no matching game event, or the screen already does it.
+
 ## Cuts
 
 None.

@@ -1,6 +1,6 @@
 # Combat effects v0.2: scope (2026-11-04)
 
-Status: scope only. The new brief is `docs/proposals/effects-v0.2.yaml` (from Claude Design, "Combat effects v0.2"). The game still uses `data/art/effects.yaml` v0.1. To start, copy the new file to `data/art/effects.yaml` and run `npm run import-art` (do not edit the YAML by hand).
+Status: done (2026-11-04); see PROGRESS.md, M8, "Combat effects v0.2". Scope as written before the work: The new brief is `docs/proposals/effects-v0.2.yaml` (from Claude Design, "Combat effects v0.2"). The game still uses `data/art/effects.yaml` v0.1. To start, copy the new file to `data/art/effects.yaml` and run `npm run import-art` (do not edit the YAML by hand).
 
 ## 1. What changes in the brief
 

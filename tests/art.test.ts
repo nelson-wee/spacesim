@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { checkArt, gameData } from '../src/data';
 import { palette, roleColor } from '../src/render/palette';
-import { convertEffects, effectsJson } from '../tools/lib/effectsArt';
+import { convertEffects, effectsJson, mixHex } from '../tools/lib/effectsArt';
 import { convertShipArt, ROLE_CODES, shipArtJson } from '../tools/lib/shipArt';
 
 const data = gameData();
@@ -113,31 +113,51 @@ describe('module icons (data/art/modules.json)', () => {
   });
 });
 
-describe('combat effects (data/art/effects.yaml)', () => {
+describe('combat effects v0.2 (data/art/effects.yaml)', () => {
   const effectsYaml = readFileSync('data/art/effects.yaml', 'utf8');
+  const styleColors = (JSON.parse(readFileSync('data/art/style.json', 'utf8')) as { colors: Record<string, string> }).colors;
 
   it('effects.json matches effects.yaml (run `npm run import-art` after a change)', () => {
-    expect(readFileSync('data/art/effects.json', 'utf8')).toBe(effectsJson(effectsYaml));
+    expect(readFileSync('data/art/effects.json', 'utf8')).toBe(effectsJson(effectsYaml, styleColors));
   });
 
   it('has the effects of Section 18.4 and a 1.2 s budget per turn', () => {
     const names = Object.keys(data.art.effects.effects);
-    for (const n of ['pulse_laser_hit', 'autocannon_hit', 'flak_cannon', 'missile_move', 'point_defense', 'shield_hit_small', 'destroy_small', 'reinforcement_arrival']) {
+    for (const n of ['pulse_laser_hit', 'autocannon_hit', 'flak_cannon', 'missile_move', 'point_defense', 'shield_hit_small', 'destroy_small', 'reinforcement_arrival', 'flee', 'ship_move']) {
       expect(names).toContain(n);
     }
     expect(data.art.effects.queue.budgetMs).toBe(1200);
     expect(data.art.effects.queue.skipKey).toBe('Space');
   });
 
+  it('weapon effects have three tiers; other effects have one version', () => {
+    for (const n of ['pulse_laser_hit', 'beam_laser_hit', 'autocannon_hit', 'mass_driver_hit', 'heavy_cannon_hit', 'flak_cannon', 'missile_move', 'missile_hit', 'torpedo_move', 'torpedo_hit', 'point_defense']) {
+      expect(data.art.effects.effects[n]?.versions).toHaveLength(3);
+    }
+    expect(data.art.effects.effects.hull_hit?.versions).toHaveLength(1);
+  });
+
+  it('the ramp rule gives the colors that style.json does not have', () => {
+    const c = data.art.effects.colors;
+    expect(Object.keys(c).sort()).toEqual(['ballisticCore', 'defenseCore', 'jumpDim', 'laserCore']);
+    // Core = mix(base, white, 0.85); Dim = mix(base, void, 0.5).
+    expect(c.laserCore).toBe(mixHex('#F59ED6', '#FFFFFF', 0.85));
+    expect(c.jumpDim).toBe(mixHex(styleColors.jump as string, styleColors.void as string, 0.5));
+  });
+
   it('the art check finds an unknown effect color', () => {
     const broken = structuredClone(data);
-    broken.art.effects.effects.pulse_laser_hit!.frames[0] = { ms: 30, at: { at: 'target', g: '*', fg: 'noSuchColor' } };
+    broken.art.effects.effects.pulse_laser_hit!.versions[0]!.frames[0] = { ms: 30, o: [{ k: 'at', at: 'target', g: '*', fg: 'noSuchColor' }] };
     expect(checkArt(broken).join()).toMatch(/noSuchColor/);
   });
 
-  it('rejects an unknown line set', () => {
-    const broken = effectsYaml.replace('"set":"thin","fg":"laserHi"}}', '"set":"wavy","fg":"laserHi"}}');
-    expect(broken).not.toBe(effectsYaml);
-    expect(() => convertEffects(broken)).toThrow(/line set/);
+  it('rejects an unknown line set, operation, or color', () => {
+    const set = effectsYaml.replace('"set":"thin","fg":"laserHi"}', '"set":"wavy","fg":"laserHi"}');
+    expect(set).not.toBe(effectsYaml);
+    expect(() => convertEffects(set, styleColors)).toThrow(/line set/);
+    const op = effectsYaml.replace('{"k":"perim","part":"facing"', '{"k":"spiral","part":"facing"');
+    expect(() => convertEffects(op, styleColors)).toThrow(/unknown operation "spiral"/);
+    const color = effectsYaml.replace('"fg":"laserHi"}', '"fg":"laserUltra"}');
+    expect(() => convertEffects(color, styleColors)).toThrow(/unknown color "laserUltra"/);
   });
 });

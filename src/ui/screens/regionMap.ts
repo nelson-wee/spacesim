@@ -7,6 +7,8 @@ import type { JumpPoint, Sector } from '../../core/types';
 import type { Term } from '../../render/display';
 import { palette, securityColor, threatBandColor } from '../../render/palette';
 import { lineCells } from '../../world/geometry';
+import { applyOverlay, bresenham, renderOps } from '../../render/effects';
+import { MapAnim, regionTravelFrames } from '../mapAnim';
 import { securityLevelInfo, securityTrend } from '../../world/security';
 import type { App, Screen } from '../app';
 import type { KeyInput } from '../input';
@@ -21,6 +23,13 @@ import { econContext } from '../../econ/context';
 
 export class RegionMapScreen implements Screen {
   private selectedSectorId: number | null = null;
+  /** The travel animation (effects v0.2 region_travel): the trip is done; `then` runs at the end, or when a key skips it. */
+  private anim: MapAnim | null = null;
+  private animTimer: ReturnType<typeof setTimeout> | null = null;
+
+  get busy(): boolean {
+    return this.anim !== null;
+  }
 
   constructor(private readonly app: App) {}
 
@@ -77,12 +86,13 @@ export class RegionMapScreen implements Screen {
       if (hi) continue;
       for (const c of lineCells(a.pos, b.pos).slice(1, -1)) at(c.x, c.y, icons.lane, pal.map.lane);
     }
-    // Route lanes last, so that crossing lanes do not hide them.
+    // Route lanes last, so that crossing lanes do not hide them: a thin line in frameHi (effects v0.2 region_route).
     for (const lane of state.world.lanes) {
       if (!routeLanes.has(`${Math.min(lane.a, lane.b)}-${Math.max(lane.a, lane.b)}`)) continue;
       const a = sectors[lane.a] as Sector;
       const b = sectors[lane.b] as Sector;
-      for (const c of lineCells(a.pos, b.pos).slice(1, -1)) at(c.x, c.y, icons.lane, pal.ui.highlight);
+      const path = lineCells(a.pos, b.pos);
+      for (const c of renderOps([{ k: 'line', path: 'r', set: 'thin', fg: 'frameHi', i0: 1, i1: path.length - 1 }], { data, paths: { r: path } })) at(c.x, c.y, c.ch, c.fg);
     }
     // Names first, so that sector glyphs and security numbers stay on top.
     for (const s of sectors) {
@@ -108,7 +118,17 @@ export class RegionMapScreen implements Screen {
       // Left of the sector: @ for the player's sector, or the key for a jump to it.
       const exitIndex = exits.findIndex((j) => j.toSectorId === s.id);
       if (exitIndex >= 0) at(s.pos.x - 1, s.pos.y, String(exitIndex + 1), pal.ui.key, pal.ui.keyBg);
-      if (s.id === current) at(s.pos.x - 1, s.pos.y, icons.player, pal.roles.player);
+      if (s.id === current && !this.anim) at(s.pos.x - 1, s.pos.y, icons.player, pal.roles.player);
+    }
+    // Brackets around the selected sector on a route.
+    const target = this.selectedSectorId === null ? undefined : sectors[this.selectedSectorId];
+    if (target && route.length > 1 && !this.anim) {
+      at(target.pos.x - 2, target.pos.y, '[', pal.ui.bright);
+      at(target.pos.x + 2, target.pos.y, ']', pal.ui.bright);
+    }
+    if (this.anim) {
+      const solid = new Set(sectors.flatMap((s) => [`${s.pos.x},${s.pos.y}`, `${s.pos.x + 1},${s.pos.y}`]));
+      applyOverlay(this.anim.cells(data), (x, y) => solid.has(`${x},${y}`), (c) => at(c.x, c.y, c.ch, c.fg));
     }
 
     this.renderPanel(t);
@@ -165,7 +185,7 @@ export class RegionMapScreen implements Screen {
       line(`Baseline ${Math.round(sel.securityBaseline)}, jumps from core ${sel.jumpsFromCore}`, pal.ui.dim);
       line(`Locations: ${sel.locationIds.length}`, pal.ui.dim);
       const route = this.route();
-      if (route.length > 1) line(`Route: ${route.length - 1} jump${route.length === 2 ? '' : 's'} (bright)`, pal.ui.highlight);
+      if (route.length > 1) line(`Route: ${route.length - 1} jump${route.length === 2 ? '' : 's'} (bright line)`, pal.ui.highlight);
       y++;
       const exit = this.exits().find((j) => j.toSectorId === sel.id);
       if (sel.id === this.currentSectorId()) {
@@ -200,6 +220,11 @@ export class RegionMapScreen implements Screen {
   }
 
   onKey(k: KeyInput): boolean {
+    // Any key skips the travel animation.
+    if (this.anim) {
+      this.finishAnim();
+      return true;
+    }
     const game = this.game;
     const exits = this.exits();
     const n = Number(k.key);
@@ -238,12 +263,14 @@ export class RegionMapScreen implements Screen {
     }
   }
 
-  /** Travel to the jump point (if needed), then jump. Stops after a tow. */
+  /** Travel to the jump point (if needed), then jump. Stops after a tow. The trip plays as an animation, then the sector map shows. */
   private travelToSelected(): void {
     const game = this.game;
     const player = game.state.player;
     const exit = this.exits().find((j) => j.toSectorId === this.selectedSectorId);
     if (!exit) return;
+    const sectors = game.state.world.sectors;
+    const route = this.route();
     const atExit = player.position.kind === 'jumpPoint' && player.position.jumpPointId === exit.id;
     if (!atExit) {
       const out = travelInSector(game, player, { kind: 'jumpPoint', jumpPointId: exit.id }, true);
@@ -258,9 +285,54 @@ export class RegionMapScreen implements Screen {
       }
     }
     const out = jump(game, player, true);
-    if (out.result === 'refused') game.bus.message(out.reason, 'warning');
-    this.app.pop();
-    if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
+    if (out.result === 'refused') {
+      game.bus.message(out.reason, 'warning');
+      return;
+    }
+    const then = () => {
+      this.app.pop();
+      if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
+    };
+    // The path along the lanes of the route, and the path index of each sector on it.
+    const path: { x: number; y: number }[] = [];
+    const stops: number[] = [];
+    route.forEach((id, i) => {
+      const s = sectors[id] as Sector;
+      const next = sectors[route[i + 1] ?? -1];
+      stops.push(path.length);
+      if (next) path.push(...bresenham(s.pos, next.pos).slice(0, -1));
+      else path.push({ ...s.pos });
+    });
+    const maxMs = game.data.balance.sectorMap.travelAnimMaxMs;
+    const frames = maxMs > 0 ? regionTravelFrames(game.data, path, stops, maxMs) : [];
+    this.play(new MapAnim(frames, { reg: path }, then));
+  }
+
+  private play(anim: MapAnim): void {
+    if (anim.frames.length === 0) {
+      anim.then();
+      return;
+    }
+    this.anim = anim;
+    const tick = () => {
+      if (!this.anim) return;
+      if (this.anim.done) {
+        this.finishAnim();
+        return;
+      }
+      this.app.render();
+      this.animTimer = setTimeout(tick, 30);
+    };
+    this.animTimer = setTimeout(tick, 30);
+  }
+
+  private finishAnim(): void {
+    const a = this.anim;
+    if (this.animTimer) clearTimeout(this.animTimer);
+    this.animTimer = null;
+    this.anim = null;
+    a?.then();
+    this.app.render();
   }
 
   onClick(x: number, y: number): void {
@@ -279,6 +351,7 @@ export class RegionMapScreen implements Screen {
       'Tab      Select the next sector (Shift+Tab: back)',
       'Click    Select a sector on the map',
       'Enter    Go to the jump point and jump to the selected sector',
+      'Any key  Skips the travel animation',
       'Esc, M   Back to the sector map',
       'L        Log',
       '',

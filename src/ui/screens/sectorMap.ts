@@ -23,7 +23,9 @@ import { palette, securityColor, techColor } from '../../render/palette';
 import { report } from '../../services/common';
 import { marketRole } from '../../services/market';
 import { quoteRefuel, refuel } from '../../services/refuel';
-import { lineCells, ringPoint } from '../../world/geometry';
+import { ringPoint } from '../../world/geometry';
+import { applyOverlay, bresenham, renderOps } from '../../render/effects';
+import { jumpFrames, MapAnim, sectorTravelFrames, sectorTravelPaths } from '../mapAnim';
 import { shortCode } from '../../world/codes';
 import { locationTypeName } from '../../world/location';
 import { securityLevelInfo } from '../../world/security';
@@ -52,11 +54,12 @@ export class SectorMapScreen implements Screen {
   /** Route view: the selected commodity, or null. */
   private routeCommodity: string | null = null;
   /**
-   * The travel animation (owner, M8-ART-06): the player glyph moves cell by
-   * cell along the path. The trip is already done in the simulation; `then`
-   * runs at the end (or when a key skips it).
+   * The travel animation (effects v0.2 movement.map; M8-ART-06): the player
+   * glyph moves along the path with a trail, and a jump shows its rings. The
+   * trip is already done in the simulation; `then` runs at the end (or when a
+   * key skips it).
    */
-  private anim: { sectorId: number; cells: Vec[]; started: number; ms: number; then: () => void } | null = null;
+  private anim: MapAnim | null = null;
   private animTimer: ReturnType<typeof setTimeout> | null = null;
 
   get busy(): boolean {
@@ -75,7 +78,7 @@ export class SectorMapScreen implements Screen {
   }
 
   private sectorId(): number {
-    return this.anim?.sectorId ?? actorPlace(this.game, this.game.state.player).sectorId;
+    return this.anim?.frameAt()?.sectorId ?? actorPlace(this.game, this.game.state.player).sectorId;
   }
 
   /** The map cell of the player glyph. */
@@ -90,15 +93,20 @@ export class SectorMapScreen implements Screen {
   private animate(from: { sectorId: number; cell: Vec }, then: () => void): void {
     const to = this.playerCell();
     const cfg = this.game.data.balance.sectorMap;
-    const cells = to.sectorId === from.sectorId ? lineCells(from.cell, to.cell) : [];
-    if (cells.length < 2 || cfg.travelAnimMaxMs <= 0) {
-      then();
+    const frames = to.sectorId === from.sectorId && cfg.travelAnimMaxMs > 0 ? sectorTravelFrames(this.game.data, from.cell, to.cell, cfg.travelAnimMaxMs, from.sectorId) : [];
+    this.play(new MapAnim(frames, sectorTravelPaths(from.cell, to.cell), then));
+  }
+
+  /** Plays map frames; with no frames, `then` runs at once. */
+  private play(anim: MapAnim): void {
+    if (anim.frames.length === 0) {
+      anim.then();
       return;
     }
-    this.anim = { sectorId: from.sectorId, cells, started: Date.now(), ms: Math.min(cfg.travelAnimMaxMs, cells.length * cfg.travelAnimCellMs), then };
+    this.anim = anim;
     const tick = () => {
       if (!this.anim) return;
-      if (Date.now() - this.anim.started >= this.anim.ms) {
+      if (this.anim.done) {
         this.finishAnim();
         return;
       }
@@ -146,6 +154,9 @@ export class SectorMapScreen implements Screen {
     const aspect = data.balance.world.cellAspect;
     const center = sectorCenter(data);
     const at = (p: Vec, ch: string, fg: string, bg?: string) => t.put(MAP_X + p.x, MAP_Y + p.y, ch, fg, bg);
+    // Map objects (soft effect cells do not paint them): the star, jump points, locations, and their keys.
+    const solid = new Set<string>();
+    const mark = (p: Vec) => solid.add(`${p.x},${p.y}`);
 
     // Orbit rings.
     for (const r of data.balance.sectorMap.bodyRingRadii) {
@@ -155,32 +166,61 @@ export class SectorMapScreen implements Screen {
     const sector = game.state.world.sectors[this.sectorId()];
     if (!sector) return;
     at(center, icons.star, pal.map.sun);
+    mark(center);
 
     // Jump points and locations, with their keys.
     this.jumpPoints().forEach((jp, i) => {
       const sel = this.isSelected({ kind: 'jumpPoint', jumpPointId: jp.id });
       at(jp.pos, icons.jumpPoint, pal.map.jumpPoint, sel ? pal.ui.selectBg : undefined);
       at({ x: jp.pos.x + 1, y: jp.pos.y }, JUMP_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
+      mark(jp.pos);
+      mark({ x: jp.pos.x + 1, y: jp.pos.y });
     });
     this.locations().forEach((loc, i) => {
       const glyph = loc.kind === 'station' ? icons.station : loc.size >= 2 ? icons.planetLarge : icons.planetSmall;
       const sel = this.isSelected({ kind: 'location', locationId: loc.id });
       at(loc.pos, glyph, techColor(data, loc.techLevel), sel ? pal.ui.selectBg : undefined);
       at({ x: loc.pos.x + 1, y: loc.pos.y }, LOCATION_KEYS[i] ?? '?', pal.ui.key, pal.ui.keyBg);
+      mark(loc.pos);
+      mark({ x: loc.pos.x + 1, y: loc.pos.y });
     });
 
     if (this.routeCommodity) this.renderRouteView(t, this.routeCommodity);
 
-    // The player (moving along the path during the travel animation).
+    // The route to the selected target (effects v0.2 sector_route): a dotted line, brackets, and the time.
+    if (!this.anim && this.selected) this.renderRoute(t, solid);
+    // The player, or the travel animation (effects v0.2 sector_travel, jump_out, jump_in).
     if (this.anim) {
-      const a = this.anim;
-      const i = Math.min(a.cells.length - 1, Math.floor(((Date.now() - a.started) / a.ms) * a.cells.length));
-      for (const c of a.cells.slice(1, i)) at(c, '·', pal.ui.dim);
-      at(a.cells[i] as Vec, icons.player, pal.roles.player);
+      applyOverlay(this.anim.cells(data), (x, y) => solid.has(`${x},${y}`), (c) => {
+        if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H) at(c, c.ch, c.fg);
+      });
     } else at(this.playerCell().cell, icons.player, pal.roles.player);
 
     this.renderPanel(t);
     drawRecentLog(t, game);
+  }
+
+  /** The route to the selected target: dots in frameHi on every other cell, brackets, and "ETA". */
+  private renderRoute(t: Term, solid: Set<string>): void {
+    const game = this.game;
+    const { data } = game;
+    const sel = this.selected;
+    if (!sel) return;
+    const plan = planSectorTrip(game, game.state.player, sel);
+    const world = game.state.world;
+    const target = sel.kind === 'location' ? world.locations[sel.locationId]?.pos : world.jumpPoints[sel.jumpPointId]?.pos;
+    if (!target) return;
+    const from = this.playerCell().cell;
+    const path = bresenham(from, target);
+    const ops = [
+      { k: 'line', path: 'sec', set: 'dot', fg: 'frameHi', i0: 1, i1: path.length - 1, every: 2, phase: 1, soft: 1 },
+      { k: 'at', at: { x: target.x - 1, y: target.y }, g: '[', fg: 'hi', soft: 1 },
+      { k: 'at', at: { x: target.x + 2, y: target.y }, g: ']', fg: 'hi', soft: 1 },
+      ...(plan.possible ? [{ k: 'text', x: Math.max(0, target.x - 7), y: target.y + 1, s: `ETA ${plan.days.toFixed(1)} d`, fg: 'dim' }] : []),
+    ];
+    applyOverlay(renderOps(ops, { data, paths: { sec: path } }), (x, y) => solid.has(`${x},${y}`), (c) => {
+      if (c.x >= 0 && c.y >= 0 && c.x < MAP_W && c.y < MAP_H) t.put(MAP_X + c.x, MAP_Y + c.y, c.ch, c.fg);
+    });
   }
 
   /**
@@ -404,10 +444,22 @@ export class SectorMapScreen implements Screen {
           game.bus.message('Go to a jump point first.', 'warning');
           return true;
         }
+        const fromSector = this.sectorId();
+        const fromJp = game.state.world.jumpPoints[player.position.jumpPointId]?.pos;
         const out = jump(game, player, true);
-        if (out.result === 'refused') game.bus.message(out.reason, 'warning');
-        if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
         this.selected = null;
+        if (out.result === 'refused') {
+          game.bus.message(out.reason, 'warning');
+          return true;
+        }
+        const then = () => {
+          if (out.result === 'encounter') this.app.push(new HailScreen(this.app, out.encounter));
+        };
+        // Jump out of the old sector, then in at the jump point of the new one (effects v0.2 jump_out, jump_in).
+        const here = actorPlace(game, player);
+        const frames = fromJp ? jumpFrames(game.data, 'jump_out', fromJp, fromSector) : [];
+        if (player.position.kind === 'jumpPoint') frames.push(...jumpFrames(game.data, 'jump_in', here.point, here.sectorId));
+        this.play(new MapAnim(game.data.balance.sectorMap.travelAnimMaxMs > 0 ? frames : [], {}, then));
         return true;
       }
       case 'h': {

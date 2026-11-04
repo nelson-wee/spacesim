@@ -65,6 +65,7 @@
     "groupBonus": 0.15
   },
   "combat": {
+    "moveAnimBudgetMs": 1500,
     "gridWidth": 70,
     "gridHeight": 30,
     "damageScale": 2.75,

@@ -660,6 +660,22 @@ Findings for the owner (not changed):
 - Laser range +50% (Pulse 8 -> 12, Beam 10 -> 15). `sim-combat`: all 6 checks pass (Shuttle vs Raider 58%, band 40-60%); battle length unchanged. Light Freighter capture: Laser Wasp 75%, Raiding Wasp 48%, Gunship 76%. `sim-trader --encounters`: 18/20 by day 150; `sim-career`: 6/6 end with no errors (median 1,377,844 cr, report).
 - Two more soft-locks found by the pirate style and fixed: engines at 0 after a won battle, and a prize with its engines at 0 (every forced surrender) left the fleet unable to move in space. A tug now tows such a fleet.
 
+### Fuel balance (owner, 2026-11-04)
+
+- Fleet screen B moves fuel between the fleet ships, so that all ships can go the same distance (fuel in proportion to each ship's fuel use per distance, up to its tank). It works anywhere (docked, in space, after a battle), with no fee and no time. One empty ship no longer causes a tow while other ships have fuel.
+
+### Combat effects v0.2 (Claude Design, 2026-11-04; M8-ART-03 to ART-07)
+
+- `data/art/effects.yaml` is now v0.2 (copy of `docs/proposals/effects-v0.2.yaml`); `npm run import-art` converts it. The importer reads the tiers, the operation lists (`o`), `total_ms`, `persist`, and the `movement` table, and makes the ramp colors that `style.json` does not have (`laserCore`, `ballisticCore`, `defenseCore`, `jumpDim`). It rejects unknown operations, colors, line sets, and patterns.
+- The renderer interprets the 14 operations against the real battle: rings and discs on the 2:1 ellipse, `frac` and `seed` by a cell hash (the same turn looks the same), `soft` cells (only empty cells), facing perimeter toward the shooter, engine cells (`foot` role `e`), `@glyph` and `@damage`, capital blasts scaled to the hull, travel with lanes and trails, and crawl on thick beams.
+- Weapon effects have tiers 1-3: each shot, flak, missile, torpedo, and point-defense effect carries the module tier. T2 and T3 add the Core color, rings, more rounds, and longer times. The 1.2 s budget for shots stays.
+- Ships move in combat: each ship slides along its path (45 ms a cell, 2 cells a frame for paths over 12), with ignition exhaust, a wake, thruster puffs, a brake puff at the bow, and an idle glow. Effects after a move wait for it. A ship shows at its start cell until its move starts, and as it was until its destroy, flee, or surrender starts. The moves of a turn take at most `combat.moveAnimBudgetMs` (1.5 s).
+- Move preview: the reachable cells show on the `moveBg` color; after a planned move, a ghost in `playerDeep` stays at the start cell with a dotted path to the planned cell.
+- Destroyed ships leave the debris of the effect's `persist`; surrendered ships show in neutral colors.
+- Sector map: the `@` moves 3 cells each 60 ms with a 5-cell trail and an engine glow on every other frame, from a start ring to an arrival ring, with the route ahead dotted. A jump shows the jump-out rings at the old jump point and the jump-in rings at the new one. A selected target shows a dotted route, brackets, and "ETA".
+- Region map: a jump plays the region travel (thin trace, route ahead, a pulse at each sector on the way); the route to a selected sector shows as a thin `frameHi` line with brackets.
+- Tests: 20 new tests (importer, operations, tiers, moves, budgets, map frames). Browser check with a controlled clock: travel, jump, region travel, move preview, ship moves, beam, spark, shield, and enemy moves all play; no page errors.
+
 ### Bugs found and fixed in M8
 
 - Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.
