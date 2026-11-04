@@ -26,7 +26,7 @@ The offer is a modal screen with Accept and Decline. With Decline, the career go
 |---|---|
 | At once | Free full repair (hull, armor, engine value) and full refuel of all fleet ships. The debt stays. |
 | Task | Deliver 10 t (Small) of a raw commodity to a location 0-1 jumps away that needs it (a real need from the contract generator; if none, a location that trades it). The guild supplies the cargo at the tow location, free (the player cannot buy in debt). |
-| Deadline | Today + 8 + 4 x jumps (the Supply rule). |
+| Deadline | Today + 8 + 4 x jumps (the old Supply rule; 2026-11-04: Supply contracts have no deadline now, so the relief contract is its own kind with this deadline, see M8-SC-02). |
 | Done | The debt is cleared (credits = 0 if below 0). The goods go into the market stock. Counts as a completed contract (standing +1). |
 | Fail | The deadline passes, or the cargo is lost: the debt stays; a failed contract (standing -2). No second offer. |
 | Limits | It does not count toward the 4 Merchants' Guild contracts. |
@@ -62,3 +62,10 @@ If the player is stuck again later (in debt, no cargo, no module to sell), the o
 6. Milestone: M8, with an exception to the feature freeze.
 7. Buyback of the original ship at the Pirate Haven, at its trade-in value (price: proposed default).
 8. The starting ship is named "Fresh Start".
+
+## 7. Changes after the per-tonne Supply contracts and the fleet hold (2026-11-04)
+
+- The relief contract is its own contract kind (`relief`): a fixed 10 t, its own deadline, no per-tonne pay, no 28-day limit (M8-SC-02).
+- The pirate trade-in happens on the offer screen. Before Accept, the player can open the fleet screen to move modules and cargo off the flagship; cargo that does not fit on the other ships is lost (M8-SC-03).
+- The buyback ship joins the fleet only with room in the fleet; it does not become the flagship by itself (M8-SC-04).
+- "Fresh Start" applies to new careers; the player can rename ships (M8-SC-05).

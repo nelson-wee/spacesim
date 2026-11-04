@@ -510,6 +510,15 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-03 [§22, M7-BAL-03] `destroyPirate` baseline 0.5 -> 1.35 and `pirateSurrenders` 0.3 -> 0.8. Reason: only the baseline lasts (the value drifts back to it); 15 kills now add 20 baseline points (one level). Test: 15 kills raise a sector one level after 365 days, 10 kills do not.
 - 2026-11-03 [M7-TOOL-03] The trader bot in `sim-career` is a careful trader (no routes through security below 2) and sells a weapon or shield module when it has no credits and no cargo. Reason: without it, the bot stays in debt with no cargo after two pirate losses (a player can sell modules, Section 8.6).
 
+## M8 scope changes (owner, 2026-11-04)
+
+- 2026-11-04 [owner, M8] Economy and balance results are reports in M8, not gates: the M3 Light Freighter median day, M6 check 5, Shuttle profit per day, net worth at day 730 (Q-52), and the Supply contract gap (Q-53). Checks of correct behavior stay gates (for example, no stock below 0, offers that point to a real deficit). Section 14.9 check 3 stays a check; it passes (1.41x).
+- 2026-11-04 [owner, M8-ART-06, M8-ART-07] Sector map travel animation (the `@` moves along the path, 1.2 s or less, any key skips) and the region map route highlight (lanes of the shortest route in `hi`). Both use existing colors and glyphs, so they need no Claude Design work. Reason: owner: the moves stay readable and the maps look more alive.
+- 2026-11-04 [M8-SC-02] The relief contract is its own kind with a fixed 10 t and a deadline of 8 + 4 x jumps days. Reason: Supply contracts have no deadline now (Q-53), and the relief must stay short and certain.
+- 2026-11-04 [M8-SC-03] The pirate trade-in happens on the offer screen. The fleet screen can open first (I) to move modules and cargo off the flagship; flagship cargo that does not fit elsewhere is lost, and the screen says so. Reason: the fleet hold exists only in a fleet screen session.
+- 2026-11-04 [M8-SC-04] The buyback ship joins the fleet only if there is room; it does not become the flagship by itself. Reason: the fleet has at most 4 ships.
+- 2026-11-04 [M8-SC-05] "Fresh Start" applies to new careers only; saved careers keep their names.
+
 ## Cuts
 
 None.

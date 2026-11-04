@@ -264,6 +264,7 @@ These items need the repository owner. Claude Code cannot do them.
 14. **M6 checks:** done (Q-51 decided, 2026-11-03).
 15. **M7 balance:** Q-52 decided (2026-11-03); the second chance is in M8.
 16. **Supply contracts:** Q-53 decided (2026-11-03, option (c)).
+17. **M8 scope (2026-11-04):** balance results are reports; M8-ART-06 (sector map travel animation) and M8-ART-07 (region map route highlight) added; M8-SC-02 to SC-05 updated for per-tonne Supply contracts and the fleet hold.
 
 ## 11. After the MVP (owner notes)
 
