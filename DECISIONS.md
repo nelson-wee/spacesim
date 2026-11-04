@@ -564,6 +564,8 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 
 - 2026-11-04 [bug, §8.5] A fleet in space that cannot move after a battle is towed (`towIfStranded`): when the flagship's engines are at 0 (checked in `finishBattle`), and when the after-battle screen closes with a prize whose engines are at 0 (a forced surrender always leaves them at 0). The tow fee counts each ship that cannot move like an empty one. Reason: play test: the fleet stayed in space for good (travel and Hunt refused, and a tug came only at 0 fuel).
 
+- 2026-11-04 [owner, §8.5, M6-UI-06] Fleet screen B balances fuel: it moves fuel between the fleet ships so that all ships can go the same distance (fuel in proportion to mass factor x engine fuel rate, up to each tank), anywhere, with no fee and no time. Reason: owner: one empty ship caused a tow of the fleet while other ships had fuel. Equal range, not equal tank share, because the fleet stops at the first empty ship.
+
 ## Cuts
 
 None.

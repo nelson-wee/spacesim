@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addCargo, fleetUnits, loadingOrder } from '../src/actor/cargo';
 import { accrueUpkeep, payUpkeep, removeShip, renameShip, setFlagship, upkeepPerDay } from '../src/actor/fleet';
 import { TextInput } from '../src/ui/input';
-import { fleetProblems, freeSlotFor, installModule, moveAllCargo, moveCargo, moveModule, restoreLoadout, snapshotLoadout, uninstallModule } from '../src/actor/fleetManage';
+import { balanceFuel, fleetProblems, freeSlotFor, installModule, moveAllCargo, moveCargo, moveModule, restoreLoadout, snapshotLoadout, uninstallModule } from '../src/actor/fleetManage';
 import { towFleet } from '../src/actor/fuel';
 import { planSectorTrip, travelInSector } from '../src/actor/travel';
 import { buy, sell } from '../src/services/market';
@@ -470,5 +470,50 @@ describe('fleet in combat (M6-FCMB)', () => {
         expect(p.fleet[1]!.cargo.water?.unitCost).toBe(0);
       }
     }
+  });
+});
+
+describe('fuel balance (owner, 2026-11-04)', () => {
+  it('moves fuel so that all ships go about the same distance, and keeps the total', () => {
+    const a = ship('start_shuttle', 'A');
+    const b = ship('light_freighter_starter', 'B');
+    const capA = travelStats(a, data).fuelCapacity;
+    a.fuel = 0;
+    b.fuel = travelStats(b, data).fuelCapacity;
+    const total = a.fuel + b.fuel;
+    const r = balanceFuel(data, [a, b]);
+    expect(r.ok).toBe(true);
+    expect(a.fuel + b.fuel).toBeCloseTo(total, 6);
+    expect(a.fuel).toBeGreaterThan(0);
+    expect(a.fuel).toBeLessThanOrEqual(capA + 1e-9);
+    // The same fuel per distance: fuel / (mass factor x engine rate) is equal while no tank is full.
+    const range = (s: Ship) => {
+      const st = travelStats(s, data);
+      return s.fuel / (st.mass ** data.balance.travel.fuelMassExponent * st.engineFuelRate);
+    };
+    if (a.fuel < capA - 1e-6) expect(range(a)).toBeCloseTo(range(b), 3);
+    expect(balanceFuel(data, [a, b]).text).toMatch(/already balanced/);
+  });
+
+  it('fills the small tanks when there is more fuel than the ships need for the same distance', () => {
+    const a = ship('start_shuttle', 'A');
+    const b = ship('heavy_freighter_trader', 'B');
+    const capA = travelStats(a, data).fuelCapacity;
+    const capB = travelStats(b, data).fuelCapacity;
+    a.fuel = 0;
+    b.fuel = capB;
+    balanceFuel(data, [a, b]);
+    expect(a.fuel + b.fuel).toBeCloseTo(capB, 6);
+    expect(a.fuel).toBeLessThanOrEqual(capA + 1e-9);
+    expect(b.fuel).toBeLessThanOrEqual(capB + 1e-9);
+  });
+
+  it('refuses with one ship or no fuel', () => {
+    expect(balanceFuel(data, [ship('start_shuttle')]).ok).toBe(false);
+    const a = ship('start_shuttle');
+    const b = ship('start_shuttle');
+    a.fuel = 0;
+    b.fuel = 0;
+    expect(balanceFuel(data, [a, b]).text).toMatch(/no fuel/);
   });
 });

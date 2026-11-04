@@ -4,7 +4,8 @@
 // move cargo between ships, uninstall and install modules, and sell a ship
 // (at a Shipyard). After a battle (Q-50): the same screen also shows the
 // surrendered ships; the player takes a ship as a prize, takes its cargo, or
-// leaves it, and can scuttle a fleet ship. N renames a fleet ship.
+// leaves it, and can scuttle a fleet ship. N renames a fleet ship. B moves
+// fuel between the fleet ships (anywhere).
 //
 // Modules (owner, 2026-11-03): U uninstalls a module into the fleet hold (one
 // list for all ships); Enter installs a held module on the selected ship. The
@@ -18,6 +19,7 @@ import {
   type LoadoutSnapshot,
   moveAllCargo,
   moveCargo,
+  balanceFuel,
   moveModule,
   restoreLoadout,
   snapshotLoadout,
@@ -281,6 +283,7 @@ export class FleetScreen implements Screen {
     const row2: [string, string, KeyInput][] = [];
     if (this.after && boarded) row2.push(['P', 'Take as prize', press('p')], ['C', 'Take all cargo', press('c')]);
     if (!boarded) row2.push(['F', 'Flagship', press('f')], ['N', 'Rename', press('n')]);
+    if (actor.fleet.length > 1) row2.push(['B', 'Balance fuel', press('b')]);
     if (!this.after && this.docked() && !boarded) row2.push(['S', 'Sell ship', press('s')]);
     if (this.after && !boarded) row2.push(['X', 'Scuttle', press('x')]);
     row2.push(['Esc', this.after ? 'Done' : 'Back', press('Escape')]);
@@ -479,6 +482,9 @@ export class FleetScreen implements Screen {
         this.install(ship, h, item.index);
         return true;
       }
+      case 'b':
+        say(balanceFuel(data, actor.fleet).text);
+        return true;
       case 'f':
         if (boarded) {
           say('Take the ship as a prize first.');
@@ -641,6 +647,9 @@ export class FleetScreen implements Screen {
       '1-8               Move the selected cargo or module to that ship',
       'F                 Make the selected ship the flagship',
       'N                 Rename the selected fleet ship (type, then Enter)',
+      'B                 Balance fuel: move fuel between the fleet ships, so',
+      '                  that all can go about the same distance (also in',
+      '                  space; no fee, no time)',
       'S                 Sell the selected ship (at a Shipyard; not the',
       '                  flagship; no cargo)',
       'P, C              Take a surrendered ship as a prize; take its cargo',
