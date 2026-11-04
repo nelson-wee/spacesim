@@ -7,6 +7,7 @@ import { offerView } from '../../career/contractView';
 import { deliverRelief } from '../../career/secondChance';
 import { displayDay } from '../../core/clock';
 import type { Game } from '../../core/game';
+import type { TutorialTrigger } from '../../data/schemas';
 import type { Contract } from '../../core/types';
 import type { Term } from '../../render/display';
 import { HEIGHT } from '../../render/display';
@@ -47,6 +48,10 @@ export class ContractsScreen implements Screen {
   private notice = '';
 
   constructor(private readonly app: App) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['contracts'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');

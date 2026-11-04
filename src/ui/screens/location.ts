@@ -71,7 +71,8 @@ export class LocationScreen implements Screen {
   }
 
   tutorialTriggers(): TutorialTrigger[] {
-    return this.tabs[this.tab]?.serviceId === 'market' ? ['location', 'market'] : ['location'];
+    const id = this.tabs[this.tab]?.serviceId;
+    return id === 'market' ? ['location', 'market'] : id === 'merchants_guild' ? ['location', 'merchants'] : ['location'];
   }
 
   private get game(): Game {

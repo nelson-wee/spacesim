@@ -26,6 +26,7 @@ import {
 import { takePrize } from '../../career/prize';
 import type { CombatShip } from '../../combat/types';
 import type { Game } from '../../core/game';
+import type { TutorialTrigger } from '../../data/schemas';
 import type { Location, Ship } from '../../core/types';
 import type { SlotSize } from '../../data';
 import type { Term } from '../../render/display';
@@ -90,6 +91,10 @@ export class FleetScreen implements Screen {
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');
     return this.app.game;
+  }
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return [this.after ? 'afterBattle' : 'fleet'];
   }
 
   private remember(s: Ship): void {
