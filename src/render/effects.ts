@@ -87,11 +87,48 @@ interface Ctx {
   target: CombatShip | null;
   from: Vec2 | null;
   at: Vec2 | null;
+  /** Reinforcement arrival (M8-ART-03): the arriving ships, and the color family of their faction. */
+  arrivals?: CombatShip[];
+  family?: 'patrol' | 'pirate';
+}
+
+/** The art preview grid puts the arriving ship at x 6, y 1 (effects.yaml). */
+const ART_SHIP_X = 6;
+const ART_SHIP_Y = 1;
+
+/**
+ * Speed streaks of a reinforcement arrival (M8-ART-03): the `row` frame of the
+ * art, laid behind each arriving ship from the map edge where it enters. The
+ * art length (x0..x1 against the ship at x 6) scales to the real distance.
+ */
+function arrivalCells(f: Frame, ctx: Ctx): OverlayCell[] {
+  const row = f.row as Frame | undefined;
+  if (!row || !ctx.arrivals) return [];
+  const ys = Array.isArray(row.y) ? (row.y as number[]) : [Number(row.y ?? 1)];
+  const share = Math.min(1, (Number(row.x1 ?? 0) - Number(row.x0 ?? 0) + 1) / ART_SHIP_X);
+  const name = String(row.fg ?? 'patrol');
+  const fgName = ctx.family === 'pirate' ? name.replace('patrolDim', 'pirateDeep').replace('patrol', 'pirate') : name;
+  const fg = color(ctx.data, fgName);
+  const out: OverlayCell[] = [];
+  for (const s of ctx.arrivals) {
+    const right = s.mirrored;
+    const edgeToShip = right ? ctx.b.width - 1 - (s.pos.x + Math.max(...s.mask.map((m) => m.x))) : s.pos.x;
+    const len = Math.max(1, Math.round(edgeToShip * share));
+    for (const yv of ys) {
+      const y = s.pos.y + (yv - ART_SHIP_Y);
+      for (let i = 0; i < len; i++) {
+        const x = right ? ctx.b.width - 1 - i : i;
+        out.push({ x, y, ch: String(row.g ?? '─'), fg });
+      }
+    }
+  }
+  return out;
 }
 
 /** Overlay cells of one frame (for a travel frame: one step of the head). */
 function frameCells(f: Frame, ctx: Ctx, head: number): OverlayCell[] {
   const { data } = ctx;
+  if (ctx.arrivals) return arrivalCells(f, ctx);
   const out: OverlayCell[] = [];
   const line = f.line as Frame | undefined;
   if (line) {
@@ -201,6 +238,8 @@ function effectId(e: Effect, b: Battle, data: GameData): string | null {
       return e.hit ? (e.moduleId === 'torpedo_tube' ? 'torpedo_hit' : 'missile_hit') : null;
     case 'pd':
       return 'point_defense';
+    case 'reinforce':
+      return has('reinforcement_arrival') ? 'reinforcement_arrival' : null;
     default:
       return null;
   }
@@ -250,6 +289,9 @@ export function buildTimeline(effects: Effect[], b: Battle, data: GameData): Tim
       ctx.path = [...lineCells(e.from, e.to), e.to];
     } else if (e.kind === 'shield') {
       ctx.from = lastShot && lastShot.kind === 'shot' ? lastShot.from : null;
+    } else if (e.kind === 'reinforce') {
+      ctx.arrivals = b.ships.filter((s) => e.shipIds.includes(s.id));
+      ctx.family = e.faction === 'pirate' ? 'pirate' : 'patrol';
     }
     let t = start;
     for (const f of def.frames) {

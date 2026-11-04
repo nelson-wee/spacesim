@@ -17,6 +17,7 @@ import { days, fit, fuelLine } from '../widgets/text';
 import { LogScreen } from './log';
 import { HailScreen } from './hail';
 import { budgetRange, threatBand } from '../../encounter/budget';
+import { econContext } from '../../econ/context';
 
 export class RegionMapScreen implements Screen {
   private selectedSectorId: number | null = null;
@@ -42,6 +43,19 @@ export class RegionMapScreen implements Screen {
     return (world.sectors[this.currentSectorId()]?.jumpPointIds ?? []).map((id) => world.jumpPoints[id] as JumpPoint);
   }
 
+  /**
+   * The shortest route by jumps from the current sector to the selected one
+   * (M8-ART-07): the sector ids, start included; empty with no route.
+   */
+  private route(): number[] {
+    const { state, data } = this.game;
+    const from = this.currentSectorId();
+    const to = this.selectedSectorId;
+    if (to === null || to === from) return [];
+    // The path holds the start sector and the end sector.
+    return econContext(state.world, data).sectorPaths[from]?.[to] ?? [];
+  }
+
   render(t: Term): void {
     const game = this.game;
     const { data, state } = game;
@@ -52,10 +66,23 @@ export class RegionMapScreen implements Screen {
     const sectors = state.world.sectors;
     const at = (x: number, y: number, ch: string, fg: string, bg?: string) => t.put(MAP_X + x, MAP_Y + y, ch, fg, bg);
 
+    // The route to the selected sector shows in the bright color (owner, M8-ART-07).
+    const route = this.route();
+    const onRoute = new Set(route);
+    const routeLanes = new Set(route.slice(1).map((id, i) => `${Math.min(id, route[i] as number)}-${Math.max(id, route[i] as number)}`));
     for (const lane of state.world.lanes) {
       const a = sectors[lane.a] as Sector;
       const b = sectors[lane.b] as Sector;
+      const hi = routeLanes.has(`${Math.min(lane.a, lane.b)}-${Math.max(lane.a, lane.b)}`);
+      if (hi) continue;
       for (const c of lineCells(a.pos, b.pos).slice(1, -1)) at(c.x, c.y, icons.lane, pal.map.lane);
+    }
+    // Route lanes last, so that crossing lanes do not hide them.
+    for (const lane of state.world.lanes) {
+      if (!routeLanes.has(`${Math.min(lane.a, lane.b)}-${Math.max(lane.a, lane.b)}`)) continue;
+      const a = sectors[lane.a] as Sector;
+      const b = sectors[lane.b] as Sector;
+      for (const c of lineCells(a.pos, b.pos).slice(1, -1)) at(c.x, c.y, icons.lane, pal.ui.highlight);
     }
     // Names first, so that sector glyphs and security numbers stay on top.
     for (const s of sectors) {
@@ -70,7 +97,7 @@ export class RegionMapScreen implements Screen {
     for (const s of sectors) {
       const level = securityLevelInfo(s.securityValue, data).level;
       const sel = s.id === this.selectedSectorId;
-      at(s.pos.x, s.pos.y, icons.sector, pal.map.sun, sel ? pal.ui.selectBg : undefined);
+      at(s.pos.x, s.pos.y, icons.sector, onRoute.has(s.id) ? pal.ui.highlight : pal.map.sun, sel ? pal.ui.selectBg : undefined);
       at(s.pos.x + 1, s.pos.y, String(level), securityColor(data, level));
       // Security trend over 30 days (M5-SEC-03) and the threat band under the name (M5-THREAT-08, Q-18).
       const trend = securityTrend(s);
@@ -137,6 +164,8 @@ export class RegionMapScreen implements Screen {
       line(`Threat band ${threatBand(sel, data)}: pirate groups ${Math.round(lo)}-${Math.round(hi)} TU`, pal.ui.text);
       line(`Baseline ${Math.round(sel.securityBaseline)}, jumps from core ${sel.jumpsFromCore}`, pal.ui.dim);
       line(`Locations: ${sel.locationIds.length}`, pal.ui.dim);
+      const route = this.route();
+      if (route.length > 1) line(`Route: ${route.length - 1} jump${route.length === 2 ? '' : 's'} (bright)`, pal.ui.highlight);
       y++;
       const exit = this.exits().find((j) => j.toSectorId === sel.id);
       if (sel.id === this.currentSectorId()) {

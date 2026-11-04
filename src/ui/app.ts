@@ -23,6 +23,8 @@ export interface Screen {
   readonly overlay?: boolean;
   /** Tutorial triggers while this screen is on top (Q-48). */
   tutorialTriggers?(): TutorialTrigger[];
+  /** True while an animation plays: no tips or offers open on top then. */
+  readonly busy?: boolean;
 }
 
 export class App {
@@ -72,7 +74,7 @@ export class App {
       return;
     }
     // The one-time second chance and the stuck message (M8-SC); then tutorial tips (Q-48).
-    if (!checkSecondChance(this)) this.tutorial.check(this);
+    if (!this.top?.busy && !checkSecondChance(this)) this.tutorial.check(this);
     this.term.clear();
     this.zones.clear();
     let first = this.stack.length - 1;

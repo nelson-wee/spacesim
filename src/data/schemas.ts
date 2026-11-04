@@ -36,6 +36,9 @@ export const balanceSchema = z.object({
     width: z.number().int().positive(),
     height: z.number().int().positive(),
     bodyRingRadii: z.array(pos).min(1),
+    /** Travel animation on the sector map (owner, M8-ART-06): time per cell and the most time in all. */
+    travelAnimCellMs: nonNeg,
+    travelAnimMaxMs: nonNeg,
     jumpRingRadius: pos,
     minBodyDistance: nonNeg,
     minJumpPointDistance: nonNeg,

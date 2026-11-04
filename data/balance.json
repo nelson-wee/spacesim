@@ -22,6 +22,8 @@
     "width": 66,
     "height": 34,
     "bodyRingRadii": [5, 8, 11, 14],
+    "travelAnimCellMs": 30,
+    "travelAnimMaxMs": 1200,
     "jumpRingRadius": 16,
     "minBodyDistance": 6,
     "minJumpPointDistance": 4,

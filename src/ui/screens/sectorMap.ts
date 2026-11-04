@@ -23,7 +23,7 @@ import { palette, securityColor, techColor } from '../../render/palette';
 import { report } from '../../services/common';
 import { marketRole } from '../../services/market';
 import { quoteRefuel, refuel } from '../../services/refuel';
-import { ringPoint } from '../../world/geometry';
+import { lineCells, ringPoint } from '../../world/geometry';
 import { shortCode } from '../../world/codes';
 import { locationTypeName } from '../../world/location';
 import { securityLevelInfo } from '../../world/security';
@@ -50,6 +50,17 @@ export class SectorMapScreen implements Screen {
   private quitArmed = false;
   /** Route view: the selected commodity, or null. */
   private routeCommodity: string | null = null;
+  /**
+   * The travel animation (owner, M8-ART-06): the player glyph moves cell by
+   * cell along the path. The trip is already done in the simulation; `then`
+   * runs at the end (or when a key skips it).
+   */
+  private anim: { sectorId: number; cells: Vec[]; started: number; ms: number; then: () => void } | null = null;
+  private animTimer: ReturnType<typeof setTimeout> | null = null;
+
+  get busy(): boolean {
+    return this.anim !== null;
+  }
 
   constructor(private readonly app: App) {}
 
@@ -63,7 +74,46 @@ export class SectorMapScreen implements Screen {
   }
 
   private sectorId(): number {
-    return actorPlace(this.game, this.game.state.player).sectorId;
+    return this.anim?.sectorId ?? actorPlace(this.game, this.game.state.player).sectorId;
+  }
+
+  /** The map cell of the player glyph. */
+  private playerCell(): { sectorId: number; cell: Vec } {
+    const game = this.game;
+    const place = actorPlace(game, game.state.player);
+    const p = game.state.player.position;
+    return { sectorId: place.sectorId, cell: p.kind === 'space' ? { x: Math.round(place.point.x), y: Math.round(place.point.y) } : { x: place.point.x - 1, y: place.point.y } };
+  }
+
+  /** Starts the travel animation from `from` to the player's place now; with no move, `then` runs at once. */
+  private animate(from: { sectorId: number; cell: Vec }, then: () => void): void {
+    const to = this.playerCell();
+    const cfg = this.game.data.balance.sectorMap;
+    const cells = to.sectorId === from.sectorId ? lineCells(from.cell, to.cell) : [];
+    if (cells.length < 2 || cfg.travelAnimMaxMs <= 0) {
+      then();
+      return;
+    }
+    this.anim = { sectorId: from.sectorId, cells, started: Date.now(), ms: Math.min(cfg.travelAnimMaxMs, cells.length * cfg.travelAnimCellMs), then };
+    const tick = () => {
+      if (!this.anim) return;
+      if (Date.now() - this.anim.started >= this.anim.ms) {
+        this.finishAnim();
+        return;
+      }
+      this.app.render();
+      this.animTimer = setTimeout(tick, 30);
+    };
+    this.animTimer = setTimeout(tick, 30);
+  }
+
+  private finishAnim(): void {
+    const a = this.anim;
+    if (this.animTimer) clearTimeout(this.animTimer);
+    this.animTimer = null;
+    this.anim = null;
+    a?.then();
+    this.app.render();
   }
 
   private locations(): Location[] {
@@ -120,10 +170,13 @@ export class SectorMapScreen implements Screen {
 
     if (this.routeCommodity) this.renderRouteView(t, this.routeCommodity);
 
-    // The player.
-    const place = actorPlace(game, game.state.player);
-    const p = game.state.player.position;
-    at(p.kind === 'space' ? { x: Math.round(place.point.x), y: Math.round(place.point.y) } : { x: place.point.x - 1, y: place.point.y }, icons.player, pal.roles.player);
+    // The player (moving along the path during the travel animation).
+    if (this.anim) {
+      const a = this.anim;
+      const i = Math.min(a.cells.length - 1, Math.floor(((Date.now() - a.started) / a.ms) * a.cells.length));
+      for (const c of a.cells.slice(1, i)) at(c, '·', pal.ui.dim);
+      at(a.cells[i] as Vec, icons.player, pal.roles.player);
+    } else at(this.playerCell().cell, icons.player, pal.roles.player);
 
     this.renderPanel(t);
     drawRecentLog(t, game);
@@ -271,6 +324,11 @@ export class SectorMapScreen implements Screen {
   }
 
   onKey(k: KeyInput): boolean {
+    // Any key skips the travel animation (M8-ART-06).
+    if (this.anim) {
+      this.finishAnim();
+      return true;
+    }
     const game = this.game;
     const player = game.state.player;
     const quitArmed = this.quitArmed;
@@ -290,14 +348,21 @@ export class SectorMapScreen implements Screen {
     switch (k.key) {
       case 'Enter':
         if (this.selected) {
+          const from = this.playerCell();
           const out = travelInSector(game, player, this.selected, true);
           if (out.result === 'refused') game.bus.message(out.reason, 'warning');
           if (out.result === 'encounter') {
             // Keep the target: after the encounter, Enter goes on with the trip.
-            this.app.push(new HailScreen(this.app, out.encounter));
+            this.animate(from, () => this.app.push(new HailScreen(this.app, out.encounter)));
             return true;
           }
           this.selected = null;
+          if (out.result !== 'refused') {
+            this.animate(from, () => {
+              if (player.position.kind === 'docked') this.app.push(new LocationScreen(this.app, player.position.locationId));
+            });
+            return true;
+          }
         }
         if (player.position.kind === 'docked') this.app.push(new LocationScreen(this.app, player.position.locationId));
         return true;
