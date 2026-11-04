@@ -65,6 +65,8 @@ describe('second chance (M8-SC)', () => {
     const loc = g.state.world.locations.find((l) => reliefPlan(g, l.id))!;
     const sector = g.state.world.sectors[loc.sectorId]!;
     sector.securityValue = 0;
+    // Each world has a Haven now (owner, 2026-11-04): remove it for this test.
+    for (const l of g.state.world.locations) if (l.bodyType === 'pirate_haven') l.bodyType = 'habitat';
     p.credits = -500;
     noteTow(g, p, loc.id);
     expect(raidPlan(g, loc.id)).toBeNull();

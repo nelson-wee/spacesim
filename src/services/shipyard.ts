@@ -87,7 +87,7 @@ export function buyHull(game: Game, actor: Actor, location: Location, shipIndex:
   actor.fleet[shipIndex] = emptyShip(hull, old.id, old.name, data);
   actor.credits -= q.net;
   return {
-    ...done(`You trade in ${old.name} for ${Math.round(q.tradeIn)} cr and buy a ${hull.name} for ${Math.round(q.price)} cr. Fit an engine, a reactor if needed, and a fuel tank.`),
+    ...done(`You trade in ${old.name} for ${Math.round(q.tradeIn)} cr and buy a ${hull.name} for ${Math.round(q.price)} cr. Fit an engine and a reactor if needed; the hull holds a little fuel, and a fuel tank adds range for jumps.`),
     net: q.net,
   };
 }
@@ -108,7 +108,7 @@ export function buyShip(game: Game, actor: Actor, location: Location, hullId: st
   if (full) return { ...refused(full), net: 0 };
   actor.credits -= offer.price;
   return {
-    ...done(`You buy a ${hull.name} for ${Math.round(offer.price)} cr. ${ship.name} joins the fleet. Fit an engine, a reactor if needed, and a fuel tank.`),
+    ...done(`You buy a ${hull.name} for ${Math.round(offer.price)} cr. ${ship.name} joins the fleet. Fit an engine and a reactor if needed; the hull holds a little fuel, and a fuel tank adds range for jumps.`),
     net: offer.price,
   };
 }

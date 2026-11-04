@@ -105,6 +105,9 @@ describe.each(worlds)('generator rules, seed %i', (_seed, w) => {
     const sb = data.security.baseline;
     for (const s of w.sectors) {
       const center = sb.core - sb.perJump * s.jumpsFromCore;
+      // The sector that gets a Pirate Haven by the owner rule (2026-11-04) has the low baseline instead.
+      const forced = s.securityBaseline === data.balance.generator.fill.havenBaseline && s.locationIds.some((id) => w.locations[id]?.bodyType === 'pirate_haven');
+      if (forced) continue;
       expect(s.securityBaseline).toBeGreaterThanOrEqual(Math.max(sb.min, Math.round(center - sb.jitter)));
       expect(s.securityBaseline).toBeLessThanOrEqual(Math.min(sb.max, Math.max(sb.min, Math.round(center + sb.jitter))));
       expect(s.securityValue).toBe(s.securityBaseline);

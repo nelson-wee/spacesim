@@ -543,6 +543,12 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-04 [M8-ART-01, ART-02, ART-04] Damage art, the hot tint, the overheat flash, the 1.2 s effect budget, and Space to skip were built in M4; M8 checked them (tests for the budget).
 - 2026-11-04 [Q-48] Tutorial tips for the fleet screen, the after-battle screen, the Merchants' Guild board, and the contracts screen; the welcome tip names the save rule and the Codex.
 
+### Pirate Havens and hull fuel (owner, 2026-11-04)
+
+- 2026-11-04 [owner, §9.4] Each world has at least one Pirate Haven. If the normal fill places none, one frontier sector gets the baseline `fill.havenBaseline` 25 (security level 1) and a Haven: in a free station slot, or else in a new station named "<sector> Haven" (outer ring first, clear of other bodies; only when the sector has fewer than `bodiesMax` 6 bodies, so the keys a-f still fit). Frontier sectors with the fewest producers come first, then the lowest baseline; a sector with a Military Outpost is skipped. A middle sector only if no frontier sector fits (none in 100 seeds). Reason: owner; the rule runs after the normal fill and uses no random numbers, so worlds that had a Haven do not change. Before: about half the seeds had no Haven; after: 100 of 100 (27 with a new station). A first version that turned Outposts or twin producers into Havens, or used middle sectors, failed the generator check (91 of 100) and stopped a Biolab on seed 14.
+- 2026-11-04 [owner, §7.2] Each hull holds fuel with no fuel tank (`hulls.baseFuel`): Shuttle 5, Wasp 4, Courier 5, Light Freighter 7, Gunship 7, Heavy Freighter 12, Corvette 11, Frigate 18, Battleship 34. A fuel tank adds to it. Reason: owner: combat ships may work in one sector with no tank. Fuel use grows with mass^0.64, so one value for all hulls does not work (5 gives a Wasp 4-5 sector trips and one jump, a Frigate less than one trip). Each value gives about 3 median sector trips with docking (median trip 34.5 cells) and is below the fuel of one median jump (lane 18.4), so a jump with no tank is possible only on a short lane. Combat uses 0.06 (Wasp) to 0.6 (Battleship) per turn and 0.6 to 5.9 to flee, so a long battle can leave a ship with no tank in need of a tow.
+- 2026-11-04 [M6-FCMB] A prize gets at least its hull fuel (`max(prizeFuelShare x capacity, baseFuel)`, at most the capacity). Reason: owner: a captured Wasp could not reach a location and needed a tow.
+
 ## Cuts
 
 None.

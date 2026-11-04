@@ -264,6 +264,20 @@ describe('fleet rules (M6-FLEET)', () => {
     expect(fleetProblems([a], data)).toEqual([]);
   });
 
+  it('hull fuel (owner, 2026-11-04): a Wasp with no tank holds its baseFuel; a prize gets at least that much', () => {
+    const wasp = createShipFromLoadout(data, 'pirate_raider', 'w', 'W');
+    const base = data.hullById.get('wasp')!.baseFuel;
+    expect(travelStats(wasp, data).fuelCapacity).toBe(base);
+    expect(base).toBeLessThan(travelStats(wasp, data).fuelPerJump);
+    const { game } = withFleet(['start_shuttle']);
+    const b = createBattle({ player: [{ ship: game.state.player.fleet[0]!, ai: 'human' }], other: [{ ship: wasp, ai: 'raider', faction: 'pirate' }], aggressor: 'other', rng: createRngState(5, 'combat') }, data);
+    const cs = b.ships.find((s) => s.side === 'other')!;
+    cs.status = 'surrendered';
+    const r = takePrize(game, game.state.player, cs);
+    expect(r.ok).toBe(true);
+    expect(r.ship!.fuel).toBeCloseTo(base);
+  });
+
   it('fleet problems list ships that break the required-module rules', () => {
     const { game } = withFleet(['start_shuttle', 'light_freighter_starter']);
     const p = game.state.player;

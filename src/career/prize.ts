@@ -28,7 +28,8 @@ export function prizeProblem(game: Game, actor: Actor, ship: Ship): string | nul
 /**
  * Takes a surrendered ship into the fleet. `faction` is the ship's faction in
  * the battle (a non-pirate prize adds notoriety). The ship keeps its loadout,
- * damage, and cargo; its tank has prizeFuelShare of its capacity.
+ * damage, and cargo; its tank has prizeFuelShare of its capacity, at least
+ * the hull's own fuel (`baseFuel`).
  */
 export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boolean; text: string; ship?: Ship } {
   const { data } = game;
@@ -37,7 +38,9 @@ export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boole
   const ship: Ship = structuredClone(cs.ship);
   ship.id = `ship-${game.state.nextId++}`;
   ship.name = cs.name;
-  ship.fuel = travelStats(ship, data).fuelCapacity * data.balance.fleet.prizeFuelShare;
+  // At least the hull's own fuel (owner, 2026-11-04): a prize with no fuel tank can reach a location in the sector.
+  const cap = travelStats(ship, data).fuelCapacity;
+  ship.fuel = Math.min(cap, Math.max(cap * data.balance.fleet.prizeFuelShare, hullDef(data, ship.hullId).baseFuel));
   // Its cargo is loot: a purchase price of 0 (M5-LOOT).
   for (const lot of Object.values(ship.cargo)) lot.unitCost = 0;
   const full = addShip(game, actor, ship);

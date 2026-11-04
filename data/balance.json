@@ -187,7 +187,7 @@
     "validationDays": 200,
     "lowOutputShare": 0.3,
     "lowOutputDays": 60,
-    "fill": { "minTradeHubs": 2, "militaryOutposts": 2, "pirateHavens": 1, "minShipyards": 2, "habitatWeight": 2, "tradeHubWeight": 1 },
+    "fill": { "minTradeHubs": 2, "militaryOutposts": 2, "pirateHavens": 1, "havenBaseline": 25, "minShipyards": 2, "habitatWeight": 2, "tradeHubWeight": 1 },
     "ratioAcceptLow": 0.9,
     "ratioAcceptHigh": 1.35,
     "economyCheck": false,

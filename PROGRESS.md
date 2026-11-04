@@ -596,7 +596,7 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 - **Animation (M8-ART-06, ART-07, ART-03):** the `@` moves along the trip path on the sector map (1.2 s or less, any key skips); the region map shows the route to the selected sector in the bright color, with its jump count; reinforcements arrive with speed streaks from `effects.json`.
 - **Checked (M8-ART-01, 02, 04):** damaged and critical art, hot tint, overheat flash, the 1.2 s effect budget, and Space to skip (built in M4).
 - **Tutorial:** new tips for the fleet screen and hold, the after-battle screen, the Merchants' Guild board, and the contracts screen; the welcome tip names the save rule and the Codex.
-- **Tests:** 830 tests in 30 files pass; typecheck and build pass.
+- **Tests:** 851 tests in 30 files pass; typecheck and build pass.
 
 ### Acceptance checks (M8-REL-02, 2026-11-04)
 
@@ -622,6 +622,13 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 | 4 | The game runs from GitHub Pages. | Waits for the owner: merge this branch into `main`; `deploy.yml` then deploys (the last deploy of `main` passed on 2026-11-04). |
 | 5 | `PROGRESS.md` and `DECISIONS.md` are up to date. | PASS. |
 
+### Owner changes (2026-11-04): Pirate Havens and hull fuel
+
+- **Each world has a Pirate Haven.** If the normal fill places none, a frontier sector gets security baseline 25 and a Haven (a free station slot, or a new station "<sector> Haven"). 100 of 100 seeds have a Haven (27 with a new station); worlds that had one do not change.
+- **Hull fuel.** Each hull holds fuel with no tank (`baseFuel`: Wasp 4, Shuttle and Courier 5, Light Freighter and Gunship 7, Corvette 11, Heavy Freighter 12, Frigate 18, Battleship 34): about 3 sector trips with docking, less than one median jump. A prize gets at least its hull fuel. The Starting Shuttle now holds 35.
+- **Checks again:** generator 98 of 100 (PASS); `sim-economy` all PASS (20 seeds); `sim-trader` 20/20 (median day 57); `--contracts` 20/20, check 3 = 1.18x; `--encounters` 18/20 (median day 64); `sim-career` 6/6 (median net worth 1,557,635 cr, report); `sim-combat` all 6 PASS; 851 tests pass.
+- **Effects v0.2 (Claude Design):** scope only, in `docs/proposals/effects-v2.md`.
+
 ### Bugs found and fixed in M8
 
 - Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.
@@ -629,7 +636,6 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 
 ### Known issues
 
-- 6 of 12 seeds have no Pirate Haven (the generator puts a Haven only in a low-security station slot). On those worlds the pirate offer becomes the guild relief, and the Haven buyback cannot happen. Not changed in M8: a generator change needs a new economy calibration.
 - Q-52 and Q-53 balance (reports): net worth at day 730 above the target; Supply contracts give more than open-market trade.
 - The trader bots of the tools do not answer the second-chance offer (it stays open in their games).
 - Codex: station use shows the scaled value (x `volumeScale`); population use shows the per-unit value.

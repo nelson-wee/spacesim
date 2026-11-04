@@ -143,14 +143,16 @@ describe('refuel (M3-SVC-03, Q-02)', () => {
     const entry = loc.market.hydrogen!;
     const stock = entry.stock;
     const fph = data.balance.fuel.fuelPerHydrogen;
+    const cap = 30 + data.hullById.get('shuttle')!.baseFuel;
     const q = quoteRefuel(game, p, loc);
-    expect(q.units).toBeCloseTo(20 + 30);
+    expect(q.units).toBeCloseTo(cap - 10 + cap);
     const r = refuel(game, p, loc);
     expect(r.ok).toBe(true);
-    expect(flag(game).fuel).toBeCloseTo(30);
-    expect(second.fuel).toBeCloseTo(30);
-    expect(entry.stock).toBeCloseTo(stock - 50 / fph);
-    expect(r.cost).toBeCloseTo(quoteBuy({ ...entry, stock }, 25, 50 / fph, data).total);
+    expect(flag(game).fuel).toBeCloseTo(cap);
+    expect(second.fuel).toBeCloseTo(cap);
+    const units = 2 * cap - 10;
+    expect(entry.stock).toBeCloseTo(stock - units / fph);
+    expect(r.cost).toBeCloseTo(quoteBuy({ ...entry, stock }, 25, units / fph, data).total);
   });
 
   it('refuel buys only what the credits pay for', () => {

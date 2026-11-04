@@ -1,0 +1,579 @@
+# Combat effects v0.2 · source of truth · see Combat Effects v2.dc.html
+family_base: {"laser":"#F59ED6","ballistic":"#EBAE7A","guided":"#C0A6FF","defense":"#7FD6B8"}
+ramp_rule: { Dim: "mix(base, void, 0.50)", Hi: "mix(base, #FFFFFF, 0.55)", Core: "mix(base, #FFFFFF, 0.85)" }
+tier_rules:
+  - "All families": "Tier never changes hue. It changes size, count and duration, and from T2 it adds the Core color. The tier digit colors (grey, white, ice cyan) match the module icons."
+  - "Laser": "Pulse: 1/2/3 taps and 0/1/2 charge frames. Beam: held 160/240/320 ms. Thin beam, then thick with crawl, then thick with crawl and halo. Impact: spark, then one ring, then two rings."
+  - "Ballistic": "Autocannon: 3/4/5 rounds. Mass driver: 2/3/4-cell trail. Heavy cannon blast and flak cloud: radius 1/1.5/2."
+  - "Guided": "Missiles: salvo of 1/2/3, with blast from spark up to two rings. Torpedo: body 2/2/3 cells, trail 4/5/6 cells, blast radius 1/1.5/2, plus shockwave rings at T2 and T3."
+  - "Defense": "Point defense: 1/2/3 taps. At T3 the kill burst has a Core center and a ring."
+line_sets: {"thin":["─","│","/","\\"],"thick":["═","║","/","\\"],"dot":["·","·","·","·"]}
+patterns: {"spark":[[-1,-1,"\\"],[-1,1,"/"]],"spark2":[[-2,-1,"·"],[-1,1,"·"]],"ring8":[[-1,-1],[0,-1],[1,-1],[-1,0],[1,0],[-1,1],[0,1],[1,1]],"plus":[[0,-1],[-1,0],[1,0],[0,1]],"muzzle":[[0,-1,"·"],[1,0,"-"],[0,1,"·"]]}
+ellipse: "cells (dx,dy) with d = sqrt((dx/2)^2 + dy^2); ring r: r-0.5 <= d < r+0.5; disc r: d < r+0.5"
+travel: "repeat frame; head += adv until head reaches path end (or cells moved); lanes = parallel projectiles {dy, lag (×2 cells)}; miss paths overshoot then fade"
+soft: "op paints only empty cells (space, star, orbit/lane dots)"
+queue: { stagger_ms: 150, stagger_ms_5plus: 120, budget_ms: 1200, scale_if_over: true, min_frame_ms: 15, skip_key: Space }
+movement: { combat: { ms_per_cell: 45, cells_per_frame_if_path_gt_12: 2, ignite_ms: 80, exhaust_ignite: "▓▒░·", exhaust_move: "▒░·", wake_frames: 2, puff: "opposite of vertical motion", brake: bow }, map: { glyph: "@", cells_per_frame: 3, ms_per_frame: 60, trail: 5, trail_colors: [playerBright, player, playerDeep], engine_glow: "° engine on alternate frames", route_ahead: "· frameHi", region_trace: "thin set playerDeep" } }
+effects:
+- effect: pulse_laser_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 175
+      frames:
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserHi"}]}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thin","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserHi","pat":"spark","pfg":"laser"}],"peak":true}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"+","fg":"laser"}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"laserDim"}]}
+    2:
+      total_ms: 275
+      frames:
+        - {"ms":40,"o":[{"k":"at","at":"origin","g":"·","fg":"laserHi","pat":"plus","pg":"·","pfg":"laserDim","soft":1}]}
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserCore"}]}
+        - {"ms":35,"o":[{"k":"line","path":"hit","set":"thin","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserCore","pat":"spark","pfg":"laser"}],"peak":false}
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserCore"}]}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thin","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserCore","pat":"spark","pfg":"laser"},{"k":"ring","at":"target","r":1,"g":"·","fg":"laserHi","frac":0.5,"seed":1}],"peak":true}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"+","fg":"laser"},{"k":"ring","at":"target","r":1,"g":"·","fg":"laserDim","frac":0.3}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"laserDim"}]}
+    3:
+      total_ms: 375
+      frames:
+        - {"ms":40,"o":[{"k":"at","at":"origin","g":"·","fg":"laserHi","pat":"plus","pg":"·","pfg":"laserDim","soft":1}]}
+        - {"ms":40,"o":[{"k":"ring","at":"origin","r":1,"g":"·","fg":"laser","soft":1,"frac":0.6},{"k":"at","at":"origin","g":"*","fg":"laserCore"}]}
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thick","fg":"laserCore"}]}
+        - {"ms":35,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserCore","pat":"spark","pfg":"laser"}],"peak":false}
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thick","fg":"laserCore"}]}
+        - {"ms":35,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserCore","pat":"spark","pfg":"laser"}],"peak":false}
+        - {"ms":25,"o":[{"k":"line","path":"hit","set":"thick","fg":"laserCore"}]}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserCore","pat":"spark","pfg":"laser"},{"k":"ring","at":"target","r":1,"g":"·","fg":"laserHi","frac":0.5,"seed":2},{"k":"ring","at":"target","r":2,"g":"·","fg":"laser","frac":0.35,"seed":5}],"peak":true}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"+","fg":"laser"},{"k":"ring","at":"target","r":1,"g":"·","fg":"laserDim","frac":0.3}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"laserDim"}]}
+- effect: pulse_laser_miss
+  scene: duel
+  tiers:
+    1:
+      total_ms: 105
+      frames:
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserHi"}],"peak":true}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserDim"}]}
+        - {"ms":40,"o":[{"k":"at","at":"end","g":"·","fg":"laserDim"}]}
+    2:
+      total_ms: 210
+      frames:
+        - {"ms":40,"o":[{"k":"at","at":"origin","g":"·","fg":"laserHi","pat":"plus","pg":"·","pfg":"laserDim","soft":1}]}
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserCore"}],"peak":false}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserDim"}]}
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserCore"}],"peak":true}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thin","fg":"laserDim"}]}
+        - {"ms":40,"o":[{"k":"at","at":"end","g":"·","fg":"laserDim"}]}
+    3:
+      total_ms: 275
+      frames:
+        - {"ms":40,"o":[{"k":"at","at":"origin","g":"·","fg":"laserHi","pat":"plus","pg":"·","pfg":"laserDim","soft":1}]}
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserCore"}],"peak":false}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserDim"}]}
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserCore"}],"peak":false}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserDim"}]}
+        - {"ms":25,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserCore"}],"peak":true}
+        - {"ms":40,"o":[{"k":"line","path":"miss","set":"thick","fg":"laserDim"}]}
+        - {"ms":40,"o":[{"k":"at","at":"end","g":"·","fg":"laserDim"}]}
+- effect: beam_laser_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 300
+      frames:
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim"}]}
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserHi"},{"k":"at","at":"origin","g":"*","fg":"laserHi"}]}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"thin","fg":"laser"},{"k":"at","at":"target","g":"+","fg":"laserHi"}],"peak":false}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"thin","fg":"laser"},{"k":"at","at":"target","g":"*","fg":"laserHi"}],"peak":true}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserDim"},{"k":"at","at":"target","g":"*","fg":"laser"}]}
+    2:
+      total_ms: 430
+      frames:
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim"},{"k":"at","at":"origin","g":null,"fg":null,"pat":"plus","pg":"·","pfg":"laserHi","soft":1}]}
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserHi"},{"k":"at","at":"origin","g":"*","fg":"laserCore"}]}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser","crawl":{"period":4,"phase":0,"fg":"laserHi"}},{"k":"at","at":"target","g":"▓","fg":"laserHi","pat":"spark2","pfg":"laser"}],"peak":false}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser","crawl":{"period":4,"phase":1,"fg":"laserHi"}},{"k":"at","at":"target","g":"▓","fg":"laserHi","pat":"spark","pfg":"laser"}],"peak":true}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"thick","fg":"laser","crawl":{"period":4,"phase":2,"fg":"laserHi"}},{"k":"at","at":"target","g":"▓","fg":"laserHi","pat":"spark2","pfg":"laser"}],"peak":false}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserDim"},{"k":"at","at":"target","g":"*","fg":"laser"}]}
+        - {"ms":50,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","every":2},{"k":"at","at":"target","g":"·","fg":"laserDim"}]}
+    3:
+      total_ms: 510
+      frames:
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim"},{"k":"at","at":"origin","g":null,"fg":null,"pat":"plus","pg":"·","pfg":"laserHi","soft":1}]}
+        - {"ms":40,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserHi"},{"k":"at","at":"origin","g":"*","fg":"laserCore"}]}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":-1,"every":2,"phase":0,"soft":1},{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":1,"every":2,"phase":1,"soft":1},{"k":"line","path":"hit","set":"thick","fg":"laserHi","crawl":{"period":4,"phase":0,"fg":"laserCore"}},{"k":"ring","at":"target","r":1,"g":"▒","fg":"laserHi","frac":0.55,"seed":0},{"k":"ring","at":"target","r":2,"g":"·","fg":"laser","frac":0.25,"seed":5},{"k":"at","at":"target","g":"█","fg":"laserCore"}],"peak":false}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":-1,"every":2,"phase":1,"soft":1},{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":1,"every":2,"phase":2,"soft":1},{"k":"line","path":"hit","set":"thick","fg":"laserHi","crawl":{"period":4,"phase":1,"fg":"laserCore"}},{"k":"ring","at":"target","r":1,"g":"▒","fg":"laserHi","frac":0.55,"seed":1},{"k":"ring","at":"target","r":2,"g":"·","fg":"laser","frac":0.25,"seed":6},{"k":"at","at":"target","g":"█","fg":"laserCore"}],"peak":false}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":-1,"every":2,"phase":2,"soft":1},{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":1,"every":2,"phase":3,"soft":1},{"k":"line","path":"hit","set":"thick","fg":"laserHi","crawl":{"period":4,"phase":2,"fg":"laserCore"}},{"k":"ring","at":"target","r":1,"g":"▒","fg":"laserHi","frac":0.55,"seed":2},{"k":"ring","at":"target","r":2,"g":"·","fg":"laser","frac":0.25,"seed":7},{"k":"at","at":"target","g":"█","fg":"laserCore"}],"peak":true}
+        - {"ms":80,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":-1,"every":2,"phase":3,"soft":1},{"k":"line","path":"hit","set":"dot","fg":"laserDim","dy":1,"every":2,"phase":4,"soft":1},{"k":"line","path":"hit","set":"thick","fg":"laserHi","crawl":{"period":4,"phase":3,"fg":"laserCore"}},{"k":"ring","at":"target","r":1,"g":"▒","fg":"laserHi","frac":0.55,"seed":3},{"k":"ring","at":"target","r":2,"g":"·","fg":"laser","frac":0.25,"seed":8},{"k":"at","at":"target","g":"█","fg":"laserCore"}],"peak":false}
+        - {"ms":60,"o":[{"k":"line","path":"hit","set":"thin","fg":"laserDim"},{"k":"at","at":"target","g":"*","fg":"laser"}]}
+        - {"ms":50,"o":[{"k":"line","path":"hit","set":"dot","fg":"laserDim","every":2},{"k":"at","at":"target","g":"·","fg":"laserDim"}]}
+- effect: autocannon_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 235
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"·","fg":"ballisticHi","count":3,"gap":1}}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"*","fg":"ballisticHi","pat":"spark","pfg":"ballistic"}],"peak":true}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"+","fg":"ballistic"}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    2:
+      total_ms: 270
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"·","fg":"ballisticHi","count":4,"gap":1}}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"*","fg":"ballisticHi","pat":"spark","pfg":"ballistic"}],"peak":false}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"+","fg":"ballisticHi","pat":"spark","pfg":"ballistic"},{"k":"at","at":"target","g":null,"fg":null,"pat":"spark2","pfg":"fire"}],"peak":true}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"+","fg":"ballistic"}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    3:
+      total_ms: 305
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"·","fg":"ballisticHi","count":5,"gap":1}}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"*","fg":"ballisticHi","pat":"spark","pfg":"ballistic"}],"peak":false}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"+","fg":"ballisticHi","pat":"spark","pfg":"ballistic"}],"peak":false}
+        - {"ms":35,"o":[{"k":"at","at":"target","g":"*","fg":"ballisticCore","pat":"spark","pfg":"ballistic"},{"k":"at","at":"target","g":null,"fg":null,"pat":"spark2","pfg":"fire"},{"k":"ring","at":"target","r":1,"g":"·","fg":"ballistic","frac":0.4}],"peak":true}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"+","fg":"ballistic"}]}
+        - {"ms":40,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+- effect: autocannon_miss
+  scene: duel
+  tiers:
+    1:
+      total_ms: 270
+      frames:
+        - {"ms":30,"travel":{"path":"miss","adv":5,"g":"·","fg":"ballisticHi","count":3,"gap":1},"peak":true}
+        - {"ms":60,"o":[{"k":"at","at":"end","g":"·","fg":"smoke"}]}
+    2:
+      total_ms: 300
+      frames:
+        - {"ms":30,"travel":{"path":"miss","adv":5,"g":"·","fg":"ballisticHi","count":4,"gap":1},"peak":true}
+        - {"ms":60,"o":[{"k":"at","at":"end","g":"·","fg":"smoke"}]}
+    3:
+      total_ms: 300
+      frames:
+        - {"ms":30,"travel":{"path":"miss","adv":5,"g":"·","fg":"ballisticHi","count":5,"gap":1},"peak":true}
+        - {"ms":60,"o":[{"k":"at","at":"end","g":"·","fg":"smoke"}]}
+- effect: mass_driver_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 290
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":6,"g":"•","fg":"ballisticHi","trail":[["-","ballistic"],["·","smoke"]]}}
+        - {"ms":50,"peak":true,"o":[{"k":"at","at":"target","g":"*","fg":"white","pat":"spark","pfg":"fire"}]}
+        - {"ms":70,"o":[{"k":"at","at":"target","g":"+","fg":"hot"}]}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    2:
+      total_ms: 290
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":6,"g":"•","fg":"ballisticHi","trail":[["=","ballisticHi"],["-","ballistic"],["·","smoke"]]}}
+        - {"ms":50,"peak":true,"o":[{"k":"at","at":"target","g":"*","fg":"white","pat":"plus","pg":"+","pfg":"fire"}]}
+        - {"ms":70,"o":[{"k":"at","at":"target","g":"+","fg":"hot"}]}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    3:
+      total_ms: 330
+      frames:
+        - {"ms":40,"o":[{"k":"at","at":"origin","g":"*","fg":"white","pat":"muzzle","pfg":"fire"}]}
+        - {"ms":30,"travel":{"path":"hit","adv":6,"g":"•","fg":"ballisticHi","trail":[["═","ballisticHi"],["=","ballistic"],["-","ballistic"],["·","smoke"]]}}
+        - {"ms":50,"peak":true,"o":[{"k":"ring","at":"target","r":1,"g":"*","fg":"fire","frac":0.6},{"k":"at","at":"target","g":"█","fg":"white"}]}
+        - {"ms":70,"o":[{"k":"at","at":"target","g":"+","fg":"hot"},{"k":"ring","at":"target","r":1,"g":"·","fg":"hot","frac":0.4}]}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+- effect: heavy_cannon_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 420
+      frames:
+        - {"ms":50,"o":[{"k":"at","at":"origin","g":"*","fg":"white","pat":"muzzle","pfg":"fire"}]}
+        - {"ms":30,"travel":{"path":"hit","adv":4,"g":"■","fg":"ballisticHi","trail":[["=","ballistic"],["-","ballistic"],["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"ring","at":"target","r":1,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":0,"g":"█","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":1,"g":"·","fg":"hot","frac":0.7},{"k":"disc","at":"target","r":0,"g":"▓","fg":"hot"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":1,"g":"·","fg":"smokeDim","frac":0.3},{"k":"disc","at":"target","r":0,"g":"░","fg":"smoke"}]}
+    2:
+      total_ms: 420
+      frames:
+        - {"ms":50,"o":[{"k":"at","at":"origin","g":"*","fg":"white","pat":"muzzle","pfg":"fire"}]}
+        - {"ms":30,"travel":{"path":"hit","adv":4,"g":"■","fg":"ballisticHi","trail":[["=","ballistic"],["-","ballistic"],["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"ring","at":"target","r":1.5,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":0.5,"g":"█","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":1.5,"g":"·","fg":"hot","frac":0.7},{"k":"disc","at":"target","r":0.5,"g":"▓","fg":"hot"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":1.5,"g":"·","fg":"smokeDim","frac":0.3},{"k":"disc","at":"target","r":0.5,"g":"░","fg":"smoke"}]}
+    3:
+      total_ms: 420
+      frames:
+        - {"ms":50,"o":[{"k":"ring","at":"origin","r":1,"g":"·","fg":"fire","soft":1,"frac":0.6},{"k":"at","at":"origin","g":"*","fg":"white","pat":"muzzle","pfg":"fire"}]}
+        - {"ms":30,"travel":{"path":"hit","adv":4,"g":"█","fg":"ballisticHi","trail":[["=","ballistic"],["-","ballistic"],["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"ring","at":"target","r":2,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":1,"g":"█","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":3,"g":"·","fg":"fire","frac":0.35},{"k":"ring","at":"target","r":2,"g":"·","fg":"hot","frac":0.7},{"k":"disc","at":"target","r":1,"g":"▓","fg":"hot"}]}
+        - {"ms":80,"o":[{"k":"ring","at":"target","r":2,"g":"·","fg":"smokeDim","frac":0.3},{"k":"disc","at":"target","r":1,"g":"░","fg":"smoke"}]}
+- effect: flak_cannon
+  scene: duel
+  tiers:
+    1:
+      total_ms: 400
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"•","fg":"ballisticHi","trail":[["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"disc","at":"target","r":1,"g":"+","fg":"ballisticHi"},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1,"g":"▒","fg":"ballistic"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1,"g":"░","fg":"smoke"}]}
+        - {"ms":60,"o":[{"k":"disc","at":"target","r":1,"g":"·","fg":"smokeDim","frac":0.5}]}
+    2:
+      total_ms: 400
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"•","fg":"ballisticHi","trail":[["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"disc","at":"target","r":1.5,"g":"+","fg":"ballisticHi"},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1.5,"g":"▒","fg":"ballistic"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1.5,"g":"░","fg":"smoke"}]}
+        - {"ms":60,"o":[{"k":"disc","at":"target","r":1.5,"g":"·","fg":"smokeDim","frac":0.5}]}
+    3:
+      total_ms: 400
+      frames:
+        - {"ms":30,"travel":{"path":"hit","adv":5,"g":"•","fg":"ballisticHi","trail":[["·","smoke"]]}}
+        - {"ms":60,"peak":true,"o":[{"k":"disc","at":"target","r":2,"g":"+","fg":"ballisticHi"},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":2,"g":"▒","fg":"ballistic"}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":2,"g":"░","fg":"smoke"}]}
+        - {"ms":60,"o":[{"k":"disc","at":"target","r":2,"g":"·","fg":"smokeDim","frac":0.5}]}
+- effect: missile_move
+  scene: duel
+  tiers:
+    1:
+      total_ms: 240
+      frames:
+        - {"ms":40,"peak":true,"travel":{"path":"hit","adv":1,"start":2,"cells":6,"g":"►","fg":"guided","trail":[["°","smoke"],["·","smoke"],["·","smokeDim"]],"lanes":[{"dy":0,"lag":0}]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":8,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":0}]}
+    2:
+      total_ms: 240
+      frames:
+        - {"ms":40,"peak":true,"travel":{"path":"hit","adv":1,"start":2,"cells":6,"g":"►","fg":"guided","trail":[["°","smoke"],["·","smoke"],["·","smokeDim"]],"lanes":[{"dy":0,"lag":0},{"dy":-1,"lag":1}]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":8,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":0},{"k":"proj","path":"hit","head":6,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":-1}]}
+    3:
+      total_ms: 240
+      frames:
+        - {"ms":40,"peak":true,"travel":{"path":"hit","adv":1,"start":2,"cells":6,"g":"►","fg":"guided","trail":[["°","smoke"],["·","smoke"],["·","smokeDim"]],"lanes":[{"dy":0,"lag":0},{"dy":-1,"lag":1},{"dy":1,"lag":2}]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":8,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":0},{"k":"proj","path":"hit","head":6,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":-1},{"k":"proj","path":"hit","head":4,"g":"►","fg":"guided","trail":[["·","smokeDim"]],"dy":1}]}
+- effect: missile_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 180
+      frames:
+        - {"ms":60,"peak":true,"o":[{"k":"at","at":"target","g":null,"fg":null,"pat":"spark","pfg":"fire"},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":60,"o":[{"k":"at","at":"target","g":null,"fg":null,"pat":"plus","pg":"·","pfg":"fire"},{"k":"at","at":"target","g":"▒","fg":"hot"}]}
+        - {"ms":60,"o":[{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    2:
+      total_ms: 180
+      frames:
+        - {"ms":60,"peak":true,"o":[{"k":"ring","at":"target","r":1,"g":"*","fg":"fire","frac":0.6},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":1,"g":"·","fg":"hot","frac":0.6},{"k":"at","at":"target","g":"▒","fg":"hot"}]}
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":1,"g":"·","fg":"smokeDim","frac":0.3},{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+    3:
+      total_ms: 230
+      frames:
+        - {"ms":60,"peak":true,"o":[{"k":"ring","at":"target","r":2,"g":"·","fg":"fire","frac":0.4},{"k":"ring","at":"target","r":1,"g":"*","fg":"fire"},{"k":"at","at":"target","g":"*","fg":"white"}]}
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":2,"g":"·","fg":"smoke","frac":0.3},{"k":"ring","at":"target","r":1,"g":"▒","fg":"hot","frac":0.6},{"k":"at","at":"target","g":"▒","fg":"hot"}]}
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":1,"g":"·","fg":"smokeDim","frac":0.3},{"k":"at","at":"target","g":"·","fg":"smoke"}]}
+        - {"ms":50,"o":[{"k":"at","at":"target","g":"·","fg":"smokeDim"}]}
+- effect: torpedo_move
+  scene: duel
+  tiers:
+    1:
+      total_ms: 240
+      frames:
+        - {"ms":80,"peak":true,"travel":{"path":"hit","adv":1,"start":4,"cells":3,"g":"■►","fg":"guided","trail":[["▒","smoke"],["░","smoke"],["·","smoke"],["·","smokeDim"]]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":7,"g":"■►","fg":"guided","trail":[["░","smokeDim"]]}]}
+    2:
+      total_ms: 240
+      frames:
+        - {"ms":80,"peak":true,"travel":{"path":"hit","adv":1,"start":4,"cells":3,"g":"■►","fg":"guided","trail":[["°","guidedHi"],["▒","smoke"],["░","smoke"],["·","smoke"],["·","smokeDim"]]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":7,"g":"■►","fg":"guided","trail":[["░","smokeDim"]]}]}
+    3:
+      total_ms: 240
+      frames:
+        - {"ms":80,"peak":true,"travel":{"path":"hit","adv":1,"start":4,"cells":3,"g":"█■►","fg":"guided","trail":[["≡","guidedHi"],["°","guided"],["▒","smoke"],["░","smoke"],["·","smoke"],["·","smokeDim"]]}}
+      persist: {"o":[{"k":"proj","path":"hit","head":7,"g":"█■►","fg":"guided","trail":[["░","smokeDim"]]}]}
+- effect: torpedo_hit
+  scene: duel
+  tiers:
+    1:
+      total_ms: 340
+      frames:
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":1,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":0,"g":"█","fg":"white"}]}
+        - {"ms":100,"peak":true,"o":[{"k":"ring","at":"target","r":1,"g":"▒","fg":"fire","frac":0.8},{"k":"disc","at":"target","r":0,"g":"▓","fg":"hot"}]}
+        - {"ms":100,"o":[{"k":"ring","at":"target","r":1,"g":"░","fg":"smoke","frac":0.7},{"k":"disc","at":"target","r":0,"g":"%","fg":"over","frac":0.7}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1,"g":"·","fg":"smokeDim","frac":0.4}]}
+    2:
+      total_ms: 340
+      frames:
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":1.5,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":0.5,"g":"█","fg":"white"}]}
+        - {"ms":100,"peak":true,"o":[{"k":"ring","at":"target","r":2.5,"g":"·","fg":"fire","frac":0.5},{"k":"ring","at":"target","r":1.5,"g":"▒","fg":"fire","frac":0.8},{"k":"disc","at":"target","r":0.5,"g":"▓","fg":"hot"}]}
+        - {"ms":100,"o":[{"k":"ring","at":"target","r":2.5,"g":"·","fg":"smoke","frac":0.3},{"k":"ring","at":"target","r":1.5,"g":"░","fg":"smoke","frac":0.7},{"k":"disc","at":"target","r":0.5,"g":"%","fg":"over","frac":0.7}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":1.5,"g":"·","fg":"smokeDim","frac":0.4}]}
+    3:
+      total_ms: 340
+      frames:
+        - {"ms":60,"o":[{"k":"ring","at":"target","r":2,"g":"*","fg":"fire"},{"k":"disc","at":"target","r":1,"g":"█","fg":"white"}]}
+        - {"ms":100,"peak":true,"o":[{"k":"ring","at":"target","r":3,"g":"·","fg":"fire","frac":0.5},{"k":"ring","at":"target","r":2,"g":"▒","fg":"fire","frac":0.8},{"k":"disc","at":"target","r":1,"g":"▓","fg":"hot"}]}
+        - {"ms":100,"o":[{"k":"ring","at":"target","r":4,"g":"·","fg":"smokeDim","frac":0.4},{"k":"ring","at":"target","r":3,"g":"·","fg":"smoke","frac":0.3},{"k":"ring","at":"target","r":2,"g":"░","fg":"smoke","frac":0.7},{"k":"disc","at":"target","r":1,"g":"%","fg":"over","frac":0.7}]}
+        - {"ms":80,"o":[{"k":"disc","at":"target","r":2,"g":"·","fg":"smokeDim","frac":0.4}]}
+- effect: point_defense
+  scene: pd
+  tiers:
+    1:
+      total_ms: 190
+      frames:
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":50,"peak":true,"noMunition":true,"o":[{"k":"at","at":"munition","g":"*","fg":"white","pat":"plus","pg":"·","pfg":"defense"}]}
+        - {"ms":60,"noMunition":true,"o":[{"k":"at","at":"munition","g":"·","fg":"smoke"}]}
+    2:
+      total_ms: 270
+      frames:
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":50,"peak":true,"noMunition":true,"o":[{"k":"at","at":"munition","g":"*","fg":"white","pat":"plus","pg":"·","pfg":"defense"}]}
+        - {"ms":60,"noMunition":true,"o":[{"k":"at","at":"munition","g":"·","fg":"smoke"}]}
+    3:
+      total_ms: 350
+      frames:
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"dot","fg":"defense"}]}
+        - {"ms":20,"o":[]}
+        - {"ms":30,"o":[{"k":"line","path":"pd","set":"thin","fg":"defenseHi"}]}
+        - {"ms":50,"peak":true,"noMunition":true,"o":[{"k":"ring","at":"munition","r":1,"g":"·","fg":"defense","frac":0.5},{"k":"at","at":"munition","g":"*","fg":"defenseCore","pat":"plus","pg":"·","pfg":"defense"}]}
+        - {"ms":60,"noMunition":true,"o":[{"k":"at","at":"munition","g":"·","fg":"smoke"}]}
+- effect: shield_hit_small
+  scene: duel
+  total_ms: 160
+  frames:
+    - {"ms":40,"o":[{"k":"perim","part":"facing","g":"▒","fg":"shieldHi"}]}
+    - {"ms":60,"o":[{"k":"perim","part":"facing","g":"░","fg":"shield"}]}
+    - {"ms":60,"o":[{"k":"perim","part":"facing","g":"·","fg":"shieldDim"}]}
+- effect: shield_hit_large
+  scene: duel
+  total_ms: 240
+  frames:
+    - {"ms":40,"o":[{"k":"perim","part":"all","g":"░","fg":"shield"},{"k":"perim","part":"facing","g":"▓","fg":"shieldHi"}]}
+    - {"ms":80,"o":[{"k":"perim","part":"all","g":"░","fg":"shield"},{"k":"perim","part":"facing","g":"▒","fg":"shieldHi"}]}
+    - {"ms":60,"o":[{"k":"perim","part":"all","g":"·","fg":"shieldDim"},{"k":"perim","part":"facing","g":"░","fg":"shield"}]}
+    - {"ms":60,"o":[{"k":"perim","part":"facing","g":"·","fg":"shieldDim"}]}
+- effect: shield_break
+  scene: duel
+  total_ms: 280
+  frames:
+    - {"ms":60,"o":[{"k":"perim","part":"all","g":"▓","fg":"shieldHi"}]}
+    - {"ms":60,"o":[{"k":"perim","part":"all","g":"▒","fg":"shield","frac":0.6}]}
+    - {"ms":80,"o":[{"k":"perim","part":"all","g":",","fg":"shieldDim","frac":0.35}]}
+    - {"ms":80,"o":[{"k":"perim","part":"all","g":"·","fg":"shieldDim","frac":0.15}]}
+- effect: shield_regenerate
+  scene: duel
+  total_ms: 360
+  frames:
+    - {"ms":120,"o":[{"k":"perim","part":"all","g":"·","fg":"shieldDim"}]}
+    - {"ms":120,"o":[{"k":"perim","part":"all","g":"░","fg":"shieldDim"}]}
+    - {"ms":120,"o":[{"k":"perim","part":"all","g":"·","fg":"shieldDim"}]}
+- effect: hull_hit
+  scene: duel
+  total_ms: 160
+  frames:
+    - {"ms":40,"o":[{"k":"at","at":"target","g":"*","fg":"white","pat":"spark","pfg":"fire"}]}
+    - {"ms":60,"o":[{"k":"at","at":"target","g":"+","fg":"hot","pat":"spark2","pfg":"fire"}]}
+    - {"ms":60,"o":[{"k":"at","at":"target","g":"@damage"}]}
+- effect: armor_deflect
+  scene: duel
+  total_ms: 140
+  frames:
+    - {"ms":40,"o":[{"k":"at","at":"target","g":"*","fg":"hi"}]}
+    - {"ms":50,"o":[{"k":"at","at":"target","pat":"spark","pg":"\\","pfg":"hi","pfrac":0.5}]}
+    - {"ms":50,"o":[{"k":"at","at":[-2,-1],"g":"·","fg":"dim"}]}
+- effect: engine_hit
+  scene: duel
+  total_ms: 240
+  frames:
+    - {"ms":60,"o":[{"k":"foot","role":"e","g":"*","fg":"hot"}]}
+    - {"ms":60,"o":[{"k":"foot","role":"e","g":"·","fg":"engineOff"}]}
+    - {"ms":60,"o":[{"k":"foot","role":"e","g":"@glyph","fg":"engine"}]}
+    - {"ms":60,"o":[{"k":"foot","role":"e","g":"@glyph","fg":"engineOff"}]}
+- effect: destroy_small
+  scene: wasp
+  total_ms: 300
+  frames:
+    - {"ms":100,"o":[{"k":"foot","g":"█","fg":"white"}]}
+    - {"ms":100,"o":[{"k":"perim","part":"all","g":"*","fg":"fire","frac":0.5},{"k":"foot","g":"▒","fg":"hot"}]}
+    - {"ms":100,"o":[{"k":"perim","part":"all","g":"·","fg":"smokeDim","frac":0.4},{"k":"foot","g":",","fg":"smoke"}]}
+  persist: {"o":[{"k":"foot","g":",","fg":"debris"}],"hide":true}
+- effect: destroy_medium
+  scene: duel
+  total_ms: 450
+  frames:
+    - {"ms":90,"o":[{"k":"foot","g":"█","fg":"white"}]}
+    - {"ms":90,"o":[{"k":"perim","part":"all","g":"*","fg":"hot"},{"k":"foot","g":"▓","fg":"fire"}]}
+    - {"ms":90,"o":[{"k":"perim","part":"all","g":"+","fg":"over","frac":0.6},{"k":"foot","g":"▒","fg":"hot"}]}
+    - {"ms":90,"o":[{"k":"perim","part":"all","g":"·","fg":"smoke","frac":0.4},{"k":"foot","g":"░","fg":"smoke"}]}
+    - {"ms":90,"o":[{"k":"foot","g":",","fg":"smoke","frac":0.5}],"hide":true}
+  persist: {"o":[{"k":"foot","g":",","fg":"debris","frac":0.5},{"k":"foot","g":";","fg":"debris","frac":0.2,"seed":4}],"hide":true}
+- effect: destroy_capital
+  scene: capital
+  total_ms: 1000
+  frames:
+    - {"ms":120,"o":[{"k":"blast","at":[3,1],"phase":1}]}
+    - {"ms":120,"o":[{"k":"blast","at":[3,1],"phase":2},{"k":"blast","at":[9,3],"phase":1}]}
+    - {"ms":120,"o":[{"k":"blast","at":[3,1],"phase":3},{"k":"blast","at":[9,3],"phase":2},{"k":"blast","at":[12,2],"phase":1}]}
+    - {"ms":120,"o":[{"k":"blast","at":[9,3],"phase":3},{"k":"blast","at":[12,2],"phase":2},{"k":"blast","at":[6,2],"phase":1}]}
+    - {"ms":120,"o":[{"k":"blast","at":[12,2],"phase":3},{"k":"blast","at":[6,2],"phase":2}]}
+    - {"ms":140,"o":[{"k":"perim","part":"all","g":"*","fg":"fire"},{"k":"foot","g":"█","fg":"white"}]}
+    - {"ms":120,"o":[{"k":"perim","part":"all","g":"▒","fg":"hot","frac":0.7},{"k":"foot","g":"▓","fg":"hot"}]}
+    - {"ms":140,"o":[{"k":"perim","part":"all","g":"·","fg":"smoke","frac":0.3},{"k":"foot","g":"░","fg":"smoke","frac":0.6}],"hide":true}
+  persist: {"o":[{"k":"foot","g":",","fg":"debris","frac":0.45},{"k":"foot","g":";","fg":"debris","frac":0.2,"seed":4}],"hide":true}
+- effect: cargo_drop
+  scene: duel
+  total_ms: 1000
+  loop: true
+  frames:
+    - {"ms":500,"o":[{"k":"foot","g":",","fg":"debris","frac":0.5}],"hide":true,"pods":"cargoPod"}
+    - {"ms":500,"o":[{"k":"foot","g":",","fg":"debris","frac":0.5}],"hide":true,"pods":"cargoDim"}
+- effect: reinforcement_arrival
+  scene: edge
+  total_ms: 240
+  frames:
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":0,"x1":9,"g":"─","fg":"patrolDim"}]}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":0,"x1":9,"g":"═","fg":"patrolBright"}]}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":0,"x1":5,"g":"─","fg":"patrol"},{"k":"ship","key":"gunship","x":6,"y":2,"side":"patrol"}]}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":0,"x1":2,"g":"·","fg":"patrolDim"},{"k":"ship","key":"gunship","x":6,"y":2,"side":"patrol"}]}
+  persist: {"o":[{"k":"ship","key":"gunship","x":6,"y":2,"side":"patrol"}]}
+- effect: flee
+  scene: duel
+  total_ms: 240
+  frames:
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":24,"x1":25,"g":"─","fg":"pirateDeep"},{"k":"ship","key":"gunship","x":26,"y":2,"side":"pirate","mirror":true}],"hide":true}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":24,"x1":27,"g":"═","fg":"pirate"},{"k":"ship","key":"gunship","x":28,"y":2,"side":"pirate","mirror":true}],"hide":true}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":25,"x1":29,"g":"─","fg":"pirateDeep"}],"hide":true}
+    - {"ms":60,"o":[{"k":"row","y":[2,3],"x0":27,"x1":29,"g":"·","fg":"smokeDim"}],"hide":true}
+  persist: {"o":[],"hide":true}
+- effect: surrender
+  scene: duel
+  total_ms: 200
+  frames:
+    - {"ms":100,"o":[{"k":"foot","g":"@glyph","fg":"hi"}],"flag":true}
+    - {"ms":100,"o":[],"state":"surrendered","flag":true}
+  persist: {"o":[],"state":"surrendered","flag":true}
+- effect: ship_move
+  scene: move
+  total_ms: 735
+  frames:
+    - {"ms":80,"o":[{"k":"mship","key":"gunship","x":2,"y":4,"side":"player","mirror":false,"exhaust":[["▓","engineHi"],["▒","engine"],["░","engine"],["·","smoke"]]}]}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":2,"y":4,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":3,"y":4,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":2,"y":4,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":3,"y":4,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":4,"y":3,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"below"}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":3,"y":4,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":4,"y":3,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":5,"y":3,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":4,"y":3,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":5,"y":3,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":6,"y":3,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":5,"y":3,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":6,"y":3,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":7,"y":3,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":6,"y":3,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":7,"y":3,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":8,"y":2,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"below"}],"peak":true}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":7,"y":3,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":8,"y":2,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":9,"y":2,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":8,"y":2,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":9,"y":2,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":10,"y":2,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":9,"y":2,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":10,"y":2,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":11,"y":2,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":10,"y":2,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":11,"y":2,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":12,"y":1,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"below"}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":11,"y":2,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":12,"y":1,"mirror":false,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":13,"y":1,"side":"player","mirror":false,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":80,"o":[{"k":"exh","key":"gunship","x":12,"y":1,"mirror":false,"exhaust":[["·","smokeDim"]]},{"k":"mship","key":"gunship","x":13,"y":1,"side":"player","mirror":false,"exhaust":[["·","engineOff"]],"puff":"front"}]}
+    - {"ms":80,"o":[{"k":"mship","key":"gunship","x":13,"y":1,"side":"player","mirror":false,"exhaust":[["·","engine"]]}]}
+- effect: ship_move_enemy
+  scene: move
+  total_ms: 600
+  frames:
+    - {"ms":80,"o":[{"k":"mship","key":"gunship","x":25,"y":1,"side":"pirate","mirror":true,"exhaust":[["▓","engineHi"],["▒","engine"],["░","engine"],["·","smoke"]]}]}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":25,"y":1,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":24,"y":1,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":25,"y":1,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":24,"y":1,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":23,"y":2,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"above"}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":24,"y":1,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":23,"y":2,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":22,"y":2,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":23,"y":2,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":22,"y":2,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":21,"y":3,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"above"}],"peak":true}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":22,"y":2,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":21,"y":3,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":20,"y":3,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":21,"y":3,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":20,"y":3,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":19,"y":3,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":20,"y":3,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":19,"y":3,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":18,"y":4,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":"above"}],"peak":false}
+    - {"ms":45,"o":[{"k":"exh","key":"gunship","x":19,"y":3,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"exh","key":"gunship","x":18,"y":4,"mirror":true,"exhaust":[["░","engine"],["·","smoke"]]},{"k":"mship","key":"gunship","x":17,"y":4,"side":"pirate","mirror":true,"exhaust":[["▒","engineHi"],["░","engine"],["·","smoke"]],"puff":null}],"peak":false}
+    - {"ms":80,"o":[{"k":"exh","key":"gunship","x":18,"y":4,"mirror":true,"exhaust":[["·","smokeDim"]]},{"k":"mship","key":"gunship","x":17,"y":4,"side":"pirate","mirror":true,"exhaust":[["·","engineOff"]],"puff":"front"}]}
+    - {"ms":80,"o":[{"k":"mship","key":"gunship","x":17,"y":4,"side":"pirate","mirror":true,"exhaust":[["·","engine"]]}]}
+- effect: sector_travel
+  scene: sector
+  total_ms: 780
+  frames:
+    - {"ms":80,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":1,"every":2,"phase":1},{"k":"ring","at":{"x":14,"y":5},"r":1,"g":"·","fg":"playerDeep","soft":1},{"k":"at","at":{"x":14,"y":5},"g":"@","fg":"player"}]}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":4,"every":2,"phase":1},{"k":"cells","list":[[16,5,"°","engine"],[15,5,"·","player"],[14,5,"·","playerDeep"]]},{"k":"at","at":{"x":17,"y":5},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":7,"every":2,"phase":1},{"k":"cells","list":[[19,4,"·","playerBright"],[18,5,"·","player"],[17,5,"·","playerDeep"],[16,5,"·","playerDeep"],[15,5,"·","playerDeep"]]},{"k":"at","at":{"x":20,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":10,"every":2,"phase":1},{"k":"cells","list":[[22,4,"°","engine"],[21,4,"·","player"],[20,4,"·","playerDeep"],[19,4,"·","playerDeep"],[18,5,"·","playerDeep"]]},{"k":"at","at":{"x":23,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":13,"every":2,"phase":1},{"k":"cells","list":[[25,4,"·","playerBright"],[24,4,"·","player"],[23,4,"·","playerDeep"],[22,4,"·","playerDeep"],[21,4,"·","playerDeep"]]},{"k":"at","at":{"x":26,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":16,"every":2,"phase":1},{"k":"cells","list":[[28,3,"°","engine"],[27,3,"·","player"],[26,4,"·","playerDeep"],[25,4,"·","playerDeep"],[24,4,"·","playerDeep"]]},{"k":"at","at":{"x":29,"y":3},"g":"@","fg":"player"}],"peak":true}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":19,"every":2,"phase":1},{"k":"cells","list":[[31,3,"·","playerBright"],[30,3,"·","player"],[29,3,"·","playerDeep"],[28,3,"·","playerDeep"],[27,3,"·","playerDeep"]]},{"k":"at","at":{"x":32,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":22,"every":2,"phase":1},{"k":"cells","list":[[34,3,"°","engine"],[33,3,"·","player"],[32,3,"·","playerDeep"],[31,3,"·","playerDeep"],[30,3,"·","playerDeep"]]},{"k":"at","at":{"x":35,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":25,"every":2,"phase":1},{"k":"cells","list":[[37,2,"·","playerBright"],[36,2,"·","player"],[35,3,"·","playerDeep"],[34,3,"·","playerDeep"],[33,3,"·","playerDeep"]]},{"k":"at","at":{"x":38,"y":2},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":27,"every":2,"phase":1},{"k":"cells","list":[[39,2,"°","engine"],[38,2,"·","player"],[37,2,"·","playerDeep"],[36,2,"·","playerDeep"],[35,3,"·","playerDeep"]]},{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":80,"o":[{"k":"cells","list":[[39,2,"·","playerBright"],[38,2,"·","player"]]},{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"·","fg":"playerBright","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}]}
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"·","fg":"playerDeep","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}]}
+  persist: {"o":[{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}]}
+- effect: jump_out
+  scene: sector
+  total_ms: 340
+  frames:
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"·","fg":"jump","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"playerBright"}]}
+    - {"ms":80,"peak":true,"o":[{"k":"ring","at":{"x":40,"y":2},"r":2,"g":"·","fg":"jumpDim","soft":1,"frac":0.6},{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"+","fg":"jump","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"*","fg":"playerBright"}]}
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":2,"g":"·","fg":"jump","soft":1,"frac":0.5},{"k":"at","at":{"x":40,"y":2},"g":"Φ","fg":"hi"}]}
+    - {"ms":100,"o":[{"k":"ring","at":{"x":40,"y":2},"r":3,"g":"·","fg":"jumpDim","soft":1,"frac":0.3}]}
+- effect: jump_in
+  scene: sector
+  total_ms: 400
+  frames:
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":3,"g":"·","fg":"jumpDim","soft":1,"frac":0.3},{"k":"at","at":{"x":40,"y":2},"g":"Φ","fg":"hi"}]}
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":2,"g":"·","fg":"jump","soft":1,"frac":0.6}]}
+    - {"ms":80,"peak":true,"o":[{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"+","fg":"jump","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"*","fg":"playerBright"}]}
+    - {"ms":80,"o":[{"k":"ring","at":{"x":40,"y":2},"r":1,"g":"·","fg":"jumpDim","soft":1},{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"playerBright"}]}
+    - {"ms":80,"o":[{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}]}
+  persist: {"o":[{"k":"at","at":{"x":40,"y":2},"g":"@","fg":"player"}]}
+- effect: region_travel
+  scene: region
+  total_ms: 940
+  frames:
+    - {"ms":80,"o":[{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":1,"skip":[9,32]},{"k":"ring","at":{"x":3,"y":10},"r":1,"g":"·","fg":"playerDeep","soft":1},{"k":"at","at":{"x":3,"y":10},"g":"@","fg":"player"}]}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":3,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":4,"skip":[9,32]},{"k":"cells","list":[[5,9,"°","engine"],[4,9,"·","player"]]},{"k":"at","at":{"x":6,"y":8},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":6,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":7,"skip":[9,32]},{"k":"cells","list":[[8,7,"·","playerBright"],[7,7,"·","player"]]},{"k":"at","at":{"x":9,"y":6},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":100,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":9,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":10,"skip":[9,32]},{"k":"cells","list":[[11,5,"°","engine"],[10,5,"·","player"]]},{"k":"at","at":{"x":12,"y":4},"g":null,"fg":null,"pat":"plus","pg":"·","pfg":"playerBright","soft":1},{"k":"at","at":{"x":12,"y":4},"g":"@","fg":"player"}],"peak":true}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":12,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":13,"skip":[9,32]},{"k":"cells","list":[[14,4,"·","playerBright"],[13,4,"·","player"]]},{"k":"at","at":{"x":15,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":15,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":16,"skip":[9,32]},{"k":"cells","list":[[17,4,"°","engine"],[16,4,"·","player"]]},{"k":"at","at":{"x":18,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":18,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":19,"skip":[9,32]},{"k":"cells","list":[[20,4,"·","playerBright"],[19,4,"·","player"]]},{"k":"at","at":{"x":21,"y":4},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":21,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":22,"skip":[9,32]},{"k":"cells","list":[[23,4,"°","engine"],[22,4,"·","player"]]},{"k":"at","at":{"x":24,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":24,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":25,"skip":[9,32]},{"k":"cells","list":[[26,3,"·","playerBright"],[25,3,"·","player"]]},{"k":"at","at":{"x":27,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":27,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":28,"skip":[9,32]},{"k":"cells","list":[[29,3,"°","engine"],[28,3,"·","player"]]},{"k":"at","at":{"x":30,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":30,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":31,"skip":[9,32]},{"k":"cells","list":[[32,3,"·","playerBright"],[31,3,"·","player"]]},{"k":"at","at":{"x":33,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":60,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":32,"skip":[9]},{"k":"line","path":"reg","set":"dot","fg":"frameHi","i0":33,"skip":[9,32]},{"k":"cells","list":[[34,3,"°","engine"],[33,3,"·","player"]]},{"k":"at","at":{"x":35,"y":3},"g":"@","fg":"player"}],"peak":false}
+    - {"ms":80,"o":[{"k":"line","path":"reg","set":"thin","fg":"playerDeep","i0":1,"i1":32,"skip":[9]},{"k":"ring","at":{"x":35,"y":3},"r":1,"g":"·","fg":"playerBright","soft":1},{"k":"at","at":{"x":35,"y":3},"g":"@","fg":"player"}]}
+    - {"ms":80,"o":[{"k":"ring","at":{"x":35,"y":3},"r":1,"g":"·","fg":"playerDeep","soft":1},{"k":"at","at":{"x":35,"y":3},"g":"@","fg":"player"}]}
+  persist: {"o":[{"k":"at","at":{"x":35,"y":3},"g":"@","fg":"player"}]}
+- effect: target_and_line_of_fire
+  scene: debris
+  total_ms: 0
+  static: true
+  frames:
+    - {"ms":0,"o":[{"k":"line","path":"hit","set":"dot","fg":"frameHi"},{"k":"cells","list":[[14,2,":","hot"],[15,2,":","hot"],[24,1,"┌","hi"],[29,1,"┐","hi"],[24,4,"└","hi"],[29,4,"┘","hi"]]},{"k":"text","x":25,"y":1,"s":"48%","fg":"hi"},{"k":"at","at":{"x":28,"y":1},"g":"▼","fg":"hot"}]}
+- effect: move_preview
+  scene: move
+  total_ms: 0
+  static: true
+  frames:
+    - {"ms":0,"o":[{"k":"disc","at":{"x":7,"y":3},"r":4.5,"g":null,"fg":null,"bg":"moveBg"},{"k":"line","path":"mv","set":"dot","fg":"playerDeep","dx":4,"i0":1},{"k":"ship","key":"gunship","x":13,"y":1,"ghost":"playerDeep"},{"k":"ship","key":"gunship","x":2,"y":4,"side":"player"}]}
+- effect: sector_route
+  scene: sector
+  total_ms: 0
+  static: true
+  frames:
+    - {"ms":0,"o":[{"k":"line","path":"sec","set":"dot","fg":"frameHi","i0":1,"i1":26,"every":2,"phase":1},{"k":"at","at":{"x":39,"y":2},"g":"[","fg":"hi"},{"k":"at","at":{"x":41,"y":2},"g":"]","fg":"hi"},{"k":"text","x":33,"y":3,"s":"ETA 2 d","fg":"dim"},{"k":"at","at":{"x":14,"y":5},"g":"@","fg":"player"}]}
+- effect: region_route
+  scene: region
+  total_ms: 0
+  static: true
+  frames:
+    - {"ms":0,"o":[{"k":"line","path":"reg","set":"thin","fg":"frameHi","i0":1,"i1":32,"skip":[9]},{"k":"at","at":{"x":34,"y":3},"g":"[","fg":"hi"},{"k":"at","at":{"x":36,"y":3},"g":"]","fg":"hi"},{"k":"text","x":2,"y":12,"s":"2 jumps · 4 d · fuel 11.6 t","fg":"dim"},{"k":"at","at":{"x":3,"y":10},"g":"@","fg":"player"}]}

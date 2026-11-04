@@ -259,6 +259,8 @@ export const balanceSchema = z.object({
       minTradeHubs: z.number().int().min(0),
       militaryOutposts: z.number().int().min(0),
       pirateHavens: z.number().int().min(0),
+      /** Owner (2026-11-04): with no sector for a Pirate Haven, one frontier sector gets this security baseline. */
+      havenBaseline: z.number().min(0).max(100),
       minShipyards: z.number().int().min(0),
       habitatWeight: nonNeg,
       tradeHubWeight: nonNeg,
@@ -493,6 +495,11 @@ export const hullsSchema = z.object({
       hp: pos,
       armor: nonNeg,
       basePower: nonNeg,
+      /**
+       * Owner (2026-11-04): fuel that the hull holds with no fuel tank: about 3 trips in a sector
+       * with docking, and less than one jump of a median lane. A fuel tank adds to it.
+       */
+      baseFuel: nonNeg,
       mass: pos,
       heatCapacity: pos,
       baseCooling: nonNeg,
