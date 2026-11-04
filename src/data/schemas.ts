@@ -670,6 +670,23 @@ export const contractsSchema = z.object({
    * The contract ends when the need ends or maxDays after acceptance (Q-53 (c); the board can post it
    * again at new prices). It counts as done (standing) when the player delivered minDoneTonnes.
    */
+  /** The one-time second chance (owner, Q-52, M8-SC). */
+  secondChance: z.object({
+    /** Security level at the tow location for the guild relief; below it: the pirate offer. */
+    reliefMinLevel: z.number().int().min(0).max(4),
+    relief: z.object({ tonnes: pos, maxJumps: z.number().int().min(0), deadlineBase: nonNeg, deadlinePerJump: nonNeg }),
+    raid: z.object({
+      loadoutId: z.string(),
+      shipName: z.string(),
+      targetLoadout: z.string(),
+      minJumps: z.number().int().min(0),
+      maxJumps: z.number().int().min(0),
+      maxLevel: z.number().int().min(0).max(4),
+      havenMaxJumps: z.number().int().min(0),
+      days: pos,
+      targetNames: z.array(z.string()).min(1),
+    }),
+  }),
   supply: z.object({
     feePerTonne: nonNeg,
     feePerTonneJump: nonNeg,

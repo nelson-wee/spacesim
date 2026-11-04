@@ -1,4 +1,5 @@
 // Debug panel (Section 4.3). main.ts loads this file only in development builds (G-16).
+import { noteTow } from '../../career/secondChance';
 import {
   debugAddCredits,
   debugSetFuel,
@@ -94,6 +95,7 @@ export class DebugScreen implements Screen {
         ['S', 'Set the security level of this sector (0-4)'],
         ['B', 'After-battle screen with a surrendered trader (M6)'],
         ['K', 'Spawn a contract (Supply, Freight, Sweep, named bounty)'],
+        ['C', 'Second chance offer here (debt -500 cr; Shift+C: as in a lawless sector)'],
         ['Esc', 'Close'],
       ];
       items.forEach(([key, text], i) => {
@@ -295,6 +297,22 @@ export class DebugScreen implements Screen {
       case 'k':
         this.mode = 'contract';
         return true;
+      case 'c': {
+        // M8-SC-01 test: as after a tow into debt at this location (Shift+C: the pirate offer).
+        if (player.position.kind !== 'docked') return true;
+        const sc = game.state.career.secondChance;
+        sc.used = false;
+        player.credits = Math.min(player.credits, -500);
+        const here = game.state.world.locations[player.position.locationId];
+        const sector = here ? game.state.world.sectors[here.sectorId] : undefined;
+        const before = sector?.securityValue ?? 0;
+        if (k.shift && sector) sector.securityValue = 0;
+        noteTow(game, player, player.position.locationId);
+        if (k.shift && sector) sector.securityValue = before;
+        if (!sc.offer) game.bus.message('Debug: no second-chance offer fits here.', 'warning');
+        this.app.pop();
+        return true;
+      }
       case 'b': {
         // A won battle against a light freighter that surrendered with cargo (M6-UI-05).
         const trader = createShipFromLoadout(game.data, 'light_freighter_trader', 'debug-trader', 'Trader Prize');

@@ -14,6 +14,7 @@ import { supplyNeedOpen, supplyRoom } from './contractGen';
 import { shipTu } from '../ship/threat';
 import { changeSecurity, securityLevel } from '../world/security';
 import { addNotoriety } from './notoriety';
+import { raidBattle, secondChanceDay } from './secondChance';
 
 /** Merchants' Guild standing (Section 14.4): completed - 2 x failed, at least 0. */
 export function standing(game: Game): number {
@@ -196,6 +197,7 @@ export function deliverFreight(game: Game, contractId: number): ServiceResult {
 export function contractDay(game: Game): void {
   const { state, data } = game;
   const actor = state.player;
+  secondChanceDay(game);
   // A Supply offer whose need ended leaves the board (open contracts, owner 2026-11-03).
   for (const b of state.contracts.boards) b.offers = b.offers.filter((o) => o.kind !== 'supply' || supplyNeedOpen(game, o));
   for (const c of [...state.contracts.active]) {
@@ -252,6 +254,7 @@ export function namedEncounter(game: Game, sector: Sector, point: Vec): Encounte
 export function battleContracts(game: Game, b: Battle): void {
   const { state, data } = game;
   const sector = b.sectorId === null ? undefined : state.world.sectors[b.sectorId];
+  raidBattle(game, b.namedId, b.ships);
   const beaten = b.ships.filter((s) => s.side === 'other' && s.faction === 'pirate' && (s.status === 'destroyed' || s.status === 'surrendered'));
   if (beaten.length === 0) return;
   const k = data.contracts.kill;

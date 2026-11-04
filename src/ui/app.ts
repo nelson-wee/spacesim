@@ -10,6 +10,7 @@ import { TutorialRunner } from './tutorialRunner';
 import { SaveRunner } from './saveRunner';
 import { careerDue, endCareer } from '../career/career';
 import { CareerEndScreen } from './screens/careerEnd';
+import { checkSecondChance } from './screens/secondChance';
 
 export interface Screen {
   render(t: Term): void;
@@ -70,8 +71,8 @@ export class App {
       this.reset(new CareerEndScreen(this, this.game, end));
       return;
     }
-    // A tutorial tip can be due after any change; it shows on top (Q-48).
-    this.tutorial.check(this);
+    // The one-time second chance and the stuck message (M8-SC); then tutorial tips (Q-48).
+    if (!checkSecondChance(this)) this.tutorial.check(this);
     this.term.clear();
     this.zones.clear();
     let first = this.stack.length - 1;

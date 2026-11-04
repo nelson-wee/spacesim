@@ -20,6 +20,21 @@
   "standingCompleted": 1,
   "standingFailed": -2,
   "alertOffersPerBoard": 2,
+  "secondChance": {
+    "reliefMinLevel": 2,
+    "relief": { "tonnes": 10, "maxJumps": 1, "deadlineBase": 8, "deadlinePerJump": 4 },
+    "raid": {
+      "loadoutId": "raider_wasp",
+      "shipName": "Raiding Wasp",
+      "targetLoadout": "light_freighter_trader",
+      "minJumps": 1,
+      "maxJumps": 2,
+      "maxLevel": 2,
+      "havenMaxJumps": 3,
+      "days": 25,
+      "targetNames": ["Gilded Wake", "Patient Ledger", "Silver Margin", "Quiet Tithe", "Long Haul", "Brass Promise"]
+    }
+  },
   "supply": { "feePerTonne": 12, "feePerTonneJump": 9, "riskPerLevel": 0.3, "urgencyPerSeverity": 1, "alertFeeMult": 1.5, "minDoneTonnes": 10, "maxDays": 28 },
   "freight": {
     "pickupJumps": 2,

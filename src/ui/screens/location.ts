@@ -1,5 +1,7 @@
 // Location screen (Section 17.1): one tab for each service at this location.
 // F opens the fleet screen, T the Trade Ledger, W waits (Section 8.8).
+import { fit } from '../widgets/text';
+import { buyBack } from '../../career/secondChance';
 import type { TutorialTrigger } from '../../data/schemas';
 import type { Game } from '../../core/game';
 import type { Location } from '../../core/types';
@@ -110,6 +112,9 @@ export class LocationScreen implements Screen {
     });
     drawKeyHints(t, zones, 52, 2, [['I', 'Fleet', press('i')], ['G', 'Contracts', press('g')], ['T', 'Ledger', press('t')], ['W', 'Wait', press('w')], ['Esc', 'Map', press('Escape')]], ui, this.app.press, 2);
     t.hline(4, 0, 99, '─', ui.border);
+    // M8-SC-04: the original ship for sale at this Pirate Haven.
+    const bb = game.state.career.secondChance.buyback;
+    if (bb && bb.locationId === loc.id) drawKeyHints(t, zones, 40, 4, [['Y', fit(`Buy back ${bb.ship.name} (${Math.round(bb.price)} cr)`, 50), press('y')]], ui, this.app.press, 2);
     const tab = this.tabs[this.tab];
     if (tab) tab.render(t, this.ctx());
     drawRecentLog(t, game);
@@ -156,6 +161,9 @@ export class LocationScreen implements Screen {
       case 'g':
         this.app.push(new ContractsScreen(this.app));
         return true;
+      case 'y':
+        if (game.state.career.secondChance.buyback?.locationId === this.locationId) report(game, buyBack(game), 'good');
+        return true;
       case 'e': {
         // Retire (Section 16): press E twice.
         if (!this.retireArmed) {
@@ -184,6 +192,7 @@ export class LocationScreen implements Screen {
       'L          Log',
       'G          Your contracts',
       'E, E       Retire: end the career here (score and title)',
+      'Y          Buy back your old ship (at the Pirate Haven, after the pirate job)',
       'Esc        Back to the sector map',
       '',
       ...(tab ? tab.help() : []),

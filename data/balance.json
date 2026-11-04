@@ -102,7 +102,7 @@
     "prizeFuelShare": 0.25,
     "fleeCargoShare": 0.5
   },
-  "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Second Chance" },
+  "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Fresh Start" },
   "career": {
     "days": 730,
     "fleetValueShare": 0.6,

@@ -2,6 +2,7 @@
 // Fuel uses mass ^ fuelMassExponent (Q-01).
 import { payUpkeep } from './fleet';
 import { dockingRefusal } from '../career/notoriety';
+import { noteTow } from '../career/secondChance';
 import type { Game } from '../core/game';
 import type { Actor, Location, Ship, Vec } from '../core/types';
 import { type GameData, hydrogenBasePrice } from '../data';
@@ -154,6 +155,8 @@ export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: 
   if (soldValue > 0) game.bus.message(`${location.name} buys cargo for ${Math.round(soldValue)} cr to pay the fee.`, 'warning');
   payUpkeep(game, actor);
   if (actor.credits < 0) game.bus.message(`You are in debt: ${Math.round(actor.credits)} cr.`, 'danger');
+  // The one-time second chance (M8-SC-01).
+  noteTow(game, actor, location.id);
   game.bus.emit({ type: 'towed', actorId: actor.id, locationId: location.id, fee });
   return { location, distance, fee, towedShips, soldValue };
 }

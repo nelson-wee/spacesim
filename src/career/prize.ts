@@ -10,6 +10,7 @@ import type { Actor, Ship } from '../core/types';
 import { hullDef } from '../ship/hull';
 import { travelStats } from '../ship/stats';
 import { addNotoriety } from './notoriety';
+import { notePrize } from './secondChance';
 
 /** Surrendered ships of the other side: the ships that the player can board. */
 export function surrenderedShips(b: Battle): CombatShip[] {
@@ -44,6 +45,9 @@ export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boole
   // The ship is now in the fleet: the battle copy has no cargo left to take.
   cs.ship.cargo = {};
   if (cs.faction !== 'pirate') addNotoriety(actor, data.balance.notoriety.prizeNonPirate, data);
-  if (actor === game.state.player) game.state.career.stats.shipsCaptured++;
+  if (actor === game.state.player) {
+    game.state.career.stats.shipsCaptured++;
+    notePrize(game, cs, ship);
+  }
   return { ok: true, text: `${ship.name} joins your fleet as a prize.${cs.faction !== 'pirate' ? ' Notoriety rises.' : ''}`, ship };
 }

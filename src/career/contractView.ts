@@ -27,7 +27,7 @@ export interface OfferView {
   perDay: number | null;
 }
 
-const TYPE: Record<Contract['kind'], string> = { supply: 'Supply', freight: 'Freight', sweep: 'Sweep', named: 'Named bounty' };
+const TYPE: Record<Contract['kind'], string> = { supply: 'Supply', freight: 'Freight', sweep: 'Sweep', named: 'Named bounty', relief: 'Guild relief', raid: 'Pirate job' };
 
 function locOf(game: Game, id: number): Location {
   return game.state.world.locations[id] as Location;
@@ -108,6 +108,17 @@ export function offerView(game: Game, offer: Contract): OfferView {
       deadline: offer.deadline,
       perDay: Number.isFinite(days) ? offer.fee / days : null,
     };
+  }
+  if (offer.kind === 'relief') {
+    const dest = locOf(game, offer.destId);
+    const days = tripDays(game, here, dest) + 1;
+    return { type: TYPE.relief, route: `${here.name} -> ${dest.name}`, ...routeInfo([here, dest]), tonnes: (offer.units - offer.delivered) * mass(offer.commodity), reward: 0, deadline: offer.deadline, perDay: Number.isFinite(days) ? 0 : null };
+  }
+  if (offer.kind === 'raid') {
+    const haven = locOf(game, offer.havenId);
+    const s = state.world.sectors[offer.sectorId];
+    const target = offer.prizeShipId === null && s ? locOf(game, s.locationIds[0] as number) : here;
+    return { type: TYPE.raid, route: offer.prizeShipId === null ? `${here.name} -> ${s?.name ?? '?'} -> ${haven.name}` : `${here.name} -> ${haven.name}`, ...routeInfo(offer.prizeShipId === null ? [here, target, haven] : [here, haven]), tonnes: 0, reward: 0, deadline: offer.deadline, perDay: null };
   }
   const sector = state.world.sectors[offer.sectorId];
   const target = sector ? locOf(game, sector.locationIds[0] as number) : here;
