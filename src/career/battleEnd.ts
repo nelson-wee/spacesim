@@ -6,7 +6,8 @@
 // surrendered ships, as far as it fits); a flee from pirates costs cargo of
 // one non-flagship ship (M6-FCMB-03). With manual boarding, the UI shows the
 // after-battle screen for the surrendered ships (career/prize.ts).
-// A flagship with 0 fuel after the battle is towed.
+// A flagship with 0 fuel, or a fleet that cannot move (engines at 0), is towed after the battle.
+import { fleetMove, fleetTravelStats } from '../actor/fleet';
 import { towFleet } from '../actor/fuel';
 import { actorPlace } from '../actor/travel';
 import { applyToShip } from '../combat/battle';
@@ -26,6 +27,19 @@ export type BattleEnd = DefeatOutcome | 'ok';
 export interface FinishOptions {
   /** 'auto' (tools, tests): take the cargo of surrendered ships. 'manual': the after-battle screen does it. */
   boarding?: 'auto' | 'manual';
+}
+
+/**
+ * A fleet in space that cannot move (engines at 0 after a battle, or a prize
+ * with its engines at 0) is towed (play test, 2026-11-04: else it stayed in
+ * space for good). Returns true if a tug came.
+ */
+export function towIfStranded(game: Game, actor: Actor): boolean {
+  if (actor.position.kind === 'docked' || actor.fleet.length === 0) return false;
+  if (fleetMove(fleetTravelStats(actor, game.data)) > 0) return false;
+  const place = actorPlace(game, actor);
+  towFleet(game, actor, place.sectorId, place.point, 0, true);
+  return true;
 }
 
 export function finishBattle(game: Game, actor: Actor, b: Battle, options: FinishOptions = {}): BattleEnd {
@@ -70,6 +84,6 @@ export function finishBattle(game: Game, actor: Actor, b: Battle, options: Finis
   if (now && now.fuel <= 1e-9) {
     const place = actorPlace(game, actor);
     towFleet(game, actor, place.sectorId, place.point);
-  }
+  } else towIfStranded(game, actor);
   return b.result === 'loss' ? 'flagshipLost' : 'ok';
 }

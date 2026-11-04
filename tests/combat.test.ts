@@ -328,8 +328,17 @@ describe('power and heat (M4-PWR)', () => {
     me.heat = st.heatCapacity - 1;
     const out = resolveTurn(b, null, data);
     const after = out.battle.ships[0]!;
+    // It may fire only the shots that cooling covers: the turn ends below the heat capacity.
     expect(after.overheated).toBe(false);
-    expect(out.effects.some((e) => e.kind === 'shot' && e.shipId === me.id)).toBe(false);
+    expect(after.heat).toBeLessThan(st.heatCapacity);
+    // With no cooling left to cover a shot, it does not fire.
+    const b2 = open('laser_wasp', ['pirate_raider']);
+    const me2 = P(b2);
+    me2.ai = 'attack';
+    me2.heat = st.heatCapacity - 0.5;
+    const out2 = resolveTurn(b2, null, data);
+    expect(out2.battle.ships[0]!.overheated).toBe(false);
+    expect(out2.effects.filter((e) => e.kind === 'shot' && e.shipId === me2.id).length).toBeLessThanOrEqual(1);
   });
 
   it('lasers are hitscan: they lose less hit chance with range than ballistics (Q-43)', () => {

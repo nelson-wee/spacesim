@@ -690,7 +690,8 @@ export const contractsSchema = z.object({
   secondChance: z.object({
     /** Security level at the tow location for the guild relief; below it: the pirate offer. */
     reliefMinLevel: z.number().int().min(0).max(4),
-    relief: z.object({ tonnes: pos, maxJumps: z.number().int().min(0), deadlineBase: nonNeg, deadlinePerJump: nonNeg }),
+    /** startCapital (owner, Q-54): credits the guild pays when the relief is done, after it clears the debt. */
+    relief: z.object({ tonnes: pos, maxJumps: z.number().int().min(0), deadlineBase: nonNeg, deadlinePerJump: nonNeg, startCapital: nonNeg }),
     raid: z.object({
       loadoutId: z.string(),
       shipName: z.string(),

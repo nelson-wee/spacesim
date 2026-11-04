@@ -122,7 +122,7 @@ describe('second chance (M8-SC)', () => {
     dockAt(g, g.state.world.locations[c.destId]!);
     const completed = g.state.contracts.completed;
     expect(deliverRelief(g, c.id).ok).toBe(true);
-    expect(p.credits).toBe(0);
+    expect(p.credits).toBe(data.contracts.secondChance.relief.startCapital);
     expect(g.state.contracts.completed).toBe(completed + 1);
     expect(g.state.contracts.active.some((x) => x.kind === 'relief')).toBe(false);
 

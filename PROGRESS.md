@@ -654,6 +654,12 @@ Findings for the owner (not changed):
 - A failed pirate job leaves the player with the Raiding Wasp (no cargo hold) and the debt. The player can refit (a cargo rack in place of the fuel tank, now that hulls hold fuel) or hunt bounties.
 - A pirate with trade ships still takes few prizes (1 prize in 498 battles of the pirate style): most traders are Heavy Freighters, which only a Gunship-class ship can stop.
 
+### Owner decisions after the play test (2026-11-04)
+
+- Q-54: a done relief pays a start capital of 1,000 cr. Reckless bot careers: median net worth 19,516 -> 790,146 cr (22 of 30 take the relief).
+- Laser range +50% (Pulse 8 -> 12, Beam 10 -> 15). `sim-combat`: all 6 checks pass (Shuttle vs Raider 58%, band 40-60%); battle length unchanged. Light Freighter capture: Laser Wasp 75%, Raiding Wasp 48%, Gunship 76%. `sim-trader --encounters`: 18/20 by day 150; `sim-career`: 6/6 end with no errors (median 1,377,844 cr, report).
+- Two more soft-locks found by the pirate style and fixed: engines at 0 after a won battle, and a prize with its engines at 0 (every forced surrender) left the fleet unable to move in space. A tug now tows such a fleet.
+
 ### Bugs found and fixed in M8
 
 - Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.

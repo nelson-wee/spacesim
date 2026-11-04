@@ -22,7 +22,7 @@
   "alertOffersPerBoard": 2,
   "secondChance": {
     "reliefMinLevel": 2,
-    "relief": { "tonnes": 10, "maxJumps": 1, "deadlineBase": 8, "deadlinePerJump": 4 },
+    "relief": { "tonnes": 10, "maxJumps": 1, "deadlineBase": 8, "deadlinePerJump": 4, "startCapital": 1000 },
     "raid": {
       "loadoutId": "raider_wasp",
       "shipName": "Raiding Wasp",

@@ -23,6 +23,7 @@ import {
   snapshotLoadout,
   uninstallModule,
 } from '../../actor/fleetManage';
+import { towIfStranded } from '../../career/battleEnd';
 import { takePrize } from '../../career/prize';
 import type { CombatShip } from '../../combat/types';
 import type { Game } from '../../core/game';
@@ -620,6 +621,8 @@ export class FleetScreen implements Screen {
     if (this.after) {
       const left = this.boarded().length;
       if (left > 0) this.game.bus.message(`You leave ${left} surrendered ship${left === 1 ? '' : 's'} behind.`);
+      // A prize with its engines at 0 cannot move: a tug tows the fleet.
+      towIfStranded(this.game, this.game.state.player);
     }
     this.app.pop();
   }

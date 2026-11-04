@@ -558,6 +558,12 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-04 [M8-SC-06] The stuck message also shows when the only ship cannot leave (no engine, or too little power) and the credits plus the sale of all its modules do not pay for the cheapest missing engine and reactor here, also with no debt. Reason: the chaos bot sold the engine of its last ship and could not buy one (a soft-lock).
 - 2026-11-04 [tools] Trader bot fixes found by the play test (not game rules): it tries other locations and jump points when a station refuses docking; it takes cargo that the location does not buy to the nearest buyer; it leaves a sector below its minimum security after a tow. `tools/sim-playtest.ts` is the new play-test tool (6 styles, state checks after each turn, save and load every 40 turns).
 
+- 2026-11-04 [owner, Q-54, M8-SC-02] A done relief contract clears the debt and then pays `secondChance.relief.startCapital` 1,000 cr. Reason: with 0 cr and no cargo, 7 of 9 reckless bot careers that took the relief could not trade again. A failed pirate job (Wasp with no hold, debt) and the two piracy combat changes stay (owner).
+
+- 2026-11-04 [owner, §12] Laser range +50%: Pulse Laser S 8 -> 12 cells, Beam Laser M 10 -> 15 (`modules.json`). Reason: owner: longer-range engagements, lasers first. `sim-combat`: all 6 checks pass; Shuttle vs Raider 51% -> 58% (band 40-60%), Laser Wasp vs 2 Raiders 50% -> 57%, other pairings within 1-2 points; the median battle length does not change (the sides start about 33 cells apart). A test with ballistics also +25% changed little more, but Torpedo Frigate vs Battleship fell from 29% to 15%; not used.
+
+- 2026-11-04 [bug, §8.5] A fleet in space that cannot move after a battle is towed (`towIfStranded`): when the flagship's engines are at 0 (checked in `finishBattle`), and when the after-battle screen closes with a prize whose engines are at 0 (a forced surrender always leaves them at 0). The tow fee counts each ship that cannot move like an empty one. Reason: play test: the fleet stayed in space for good (travel and Hunt refused, and a tug came only at 0 fuel).
+
 ## Cuts
 
 None.

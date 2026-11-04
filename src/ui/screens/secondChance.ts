@@ -46,7 +46,8 @@ export function offerLines(game: Game): string[] {
       '- The guild repairs and refuels all your ships, free. The debt stays.',
       `- Deliver ${rel.tonnes} t of ${p ? (data.commodityById.get(p.commodity)?.name ?? p.commodity) : '?'} (guild cargo, free) to ${p ? loc(p.destId) : '?'}`,
       `  in ${p ? rel.deadlineBase + rel.deadlinePerJump * p.jumps : '?'} days.`,
-      '- Done: the guild clears your debt; standing +1.',
+      `- Done: the guild clears your debt and gives you ${data.contracts.secondChance.relief.startCapital} cr to start again;`,
+      '  standing +1.',
       `- Late, or the cargo is lost: the debt stays; standing ${data.contracts.standingFailed}.`,
     ];
   }

@@ -7,7 +7,7 @@ import { towFleet } from '../src/actor/fuel';
 import { planSectorTrip, travelInSector } from '../src/actor/travel';
 import { buy, sell } from '../src/services/market';
 import { refuel } from '../src/services/refuel';
-import { finishBattle } from '../src/career/battleEnd';
+import { finishBattle, towIfStranded } from '../src/career/battleEnd';
 import { applyDefeat } from '../src/career/defeat';
 import { takePrize, surrenderedShips } from '../src/career/prize';
 import { createBattle } from '../src/combat/battle';
@@ -423,6 +423,37 @@ describe('fleet in combat (M6-FCMB)', () => {
     p.fleet.push(ship('laser_wasp', 'a'), ship('laser_wasp', 'b'));
     const pr = battleWith(game, 'pirate_raider');
     expect(takePrize(game, p, pr.ships[1]!).text).toMatch(/full/);
+  });
+
+  it('a won battle that leaves the engines at 0 in space brings a tug (play-test soft-lock, 2026-11-04)', () => {
+    const { game } = withFleet(['laser_gunship']);
+    const p = game.state.player;
+    const sector = game.state.world.sectors[0]!;
+    p.position = { kind: 'space', sectorId: sector.id, x: 30, y: 15 };
+    p.fleet[0]!.fuel = 20;
+    const b = battleWith(game, 'pirate_raider');
+    b.ships[1]!.status = 'destroyed';
+    b.result = 'win';
+    b.ships.find((s) => s.id === b.playerId)!.ship.engineValue = 0;
+    finishBattle(game, p, b);
+    expect(p.position.kind).toBe('docked');
+  });
+
+  it('a prize with its engines at 0 cannot move: the fleet is towed when the after-battle screen closes', () => {
+    const { game } = withFleet(['laser_gunship']);
+    const p = game.state.player;
+    p.position = { kind: 'space', sectorId: 0, x: 30, y: 15 };
+    p.fleet[0]!.fuel = 20;
+    const b = battleWith(game, 'pirate_raider');
+    const cs = b.ships[1]!;
+    cs.ship.engineValue = 0;
+    cs.status = 'surrendered';
+    b.result = 'win';
+    finishBattle(game, p, b, { boarding: 'manual' });
+    expect(p.position.kind).toBe('space');
+    expect(takePrize(game, p, cs).ok).toBe(true);
+    expect(towIfStranded(game, p)).toBe(true);
+    expect(p.position.kind).toBe('docked');
   });
 
   it('boarding: manual boarding leaves the surrendered cargo for the after-battle screen; auto takes it', () => {

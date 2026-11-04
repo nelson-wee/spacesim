@@ -242,11 +242,13 @@ export function deliverRelief(game: Game, contractId: number): ServiceResult {
   if (entry) entry.stock += units;
   c.delivered += units;
   if (c.delivered < c.units - 1e-6) return done(`You deliver ${Math.round(units)} ${comName(game, c.commodity)}. ${Math.round(c.units - c.delivered)} to go.`);
-  actor.credits = Math.max(0, actor.credits);
+  // The debt is cleared, and the guild pays a start capital (owner, Q-54).
+  const capital = data.contracts.secondChance.relief.startCapital;
+  actor.credits = Math.max(0, actor.credits) + capital;
   finish(game, c, true);
   state.contracts.completed++;
   state.career.stats.contractsCompleted++;
-  return done(`Relief contract done. The Merchants' Guild clears your debt. ${data.contracts.standingCompleted > 0 ? 'Standing +1.' : ''}`.trim());
+  return done(`Relief contract done. The Merchants' Guild clears your debt${capital > 0 ? ` and gives you ${Math.round(capital)} cr to start again` : ''}. ${data.contracts.standingCompleted > 0 ? 'Standing +1.' : ''}`.trim());
 }
 
 function finish(game: Game, c: ReliefContract | RaidContract, ok: boolean, text?: string): void {

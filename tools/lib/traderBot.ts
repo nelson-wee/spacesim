@@ -278,14 +278,14 @@ function sellForCapital(game: Game, actor: Actor, loc: Location, bot: BotState):
 
 /** A ship with no fuel tank (sold for capital) gets one back when the credits allow: the hull fuel alone is too little for most jumps. */
 function refitFuelTank(game: Game, actor: Actor, loc: Location, bot: BotState): void {
-  if (!hasService(loc, 'outfitter') || actor.credits < 1500) return;
+  if (!hasService(loc, 'outfitter') || actor.credits < 400) return;
   const data = game.data;
   for (const [i, ship] of actor.fleet.entries()) {
     if (ship.internal.some((m) => m && data.moduleById.get(m.moduleId)?.category === 'fuel')) continue;
     const offers = moduleOffers(loc, data).filter((o) => o.moduleId === 'fuel_tank' && o.tier === 1).sort((a, b) => b.price - a.price);
     for (const o of offers) {
       const slot = ship.internal.findIndex((m, idx) => m === null && fitProblem(ship, 'internal', idx, o.moduleId, o.size, data) === null);
-      if (slot >= 0 && o.price < actor.credits - 500 && buyModule(game, actor, loc, i, 'internal', slot, o).ok) {
+      if (slot >= 0 && o.price < actor.credits - 200 && buyModule(game, actor, loc, i, 'internal', slot, o).ok) {
         bot.events.push({ day: game.state.day, text: `Bought a fuel tank at ${loc.name}` });
         return;
       }
@@ -309,11 +309,19 @@ export function botTurn(game: Game, bot: BotState, opts: BotOptions): void {
       out = travelInSector(game, actor, { kind: 'location', locationId: id });
     }
     if ((actor.position as { kind: string }).kind !== 'docked') {
+      let why = out.result === 'refused' ? out.reason : out.result;
       for (const jpId of sector?.jumpPointIds ?? []) {
-        if (actor.position.kind !== 'jumpPoint') travelInSector(game, actor, { kind: 'jumpPoint', jumpPointId: jpId });
-        if (actor.position.kind === 'jumpPoint' && jump(game, actor).result !== 'refused') return;
+        if (actor.position.kind !== 'jumpPoint') {
+          const t = travelInSector(game, actor, { kind: 'jumpPoint', jumpPointId: jpId });
+          if (t.result === 'refused') why = t.reason;
+        }
+        if (actor.position.kind === 'jumpPoint') {
+          const j = jump(game, actor);
+          if (j.result !== 'refused') return;
+          why = j.reason;
+        }
       }
-      throw new Error(`The bot cannot dock or leave the sector (${out.result})`);
+      throw new Error(`The bot cannot dock or leave the sector: ${why}`);
     }
   }
   const loc = here(game, actor);

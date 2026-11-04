@@ -6,7 +6,7 @@ import { fleetUnits } from '../../src/actor/cargo';
 import { removeShip, renameShip, setFlagship } from '../../src/actor/fleet';
 import { type HeldModule, installModule, moveAllCargo, moveCargo, moveModule, uninstallModule } from '../../src/actor/fleetManage';
 import { actorPlace, hunt, jump, travelInSector } from '../../src/actor/travel';
-import { finishBattle } from '../../src/career/battleEnd';
+import { finishBattle, towIfStranded } from '../../src/career/battleEnd';
 import { retire } from '../../src/career/career';
 import { attackNonPirate } from '../../src/career/consequences';
 import { acceptContract, collectBounty, deliverFreight, deliverSupply, pickupFreight } from '../../src/career/contracts';
@@ -86,6 +86,8 @@ export function playBattle(game: Game, enc: Encounter, aggressor: 'player' | 'ot
       if (takePrize(game, actor, cs).ok) log.prizes++;
     } else for (const s of [...actor.fleet]) moveAllCargo(data, cs.ship, s, true);
   }
+  // As the after-battle screen does when it closes: a fleet that cannot move is towed.
+  towIfStranded(game, actor);
   // After a battle the player can scuttle a ship (fleet screen).
   if (actor.fleet.length > 1 && r.chance(0.05)) removeShip(game, actor, r.int(0, actor.fleet.length - 1));
 }

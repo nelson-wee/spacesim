@@ -140,7 +140,9 @@ export function towFleet(game: Game, actor: Actor, sectorId: number, fromPoint: 
   const flagship = actor.fleet[actor.flagshipIndex];
   for (const ship of actor.fleet) {
     const empty = isEmpty(ship);
-    if (!empty && !(disabled && ship === flagship)) continue;
+    // A ship that cannot move (engines at 0, for example a prize) is towed and pays like an empty one.
+    const immobile = travelStats(ship, data).move <= 0;
+    if (!empty && !immobile && !(disabled && ship === flagship)) continue;
     fee += recoveryFee(ship, distance, data, location);
     if (empty) ship.fuel = travelStats(ship, data).fuelCapacity * data.balance.recovery.fuelShareAfterTow;
     towedShips++;
