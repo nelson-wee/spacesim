@@ -40,6 +40,7 @@ import { LogScreen } from './log';
 import { TradeLedgerScreen } from './tradeLedger';
 import { RegionMapScreen } from './regionMap';
 import { HailScreen } from './hail';
+import { CodexScreen } from './codex';
 
 const LOCATION_KEYS = 'abcdef';
 const JUMP_KEYS = '1234';
@@ -306,7 +307,7 @@ export class SectorMapScreen implements Screen {
     keyLine('V', 'Route view');
     keyLine('M', 'Region map');
     drawKeyHints(t, zones, x, y++, [['G', 'Contracts', press('g')], ['L', 'Log', press('l')], ['?', 'Help', press('?')]], pal.ui, this.app.press, 2);
-    drawKeyHints(t, zones, x, y++, [['Q', 'Save and quit', press('q')]], pal.ui, this.app.press, 2);
+    drawKeyHints(t, zones, x, y++, [['X', 'Codex', press('x')], ['Q', 'Save and quit', press('q')]], pal.ui, this.app.press, 2);
   }
 
   private planLines(plan: TripPlan, line: (text: string, fg?: string) => void): void {
@@ -375,6 +376,9 @@ export class SectorMapScreen implements Screen {
         return true;
       case 't':
         this.app.push(new TradeLedgerScreen(this.app));
+        return true;
+      case 'x':
+        this.app.push(new CodexScreen(this.app));
         return true;
       case 'ArrowUp':
       case 'ArrowDown': {
@@ -483,7 +487,9 @@ export class SectorMapScreen implements Screen {
       'M        Region map',
       'L        Log',
       'G        Your contracts',
+      'X        Codex: the production chain and who makes and buys each good',
       'Q, Q     Save and quit to the title screen',
+      'Any key  Skips the travel animation',
       'Esc      Clear the target',
       '',
       'Travel uses time and fuel. Docking at a planet uses fuel',
