@@ -11,7 +11,7 @@ Update this file at the end of each milestone (brief §0, item 9).
 | M5 Threat and encounters | 5 | Done (owner check definition of 2026-10-29, Q-46). | 5 of 5 pass; the TU calibration and the median battle length are reports. |
 | M6 Fleet (feature freeze) | 6 | Done (owner decision of 2026-11-03, Q-51). Markets are twice as large (`volumeScale` 16). | 6 of 6 pass; check 5 (fleet trade value) is a report; the feature freeze is in force. |
 | M7 Contracts, career, save | 7 | Done. Balance pass: monitors in the M7 section. | 7 of 7 pass. |
-| M8 Polish and release | 8 | Not started | — |
+| M8 Polish and release | 8 | Built. Final deploy waits for the merge into `main`; the manual careers (M8-REL-03) wait for the owner. | 3 of 5 pass; check 1 passes with automated play only; check 4 needs the merge. Balance results are reports (owner, 2026-11-04). |
 
 ## M1 Foundation (2026-10-26)
 
@@ -581,11 +581,111 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 
 ### Known issues
 
-- Q-53: Supply contracts still give much more than open-market trade (see above). Look again in the M8 balance pass.
-- Q-52: a player in debt, with no cargo and no module to sell, cannot trade again (only Retire). The bot shows it on 2 of 6 careers.
-- Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target.
-- The tutorial text needs a pass for the M6 and M7 screens (M8).
-- The `sim-trader --encounters` numbers in the M5 section are from `volumeScale` 8.
+- Q-53: Supply contracts still give much more than open-market trade (see above). Report (owner, 2026-11-04).
+- Q-52: done in M8 (the second chance; the stuck message offers Retire).
+- Q-52: net worth spread at day 730 is wide and its median is above the Section 22 target. Report (owner, 2026-11-04).
+- Tutorial text pass: done in M8. `sim-trader --encounters`: new numbers in the M8 section.
+
+## M8 Polish and release (2026-11-04)
+
+### What works
+
+- **Second chance (M8-SC-01 to SC-06):** the first tow into debt shows a one-time offer. Security level 2-4: guild relief (free repair and refuel; deliver 10 t of free guild cargo in 8 + 4 x jumps days; done clears the debt). Level 0-1: pirate offer (the flagship is traded for a Raiding Wasp; capture a spawned trader and deliver it to a Pirate Haven in 25 days; done clears the debt and the Haven sells the old ship back, key Y). The stuck message offers Retire. The starting ship is "Fresh Start". Debug C and Shift+C show the offers.
+- **Codex (M8-UI-01):** key X on the sector map; the chain by tier, and for each commodity who makes it and who buys it, from the data files.
+- **Help (M8-UI-02):** the title-screen help explains the core loop and the main keys. Each screen has `?` help.
+- **Animation (M8-ART-06, ART-07, ART-03):** the `@` moves along the trip path on the sector map (1.2 s or less, any key skips); the region map shows the route to the selected sector in the bright color, with its jump count; reinforcements arrive with speed streaks from `effects.json`.
+- **Checked (M8-ART-01, 02, 04):** damaged and critical art, hot tint, overheat flash, the 1.2 s effect budget, and Space to skip (built in M4).
+- **Tutorial:** new tips for the fleet screen and hold, the after-battle screen, the Merchants' Guild board, and the contracts screen; the welcome tip names the save rule and the Codex.
+- **Tests:** 851 tests in 30 files pass; typecheck and build pass.
+
+### Acceptance checks (M8-REL-02, 2026-11-04)
+
+| Section | Tool | Result |
+|---|---|---|
+| §6.11 | `gen-report` (100 seeds) | PASS: 98 of 100 seeds pass with 2 tries or fewer (need 95). |
+| §8.7, §9.13 | `sim-economy` (20 seeds) | PASS: no systemic clamp, no stock below 0, no permanent stop, capital responds. Reports: busts on 3/20 seeds, gradient 18/20, raw margins 15/20. |
+| §8.7 (M3) | `sim-trader` (20 seeds) | PASS: Light Freighter by day 150 on 20/20 (median day 54, report). |
+| §10.9, §13.9 | `sim-combat` | PASS: all 6 checks (Shuttle vs Raider 51%; Wasp vs Shuttle 100%; Wasp vs Raider 98%; lasers, ballistics, torpedoes win more often). Reports: Wasp vs 2 Raiders 50%; TU pairings 40%, 82%, 94%, 79%. |
+| M5 | `sim-trader --encounters` | PASS: Light Freighter by day 150 on 19/20 (median day 63). Report: one pirate encounter per 21 trips; 60 battles (21 won, 39 disabled). |
+| M6 | `sim-trader --fleet` (6 seeds, 300 days) | Report: 1 ship 758, 2 ships 686, 4 ships 464 cr per day after upkeep (check 5 is a report, Q-51). |
+| §14.9 | `sim-economy` boards, `sim-trader --contracts` | PASS: 98.0% of boards with 3+ offers; 100% of offers point to a real deficit; check 3 = 1.41x. |
+| M7 | `sim-career` (6 careers) | PASS: 6/6 careers end with no errors. Report: median net worth 1,138,604 cr (Section 22: 250,000-600,000). |
+| §19 | tests, typecheck, build, browser smoke test | PASS: no console errors in a 20-step browser run (trade, travel, region map, encounter, auto-battle, contracts, Codex, save and continue, second-chance offer). |
+
+### Exit checks (§23)
+
+| # | Check | Result |
+|---|---|---|
+| 1 | New career, trade, loadout, fleet, fight, pirate or hunter, security change, career end. | PASS with automated play: the browser smoke test and the unit tests cover each step (the after-battle screen, prizes, the fleet hold, security +3 after a won battle, retire). M8-REL-03 (one trader and one pirate career played by hand) waits for the owner. |
+| 2 | All acceptance checks pass. | PASS (see above; balance results are reports). |
+| 3 | No known crash bugs. | PASS. |
+| 4 | The game runs from GitHub Pages. | Waits for the owner: merge this branch into `main`; `deploy.yml` then deploys (the last deploy of `main` passed on 2026-11-04). |
+| 5 | `PROGRESS.md` and `DECISIONS.md` are up to date. | PASS. |
+
+### Owner changes (2026-11-04): Pirate Havens and hull fuel
+
+- **Each world has a Pirate Haven.** If the normal fill places none, a frontier sector gets security baseline 25 and a Haven (a free station slot, or a new station "<sector> Haven"). 100 of 100 seeds have a Haven (27 with a new station); worlds that had one do not change.
+- **Hull fuel.** Each hull holds fuel with no tank (`baseFuel`: Wasp 4, Shuttle and Courier 5, Light Freighter and Gunship 7, Corvette 11, Heavy Freighter 12, Frigate 18, Battleship 34): about 3 sector trips with docking, less than one median jump. A prize gets at least its hull fuel. The Starting Shuttle now holds 35.
+- **Checks again:** generator 98 of 100 (PASS); `sim-economy` all PASS (20 seeds); `sim-trader` 20/20 (median day 57); `--contracts` 20/20, check 3 = 1.18x; `--encounters` 18/20 (median day 64); `sim-career` 6/6 (median net worth 1,557,635 cr, report); `sim-combat` all 6 PASS; 851 tests pass.
+- **Effects v0.2 (Claude Design):** scope only, in `docs/proposals/effects-v2.md`.
+
+### Play test (2026-11-04)
+
+`tools/sim-playtest.ts` plays careers in 6 styles and checks the state after each turn (finite values, fuel and cargo in range, unique ids, positions, markets, contracts) and saves and loads every 40 turns. A browser fuzz test pressed about 17,000 random keys in 6 runs (with and without the debug panel): no script errors.
+
+| Style | Careers | Ends | Median score | Problems found (final run) |
+|---|---|---|---|---|
+| trader (careful) | 30 | 30 to day 730 | 1,797,591 | none after the bot fixes |
+| contractor | 30 | 30 to day 730 | 1,159,777 | 1 idle (bot) |
+| reckless | 30 | 30 to day 730 | about 19,500 | idle after the second chance (see below) |
+| pirate | 30 | 18 to day 730, 12 lost | 161,379 | 5 idle (a failed pirate job leaves a Wasp with no hold) |
+| chaos (random actions) | 150 | 115 lost, 34 retire, 1 day 730 | 1,060 | none |
+| calm (random, no attacks, insured) | 120 | all retire (stuck) or day 730 | 2,050 | none |
+
+Bugs found and fixed:
+- Duplicate ship ids (the first bought ship, prize, or Wasp got the start ship's id `ship-1`); the pirate job could remove the wrong ship.
+- A player's ship played by an AI got the combat fuel reserve and kept fuel above its tank capacity.
+- Soft-lock: the only ship with no engine (or too little power) and no money for one did not count as stuck; now the stuck message offers Retire. Cargo that the location does not buy does not count.
+- Piracy could not work: in 2,400 test battles every attacked trader reached its map edge. Now an attack on traders starts as an intercept (`interceptGap` 10), and the AI aims at the engines of a ship that runs. Light Freighter captured: Raiding Wasp 48%, Laser Wasp 69%, Gunship 77% (before 0%). `sim-combat`: all 6 checks still pass.
+- Trader bot (tools only): docking refusals, cargo the location does not buy, a tow into a sector below its minimum security, guild relief cargo (it sold it and never delivered it), debt with no weapon left, no fuel tank.
+
+Findings for the owner (not changed):
+- After the guild relief the player has 0 cr and no cargo. On 7 of 9 reckless careers that took the relief, the player stayed at about 19,000 cr net worth for the rest of the career (a Light Freighter with nothing to trade).
+- A failed pirate job leaves the player with the Raiding Wasp (no cargo hold) and the debt. The player can refit (a cargo rack in place of the fuel tank, now that hulls hold fuel) or hunt bounties.
+- A pirate with trade ships still takes few prizes (1 prize in 498 battles of the pirate style): most traders are Heavy Freighters, which only a Gunship-class ship can stop.
+
+### Owner decisions after the play test (2026-11-04)
+
+- Q-54: a done relief pays a start capital of 1,000 cr. Reckless bot careers: median net worth 19,516 -> 790,146 cr (22 of 30 take the relief).
+- Laser range +50% (Pulse 8 -> 12, Beam 10 -> 15). `sim-combat`: all 6 checks pass (Shuttle vs Raider 58%, band 40-60%); battle length unchanged. Light Freighter capture: Laser Wasp 75%, Raiding Wasp 48%, Gunship 76%. `sim-trader --encounters`: 18/20 by day 150; `sim-career`: 6/6 end with no errors (median 1,377,844 cr, report).
+- Two more soft-locks found by the pirate style and fixed: engines at 0 after a won battle, and a prize with its engines at 0 (every forced surrender) left the fleet unable to move in space. A tug now tows such a fleet.
+
+### Fuel balance (owner, 2026-11-04)
+
+- Fleet screen B moves fuel between the fleet ships, so that all ships can go the same distance (fuel in proportion to each ship's fuel use per distance, up to its tank). It works anywhere (docked, in space, after a battle), with no fee and no time. One empty ship no longer causes a tow while other ships have fuel.
+
+### Combat effects v0.2 (Claude Design, 2026-11-04; M8-ART-03 to ART-07)
+
+- `data/art/effects.yaml` is now v0.2 (copy of `docs/proposals/effects-v0.2.yaml`); `npm run import-art` converts it. The importer reads the tiers, the operation lists (`o`), `total_ms`, `persist`, and the `movement` table, and makes the ramp colors that `style.json` does not have (`laserCore`, `ballisticCore`, `defenseCore`, `jumpDim`). It rejects unknown operations, colors, line sets, and patterns.
+- The renderer interprets the 14 operations against the real battle: rings and discs on the 2:1 ellipse, `frac` and `seed` by a cell hash (the same turn looks the same), `soft` cells (only empty cells), facing perimeter toward the shooter, engine cells (`foot` role `e`), `@glyph` and `@damage`, capital blasts scaled to the hull, travel with lanes and trails, and crawl on thick beams.
+- Weapon effects have tiers 1-3: each shot, flak, missile, torpedo, and point-defense effect carries the module tier. T2 and T3 add the Core color, rings, more rounds, and longer times. The 1.2 s budget for shots stays.
+- Ships move in combat: each ship slides along its path (45 ms a cell, 2 cells a frame for paths over 12), with ignition exhaust, a wake, thruster puffs, a brake puff at the bow, and an idle glow. Effects after a move wait for it. A ship shows at its start cell until its move starts, and as it was until its destroy, flee, or surrender starts. The moves of a turn take at most `combat.moveAnimBudgetMs` (1.5 s).
+- Move preview: the reachable cells show on the `moveBg` color; after a planned move, a ghost in `playerDeep` stays at the start cell with a dotted path to the planned cell.
+- Destroyed ships leave the debris of the effect's `persist`; surrendered ships show in neutral colors.
+- Sector map: the `@` moves 3 cells each 60 ms with a 5-cell trail and an engine glow on every other frame, from a start ring to an arrival ring, with the route ahead dotted. A jump shows the jump-out rings at the old jump point and the jump-in rings at the new one. A selected target shows a dotted route, brackets, and "ETA".
+- Region map: a jump plays the region travel (thin trace, route ahead, a pulse at each sector on the way); the route to a selected sector shows as a thin `frameHi` line with brackets.
+- Tests: 20 new tests (importer, operations, tiers, moves, budgets, map frames). Browser check with a controlled clock: travel, jump, region travel, move preview, ship moves, beam, spark, shield, and enemy moves all play; no page errors.
+
+### Bugs found and fixed in M8
+
+- Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.
+- The region map route counted one jump too many (the path holds its start sector).
+
+### Known issues
+
+- Q-52 and Q-53 balance (reports): net worth at day 730 above the target; Supply contracts give more than open-market trade.
+- The trader bots of the tools do not answer the second-chance offer (it stays open in their games).
+- Codex: station use shows the scaled value (x `volumeScale`); population use shows the per-unit value.
 
 <!--
 Template for each milestone:

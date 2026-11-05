@@ -96,7 +96,10 @@ function goTo(game: Game, actor: Actor, from: Location, to: Location, onEncounte
 
 /** The commodities that the bot keeps for its Supply contract (it must not sell them on the way). */
 export function contractGoods(game: Game): Set<string> {
-  return new Set(game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply' && supplyRoom(game, c) > 0).map((c) => c.commodity));
+  const keep = game.state.contracts.active.filter((c): c is SupplyContract => c.kind === 'supply' && supplyRoom(game, c) > 0).map((c) => c.commodity);
+  // Guild relief cargo (second chance) is not for sale.
+  for (const c of game.state.contracts.active) if (c.kind === 'relief') keep.push(c.commodity);
+  return new Set(keep);
 }
 
 /** One contract step at a docked location. Returns true if the bot acted (and the turn is over). */

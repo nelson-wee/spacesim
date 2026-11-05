@@ -5,11 +5,12 @@
 // notoriety. Battleships (capital hulls) cannot be prizes.
 import { addShip } from '../actor/fleet';
 import type { Battle, CombatShip } from '../combat/types';
-import type { Game } from '../core/game';
+import { type Game, newId } from '../core/game';
 import type { Actor, Ship } from '../core/types';
 import { hullDef } from '../ship/hull';
 import { travelStats } from '../ship/stats';
 import { addNotoriety } from './notoriety';
+import { notePrize } from './secondChance';
 
 /** Surrendered ships of the other side: the ships that the player can board. */
 export function surrenderedShips(b: Battle): CombatShip[] {
@@ -27,16 +28,19 @@ export function prizeProblem(game: Game, actor: Actor, ship: Ship): string | nul
 /**
  * Takes a surrendered ship into the fleet. `faction` is the ship's faction in
  * the battle (a non-pirate prize adds notoriety). The ship keeps its loadout,
- * damage, and cargo; its tank has prizeFuelShare of its capacity.
+ * damage, and cargo; its tank has prizeFuelShare of its capacity, at least
+ * the hull's own fuel (`baseFuel`).
  */
 export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boolean; text: string; ship?: Ship } {
   const { data } = game;
   const why = prizeProblem(game, actor, cs.ship);
   if (why) return { ok: false, text: why };
   const ship: Ship = structuredClone(cs.ship);
-  ship.id = `ship-${game.state.nextId++}`;
+  ship.id = newId(game, 'ship');
   ship.name = cs.name;
-  ship.fuel = travelStats(ship, data).fuelCapacity * data.balance.fleet.prizeFuelShare;
+  // At least the hull's own fuel (owner, 2026-11-04): a prize with no fuel tank can reach a location in the sector.
+  const cap = travelStats(ship, data).fuelCapacity;
+  ship.fuel = Math.min(cap, Math.max(cap * data.balance.fleet.prizeFuelShare, hullDef(data, ship.hullId).baseFuel));
   // Its cargo is loot: a purchase price of 0 (M5-LOOT).
   for (const lot of Object.values(ship.cargo)) lot.unitCost = 0;
   const full = addShip(game, actor, ship);
@@ -44,6 +48,9 @@ export function takePrize(game: Game, actor: Actor, cs: CombatShip): { ok: boole
   // The ship is now in the fleet: the battle copy has no cargo left to take.
   cs.ship.cargo = {};
   if (cs.faction !== 'pirate') addNotoriety(actor, data.balance.notoriety.prizeNonPirate, data);
-  if (actor === game.state.player) game.state.career.stats.shipsCaptured++;
+  if (actor === game.state.player) {
+    game.state.career.stats.shipsCaptured++;
+    notePrize(game, cs, ship);
+  }
   return { ok: true, text: `${ship.name} joins your fleet as a prize.${cs.faction !== 'pirate' ? ' Notoriety rises.' : ''}`, ship };
 }

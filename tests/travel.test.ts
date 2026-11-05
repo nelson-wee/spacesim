@@ -185,7 +185,7 @@ describe('out of fuel and tow (Section 8.6)', () => {
   it('recovery fee formula uses the full-tank price', () => {
     const s = createShipFromLoadout(data, 'start_shuttle', 'x', 'x');
     const r = data.balance.recovery;
-    const tank = 30 * (hydrogenBasePrice(data) / data.balance.fuel.fuelPerHydrogen);
+    const tank = (30 + data.hullById.get('shuttle')!.baseFuel) * (hydrogenBasePrice(data) / data.balance.fuel.fuelPerHydrogen);
     expect(fullTankPrice(s, data)).toBeCloseTo(tank);
     expect(recoveryFee(s, 12, data)).toBeCloseTo(r.base + r.perDistance * 12 + r.fullTankShare * tank);
   });

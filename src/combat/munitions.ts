@@ -124,7 +124,7 @@ function pointDefense(b: Battle, mu: Munition, data: GameData, rng: Rng, effects
       s.pdShots[k] = used + 1;
       s.shotHeat += v.heatPerShot ?? 0;
       const hit = rng.chance(v.hitChance ?? 0);
-      effects.push({ kind: 'pd', shipId: s.id, munitionId: mu.id, from: near, to: { ...mu.pos }, hit });
+      effects.push({ kind: 'pd', shipId: s.id, munitionId: mu.id, from: near, to: { ...mu.pos }, hit, tier: m.tier });
       if (hit) {
         mu.hp -= v.damage ?? 0;
         if (mu.hp <= 1e-9) {
@@ -166,13 +166,13 @@ export function munitionStep(b: Battle, data: GameData, rng: Rng, effects: Effec
       moved.push(c);
       gone = pointDefense(b, mu, data, rng, effects);
     }
-    if (moved.length > 1) effects.push({ kind: 'munitionMove', munitionId: mu.id, moduleId: mu.moduleId, path: moved });
+    if (moved.length > 1) effects.push({ kind: 'munitionMove', munitionId: mu.id, moduleId: mu.moduleId, path: moved, tier: mu.tier });
     if (gone) continue;
     // Next to the target: the hit roll; hit or miss, the munition is removed.
     if (route !== null && steps.length === path.length) {
       const hit = rng.chance(guidedHitChance(w, t, data));
       const at = nearestCell(t, mu.pos);
-      effects.push({ kind: 'munitionHit', munitionId: mu.id, moduleId: mu.moduleId, targetId: t.id, at, hit });
+      effects.push({ kind: 'munitionHit', munitionId: mu.id, moduleId: mu.moduleId, targetId: t.id, at, hit, tier: mu.tier });
       t.attacked = true;
       if (hit) {
         applyHit(t, w, 'hull', at, data, effects);

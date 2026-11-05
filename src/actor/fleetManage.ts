@@ -165,3 +165,37 @@ export function fleetProblems(fleet: Ship[], data: GameData): string[] {
     return error ? [`${ship.name}: ${error}`] : [];
   });
 }
+
+/**
+ * Moves fuel between the fleet ships (owner, 2026-11-04), so that all ships
+ * can go the same distance before one is empty: each ship gets fuel in
+ * proportion to its fuel use per distance (mass factor x engine fuel rate),
+ * up to its tank capacity. The total fuel does not change. No fee and no time.
+ */
+export function balanceFuel(data: GameData, fleet: Ship[]): MoveResult {
+  const ships = fleet.map((ship) => {
+    const s = travelStats(ship, data);
+    return { ship, cap: s.fuelCapacity, rate: Math.max(EPS, s.mass ** data.balance.travel.fuelMassExponent * Math.max(s.engineFuelRate, EPS)) };
+  });
+  const total = ships.reduce((sum, x) => sum + Math.min(x.ship.fuel, x.cap), 0);
+  if (ships.length < 2) return { ok: false, text: 'The fleet has only one ship.' };
+  if (total <= EPS) return { ok: false, text: 'The fleet has no fuel.' };
+  const fill = (t: number) => ships.reduce((sum, x) => sum + Math.min(x.cap, t * x.rate), 0);
+  let lo = 0;
+  let hi = Math.max(...ships.map((x) => x.cap / x.rate));
+  if (fill(hi) <= total) lo = hi;
+  else for (let i = 0; i < 100; i++) (fill((lo + hi) / 2) < total ? (lo = (lo + hi) / 2) : (hi = (lo + hi) / 2));
+  const before = ships.map((x) => x.ship.fuel);
+  for (const x of ships) x.ship.fuel = Math.min(x.cap, lo * x.rate);
+  // Put the rounding rest on the ships with tank space, so that no fuel is lost.
+  let rest = total - ships.reduce((sum, x) => sum + x.ship.fuel, 0);
+  for (const x of ships) {
+    if (rest <= 0) break;
+    const add = Math.min(rest, x.cap - x.ship.fuel);
+    x.ship.fuel += add;
+    rest -= add;
+  }
+  const moved = ships.reduce((sum, x, i) => sum + Math.max(0, x.ship.fuel - (before[i] ?? 0)), 0);
+  if (moved < 0.05) return { ok: true, text: 'The fuel is already balanced.' };
+  return { ok: true, text: `Moved ${moved.toFixed(1)} fuel between the ships. All ships can now go about the same distance.` };
+}

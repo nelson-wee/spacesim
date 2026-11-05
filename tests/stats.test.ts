@@ -43,13 +43,13 @@ describe('speed and maneuver formulas (Section 11.4)', () => {
 describe('starting ship stats (M1-SHIP-05)', () => {
   const ship = () => createShipFromLoadout(data, 'start_shuttle', 's', 'test');
 
-  it('empty: mass 28 t, TWR 1.07, move 4, cargo 30 t, fuel 30', () => {
+  it('empty: mass 28 t, TWR 1.07, move 4, cargo 30 t, fuel 30 + the hull fuel', () => {
     const s = travelStats(ship(), data);
     expect(s.mass).toBe(28);
     expect(s.twr).toBeCloseTo(1.07, 2);
     expect(s.move).toBe(4);
     expect(s.cargoCapacity).toBe(30);
-    expect(s.fuelCapacity).toBe(30);
+    expect(s.fuelCapacity).toBe(30 + data.hullById.get('shuttle')!.baseFuel);
     expect(s.engineFuelRate).toBe(1);
   });
 

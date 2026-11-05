@@ -4,8 +4,10 @@
 // cargo. The kill bounty to collect shows at the bottom.
 import { deliverFreight, deliverSupply, pickupFreight, standing } from '../../career/contracts';
 import { offerView } from '../../career/contractView';
+import { deliverRelief } from '../../career/secondChance';
 import { displayDay } from '../../core/clock';
 import type { Game } from '../../core/game';
+import type { TutorialTrigger } from '../../data/schemas';
 import type { Contract } from '../../core/types';
 import type { Term } from '../../render/display';
 import { HEIGHT } from '../../render/display';
@@ -31,6 +33,12 @@ export function contractTask(game: Game, c: Contract): string {
       ? `Pick up ${c.units} ${com(c.commodity)} at ${name(c.fromId)} (deposit ${Math.round(c.deposit)} cr), deliver to ${name(c.toId)}.`
       : `Deliver ${Math.round(c.units)} ${com(c.commodity)} to ${name(c.toId)}: fee ${Math.round(c.fee)} cr and the deposit back.`;
   }
+  if (c.kind === 'relief') return `Deliver ${Math.round(c.units - c.delivered)} ${com(c.commodity)} (guild cargo, free) to ${name(c.destId)}. Done: the guild clears your debt.`;
+  if (c.kind === 'raid') {
+    return c.prizeShipId === null
+      ? `Capture the ${c.targetName} in ${world.sectors[c.sectorId]?.name ?? '?'} (arrive or Hunt; it must surrender; P takes it). Then to ${name(c.havenId)}.`
+      : `Take the ${c.targetName} to ${name(c.havenId)} (Pirate Haven). Done: the pirates clear your debt.`;
+  }
   if (c.kind === 'sweep') return `Destroy or capture pirates in ${world.sectors[c.sectorId]?.name ?? '?'}: ${c.kills} of ${c.ships}. Hunt (H) finds them.`;
   return `Find ${c.name} in ${world.sectors[c.sectorId]?.name ?? '?'}: arrive in the sector or Hunt there.`;
 }
@@ -40,6 +48,10 @@ export class ContractsScreen implements Screen {
   private notice = '';
 
   constructor(private readonly app: App) {}
+
+  tutorialTriggers(): TutorialTrigger[] {
+    return ['contracts'];
+  }
 
   private get game(): Game {
     if (!this.app.game) throw new Error('No game');
@@ -68,7 +80,8 @@ export class ContractsScreen implements Screen {
       const dl = v.deadline === null ? '' : `  by day ${displayDay(v.deadline)}${game.state.day > v.deadline - 3 ? ' (soon!)' : ''}`;
       t.text(0, y, fit(`${v.type}: ${c.reason}`, 99), sel ? ui.bright : ui.text, bg);
       t.text(2, y + 1, fit(contractTask(game, c), 97), ui.text, bg);
-      t.text(2, y + 2, fit(`${v.route}, ${v.jumps} jumps, security ${v.lowestLevel}, threat ${v.band}; reward ${formatCredits(v.reward)}${dl}`, 97), ui.dim, bg);
+      const reward = c.kind === 'relief' || c.kind === 'raid' ? 'reward: the debt is cleared' : `reward ${formatCredits(v.reward)}`;
+      t.text(2, y + 2, fit(`${v.route}, ${v.jumps} jumps, security ${v.lowestLevel}, threat ${v.band}; ${reward}${dl}`, 97), ui.dim, bg);
       y += 4;
     });
     if (s.killBounty > 0) t.text(0, HEIGHT - 5, `Kill bounty to collect at a Bounty Guild: ${formatCredits(s.killBounty)}.`, ui.good);
@@ -89,8 +102,9 @@ export class ContractsScreen implements Screen {
         return true;
       case 'd':
         if (c?.kind === 'supply') this.notice = report(game, deliverSupply(game, c.id), 'good').text;
+        else if (c?.kind === 'relief') this.notice = report(game, deliverRelief(game, c.id), 'good').text;
         else if (c?.kind === 'freight') this.notice = report(game, deliverFreight(game, c.id), 'good').text;
-        else this.notice = 'Select a Supply or Freight contract.';
+        else this.notice = 'Select a Supply, Freight, or relief contract.';
         return true;
       case 'p':
         this.notice = c?.kind === 'freight' ? report(game, pickupFreight(game, c.id), 'good').text : 'Select a Freight contract.';
@@ -108,7 +122,7 @@ export class ContractsScreen implements Screen {
       'CONTRACTS',
       '',
       'Up/Down  Select a contract',
-      'D        Deliver Supply or Freight cargo (docked at the destination)',
+      'D        Deliver Supply, Freight, or relief cargo (docked at the destination)',
       'P        Pick up Freight cargo (docked at the pickup location)',
       'Esc, G   Back',
       '',

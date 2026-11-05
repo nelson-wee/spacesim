@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { addCargo, fleetUnits, loadingOrder } from '../src/actor/cargo';
 import { accrueUpkeep, payUpkeep, removeShip, renameShip, setFlagship, upkeepPerDay } from '../src/actor/fleet';
 import { TextInput } from '../src/ui/input';
-import { fleetProblems, freeSlotFor, installModule, moveAllCargo, moveCargo, moveModule, restoreLoadout, snapshotLoadout, uninstallModule } from '../src/actor/fleetManage';
+import { balanceFuel, fleetProblems, freeSlotFor, installModule, moveAllCargo, moveCargo, moveModule, restoreLoadout, snapshotLoadout, uninstallModule } from '../src/actor/fleetManage';
 import { towFleet } from '../src/actor/fuel';
 import { planSectorTrip, travelInSector } from '../src/actor/travel';
 import { buy, sell } from '../src/services/market';
 import { refuel } from '../src/services/refuel';
-import { finishBattle } from '../src/career/battleEnd';
+import { finishBattle, towIfStranded } from '../src/career/battleEnd';
 import { applyDefeat } from '../src/career/defeat';
 import { takePrize, surrenderedShips } from '../src/career/prize';
 import { createBattle } from '../src/combat/battle';
@@ -264,6 +264,32 @@ describe('fleet rules (M6-FLEET)', () => {
     expect(fleetProblems([a], data)).toEqual([]);
   });
 
+  it('hull fuel (owner, 2026-11-04): a Wasp with no tank holds its baseFuel; a prize gets at least that much', () => {
+    const wasp = createShipFromLoadout(data, 'pirate_raider', 'w', 'W');
+    const base = data.hullById.get('wasp')!.baseFuel;
+    expect(travelStats(wasp, data).fuelCapacity).toBe(base);
+    expect(base).toBeLessThan(travelStats(wasp, data).fuelPerJump);
+    const { game } = withFleet(['start_shuttle']);
+    const b = createBattle({ player: [{ ship: game.state.player.fleet[0]!, ai: 'human' }], other: [{ ship: wasp, ai: 'raider', faction: 'pirate' }], aggressor: 'other', rng: createRngState(5, 'combat') }, data);
+    const cs = b.ships.find((s) => s.side === 'other')!;
+    cs.status = 'surrendered';
+    const r = takePrize(game, game.state.player, cs);
+    expect(r.ok).toBe(true);
+    expect(r.ship!.fuel).toBeCloseTo(base);
+  });
+
+  it('ship ids stay unique: the start ship, a bought ship, and a prize (play-test bug, 2026-11-04)', () => {
+    const { game, loc } = setup();
+    const p = game.state.player;
+    expect(buyShip(game, p, loc, 'light_freighter').ok).toBe(true);
+    const wasp = createShipFromLoadout(data, 'pirate_raider', 'e0', 'W');
+    const b = createBattle({ player: [{ ship: p.fleet[0]!, ai: 'human' }], other: [{ ship: wasp, ai: 'raider', faction: 'pirate' }], aggressor: 'other', rng: createRngState(5, 'combat') }, data);
+    const cs = b.ships.find((s) => s.side === 'other')!;
+    cs.status = 'surrendered';
+    expect(takePrize(game, p, cs).ok).toBe(true);
+    expect(new Set(p.fleet.map((s) => s.id)).size).toBe(p.fleet.length);
+  });
+
   it('fleet problems list ships that break the required-module rules', () => {
     const { game } = withFleet(['start_shuttle', 'light_freighter_starter']);
     const p = game.state.player;
@@ -399,6 +425,37 @@ describe('fleet in combat (M6-FCMB)', () => {
     expect(takePrize(game, p, pr.ships[1]!).text).toMatch(/full/);
   });
 
+  it('a won battle that leaves the engines at 0 in space brings a tug (play-test soft-lock, 2026-11-04)', () => {
+    const { game } = withFleet(['laser_gunship']);
+    const p = game.state.player;
+    const sector = game.state.world.sectors[0]!;
+    p.position = { kind: 'space', sectorId: sector.id, x: 30, y: 15 };
+    p.fleet[0]!.fuel = 20;
+    const b = battleWith(game, 'pirate_raider');
+    b.ships[1]!.status = 'destroyed';
+    b.result = 'win';
+    b.ships.find((s) => s.id === b.playerId)!.ship.engineValue = 0;
+    finishBattle(game, p, b);
+    expect(p.position.kind).toBe('docked');
+  });
+
+  it('a prize with its engines at 0 cannot move: the fleet is towed when the after-battle screen closes', () => {
+    const { game } = withFleet(['laser_gunship']);
+    const p = game.state.player;
+    p.position = { kind: 'space', sectorId: 0, x: 30, y: 15 };
+    p.fleet[0]!.fuel = 20;
+    const b = battleWith(game, 'pirate_raider');
+    const cs = b.ships[1]!;
+    cs.ship.engineValue = 0;
+    cs.status = 'surrendered';
+    b.result = 'win';
+    finishBattle(game, p, b, { boarding: 'manual' });
+    expect(p.position.kind).toBe('space');
+    expect(takePrize(game, p, cs).ok).toBe(true);
+    expect(towIfStranded(game, p)).toBe(true);
+    expect(p.position.kind).toBe('docked');
+  });
+
   it('boarding: manual boarding leaves the surrendered cargo for the after-battle screen; auto takes it', () => {
     for (const boarding of ['auto', 'manual'] as const) {
       const { game } = withFleet(['laser_gunship', 'light_freighter_starter']);
@@ -413,5 +470,50 @@ describe('fleet in combat (M6-FCMB)', () => {
         expect(p.fleet[1]!.cargo.water?.unitCost).toBe(0);
       }
     }
+  });
+});
+
+describe('fuel balance (owner, 2026-11-04)', () => {
+  it('moves fuel so that all ships go about the same distance, and keeps the total', () => {
+    const a = ship('start_shuttle', 'A');
+    const b = ship('light_freighter_starter', 'B');
+    const capA = travelStats(a, data).fuelCapacity;
+    a.fuel = 0;
+    b.fuel = travelStats(b, data).fuelCapacity;
+    const total = a.fuel + b.fuel;
+    const r = balanceFuel(data, [a, b]);
+    expect(r.ok).toBe(true);
+    expect(a.fuel + b.fuel).toBeCloseTo(total, 6);
+    expect(a.fuel).toBeGreaterThan(0);
+    expect(a.fuel).toBeLessThanOrEqual(capA + 1e-9);
+    // The same fuel per distance: fuel / (mass factor x engine rate) is equal while no tank is full.
+    const range = (s: Ship) => {
+      const st = travelStats(s, data);
+      return s.fuel / (st.mass ** data.balance.travel.fuelMassExponent * st.engineFuelRate);
+    };
+    if (a.fuel < capA - 1e-6) expect(range(a)).toBeCloseTo(range(b), 3);
+    expect(balanceFuel(data, [a, b]).text).toMatch(/already balanced/);
+  });
+
+  it('fills the small tanks when there is more fuel than the ships need for the same distance', () => {
+    const a = ship('start_shuttle', 'A');
+    const b = ship('heavy_freighter_trader', 'B');
+    const capA = travelStats(a, data).fuelCapacity;
+    const capB = travelStats(b, data).fuelCapacity;
+    a.fuel = 0;
+    b.fuel = capB;
+    balanceFuel(data, [a, b]);
+    expect(a.fuel + b.fuel).toBeCloseTo(capB, 6);
+    expect(a.fuel).toBeLessThanOrEqual(capA + 1e-9);
+    expect(b.fuel).toBeLessThanOrEqual(capB + 1e-9);
+  });
+
+  it('refuses with one ship or no fuel', () => {
+    expect(balanceFuel(data, [ship('start_shuttle')]).ok).toBe(false);
+    const a = ship('start_shuttle');
+    const b = ship('start_shuttle');
+    a.fuel = 0;
+    b.fuel = 0;
+    expect(balanceFuel(data, [a, b]).text).toMatch(/no fuel/);
   });
 });

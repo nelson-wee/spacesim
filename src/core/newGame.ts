@@ -46,6 +46,7 @@ export function createGame(seed: number, data: GameData = gameData(), options: {
         startLevels: world.sectors.map((s) => securityLevel(s.securityValue, data)),
       },
       end: null,
+      secondChance: { used: false, offer: null, traded: null, buyback: null, stuckShown: false },
     },
   };
   const game = wrapGame(state, data);

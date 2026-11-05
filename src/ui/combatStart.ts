@@ -4,6 +4,7 @@
 // win: the player takes the cargo of ships that surrendered and of the pods
 // left on the map, as far as it fits (M5-LOOT). Then security and notoriety
 // change (career/consequences.ts).
+import { namedShipId } from '../career/secondChance';
 import { finishBattle } from '../career/battleEnd';
 import { createBattle } from '../combat/battle';
 import { resolveTurn } from '../combat/resolver';
@@ -63,7 +64,7 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
     {
       player: [{ ship: flag, ai: 'human' }],
       other: enemies.map((e, i) => {
-        const ship = createShipFromLoadout(data, e.loadoutId, `enemy-${i}`, `${options.shipName ?? data.loadoutById.get(e.loadoutId)?.name ?? e.loadoutId} ${i + 1}`, e.tier);
+        const ship = createShipFromLoadout(data, e.loadoutId, options.namedId !== undefined ? namedShipId(options.namedId, i) : `enemy-${i}`, `${options.shipName ?? data.loadoutById.get(e.loadoutId)?.name ?? e.loadoutId} ${i + 1}`, e.tier);
         if (e.cargo) ship.cargo = structuredClone(e.cargo);
         return {
           ship,

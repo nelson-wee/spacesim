@@ -349,35 +349,37 @@ function checkModuleArt(data: GameData): string[] {
   return problems;
 }
 
-/** Combat effects: color names exist and agree with the style (data/art/effects.json). */
+/** Combat effects: each color name is in the style or in the ramp colors of effects.json, and no ramp color hides a style color. */
 function checkEffectsArt(data: GameData): string[] {
   const problems: string[] = [];
   const { effects, style } = data.art;
-  for (const [k, v] of Object.entries(effects.colors)) {
-    if (style.colors[k] !== v) problems.push(`art: effect color "${k}" is ${v} in effects.yaml, ${String(style.colors[k])} in style.json`);
+  for (const k of Object.keys(effects.colors)) {
+    if (style.colors[k] !== undefined) problems.push(`art: effect color "${k}" is in effects.json and in style.json`);
   }
   for (const [name, e] of Object.entries(effects.effects)) {
-    for (const f of [...e.frames, ...(e.persist ? [e.persist] : [])]) {
-      for (const c of frameColorNames(f)) if (!(c in style.colors)) problems.push(`art/effects.json: ${name} uses unknown color "${c}"`);
+    for (const v of e.versions) {
+      for (const f of [...v.frames, ...(v.persist ? [v.persist] : [])]) {
+        for (const c of frameColorNames(f)) if (!(c in style.colors) && !(c in effects.colors)) problems.push(`art/effects.json: ${name} uses unknown color "${c}"`);
+      }
     }
   }
   return problems;
 }
 
-/** Color names in an effect frame: fg, pfg, pods, trail and cell colors. */
+/** Color names in an effect frame: fg, pfg, pods, bg, ghost, crawl, and the colors of trail, exhaust, and cell lists. */
 export function frameColorNames(frame: unknown): string[] {
   const found: string[] = [];
   const visit = (v: unknown, key: string): void => {
     if (Array.isArray(v)) {
-      // trail: [[glyph, color], ...]; cells: [[x, y, glyph, color], ...]
-      if (key === 'trail') for (const t of v) if (Array.isArray(t) && typeof t[1] === 'string') found.push(t[1]);
-      if (key === 'cells') for (const c of v) if (Array.isArray(c) && typeof c[3] === 'string') found.push(c[3]);
+      // trail and exhaust: [[glyph, color], ...]; cells: [[x, y, glyph, color], ...]
+      if (key === 'trail' || key === 'exhaust') for (const t of v) if (Array.isArray(t) && typeof t[1] === 'string') found.push(t[1]);
+      if (key === 'list') for (const c of v) if (Array.isArray(c) && typeof c[3] === 'string') found.push(c[3]);
       for (const x of v) visit(x, '');
       return;
     }
     if (v === null || typeof v !== 'object') return;
     for (const [k, x] of Object.entries(v)) {
-      if ((k === 'fg' || k === 'pfg' || k === 'pods') && typeof x === 'string') found.push(x);
+      if (['fg', 'pfg', 'pods', 'bg', 'ghost'].includes(k) && typeof x === 'string') found.push(x);
       else visit(x, k);
     }
   };

@@ -65,7 +65,8 @@ const priority = (loadoutId: string) => data.loadoutById.get(loadoutId)?.powerPr
 function run(p: Pairing, n: number, i: number): Battle {
   let b = createBattle(
     {
-      player: p.player.map((l, k) => ({ ship: createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), ai: p.playerAi ?? 'attack', powerPriority: priority(l) })),
+      // The player's ships use their own fuel in a battle; a test ship starts with the combat reserve (as before 2026-11-04).
+      player: p.player.map((l, k) => ({ ship: Object.assign(createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), { fuel: data.balance.combat.npcFuelReserve }), ai: p.playerAi ?? 'attack', powerPriority: priority(l) })),
       other: p.other.map((l, k) => ({ ship: createShipFromLoadout(data, l, `o${k}`, `${data.loadoutById.get(l)?.name ?? l} ${k + 1}`), ai: p.otherAi, powerPriority: priority(l) })),
       aggressor: p.otherAi === 'trader' ? 'player' : 'other',
       rng: createRngState(n * 7919 + i, 'combat'),

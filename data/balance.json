@@ -22,6 +22,8 @@
     "width": 66,
     "height": 34,
     "bodyRingRadii": [5, 8, 11, 14],
+    "travelAnimCellMs": 30,
+    "travelAnimMaxMs": 1200,
     "jumpRingRadius": 16,
     "minBodyDistance": 6,
     "minJumpPointDistance": 4,
@@ -63,6 +65,7 @@
     "groupBonus": 0.15
   },
   "combat": {
+    "moveAnimBudgetMs": 1500,
     "gridWidth": 70,
     "gridHeight": 30,
     "damageScale": 2.75,
@@ -91,7 +94,7 @@
     "surrenderChance": { "trader": 0.7, "evader": 0.6, "raider": 0.4, "patrol": 0, "attack": 0 },
     "auto": { "retreatHull": 0.25, "stopHull": 0.5, "turnDelayMs": 250 },
     "forcedSurrenderHull": 0.2,
-    "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6 }
+    "map": { "fill": 0.42, "iterations": 3, "debrisShare": 0.35, "startColumn": 18, "startAreaHalfWidth": 6, "interceptGap": 10 }
   },
   "fuel": { "fuelPerHydrogen": 2 },
   "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },
@@ -102,7 +105,7 @@
     "prizeFuelShare": 0.25,
     "fleeCargoShare": 0.5
   },
-  "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Second Chance" },
+  "start": { "credits": 2000, "loadoutId": "start_shuttle", "shipName": "Fresh Start" },
   "career": {
     "days": 730,
     "fleetValueShare": 0.6,
@@ -185,7 +188,7 @@
     "validationDays": 200,
     "lowOutputShare": 0.3,
     "lowOutputDays": 60,
-    "fill": { "minTradeHubs": 2, "militaryOutposts": 2, "pirateHavens": 1, "minShipyards": 2, "habitatWeight": 2, "tradeHubWeight": 1 },
+    "fill": { "minTradeHubs": 2, "militaryOutposts": 2, "pirateHavens": 1, "havenBaseline": 25, "minShipyards": 2, "habitatWeight": 2, "tradeHubWeight": 1 },
     "ratioAcceptLow": 0.9,
     "ratioAcceptHigh": 1.35,
     "economyCheck": false,

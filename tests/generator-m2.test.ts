@@ -127,6 +127,17 @@ describe.each(worlds)('world rules, seed %i', (_seed, w) => {
     }
   });
 
+  it('each world has a Pirate Haven in a sector with a low baseline (owner, 2026-11-04)', () => {
+    // Seeds 9, 27, 58, and 94 had no Haven before; some get a new frontier station.
+    for (const seed of [9, 27, 58, 94, ...SEEDS]) {
+      const world = generateWorld(seed, data);
+      const havens = world.locations.filter((l) => l.bodyType === 'pirate_haven');
+      expect(havens.length).toBeGreaterThanOrEqual(1);
+      for (const h of havens) expect(world.sectors[h.sectorId]!.securityBaseline).toBeLessThanOrEqual(data.stationTypeById.get('pirate_haven')!.maxBaselineSecurity!);
+      if ([9, 27, 58, 94].includes(seed)) expect(havens.some((h) => world.sectors[h.sectorId]!.development === 'frontier')).toBe(true);
+    }
+  });
+
   it('the start location is in the core sector, with an Outfitter and a Merchants Guild', () => {
     const start = w.locations[w.startLocationId]!;
     expect(start.sectorId).toBe(w.coreSectorId);

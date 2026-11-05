@@ -4,7 +4,7 @@ import type { Development, SlotSize, Tier } from '../data';
 import type { Knowledge } from '../actor/knowledge';
 import type { RngStreams } from './rng';
 
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 
 export interface Vec {
   x: number;
@@ -301,7 +301,36 @@ export interface NamedBounty extends ContractBase {
   expiry: number;
 }
 
-export type Contract = SupplyContract | FreightContract | SweepContract | NamedBounty;
+/**
+ * Second chance, guild relief (owner, Q-52, M8-SC-02): deliver a fixed
+ * quantity of guild cargo by a deadline; done clears the debt.
+ */
+export interface ReliefContract extends ContractBase {
+  kind: 'relief';
+  destId: number;
+  commodity: string;
+  units: number;
+  delivered: number;
+  deadline: number;
+}
+
+/**
+ * Second chance, pirate job (owner, Q-52, M8-SC-03): capture a spawned trader
+ * in a sector and deliver it to a Pirate Haven by a deadline.
+ */
+export interface RaidContract extends ContractBase {
+  kind: 'raid';
+  sectorId: number;
+  havenId: number;
+  deadline: number;
+  /** The name of the target vessel (and of its battle ships). */
+  targetName: string;
+  targetLoadout: string;
+  /** The fleet ship id of the captured vessel, once it is a prize. */
+  prizeShipId: string | null;
+}
+
+export type Contract = SupplyContract | FreightContract | SweepContract | NamedBounty | ReliefContract | RaidContract;
 
 export interface Board {
   locationId: number;
@@ -344,9 +373,24 @@ export interface CareerEnd {
   secondTitles: string[];
 }
 
+/** The one-time second chance (owner, Q-52, M8-SC). */
+export interface SecondChanceState {
+  /** True once the offer showed (also after Decline). */
+  used: boolean;
+  /** The offer that waits for the player's answer. */
+  offer: { kind: 'relief' | 'pirate'; locationId: number } | null;
+  /** The flagship traded to the pirates, and its trade-in value then (for the buyback). */
+  traded: { ship: Ship; price: number } | null;
+  /** After the pirate job: the original ship for sale at this Pirate Haven. */
+  buyback: { locationId: number; ship: Ship; price: number } | null;
+  /** The stuck message (M8-SC-06) showed for the current stuck state. */
+  stuckShown: boolean;
+}
+
 export interface CareerState {
   stats: CareerStats;
   end: CareerEnd | null;
+  secondChance: SecondChanceState;
 }
 
 /** The first-trade plan of the tutorial (Q-48): a best route at the career start. */

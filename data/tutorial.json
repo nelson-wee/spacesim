@@ -7,12 +7,14 @@
       "lines": [
         "You have a small ship and a little money. Trade between",
         "locations, make your ship better, build a fleet, and fight",
-        "or hunt pirates.",
+        "or hunt pirates. The career lasts 730 days.",
         "",
         "Top row: the day, your credits, fuel, and cargo.",
         "Left: the sector map. Right: the panel with the keys.",
         "Bottom: the newest log messages (L shows all of them).",
         "",
+        "The game saves each time you dock. Q, Q saves and quits.",
+        "X opens the Codex: who makes and who buys each good.",
         "Each screen has help: press ?."
       ]
     },
@@ -50,7 +52,8 @@
         "Each service of this location has a tab (1-9, or Left and",
         "Right). Market: buy and sell. Refuel: fill the tanks.",
         "Mechanic: repair. Insurance: Clone Insurance for your ship.",
-        "Outfitter and Shipyard: modules and hulls.",
+        "Outfitter and Shipyard: modules and hulls. Merchants' Guild",
+        "and Bounty Guild: contracts.",
         "",
         "I shows your fleet and cargo. Esc goes back to the map."
       ]
@@ -149,6 +152,63 @@
         "much stronger, keep away from sectors with many !, and",
         "buy Clone Insurance. A better ship (Outfitter, Shipyard)",
         "also helps."
+      ]
+    },
+    {
+      "id": "fleet",
+      "trigger": "fleet",
+      "title": "Your fleet",
+      "lines": [
+        "Each ship has a tab (Left and Right, or click its name).",
+        "Up and Down select a module slot or a cargo line.",
+        "",
+        "U uninstalls a module into the fleet hold (one list for all",
+        "ships). Enter installs a hold module in an empty slot.",
+        "1-8 moves the selected cargo or module to that ship.",
+        "F makes a ship the flagship (it fights; it pays no upkeep).",
+        "N renames a ship.",
+        "",
+        "You can leave when the hold is empty and each ship has an",
+        "engine and power. R reverts all module changes."
+      ]
+    },
+    {
+      "id": "afterBattle",
+      "trigger": "afterBattle",
+      "title": "After the battle",
+      "lines": [
+        "Ships with '?' surrendered. P takes one as a prize ship;",
+        "C takes its cargo. Ships that you do not take stay behind.",
+        "",
+        "Your fleet has at most 4 ships. X, X scuttles one of your",
+        "ships to make room (uninstall its modules first with U).",
+        "Esc: done."
+      ]
+    },
+    {
+      "id": "merchants",
+      "trigger": "merchants",
+      "title": "The Merchants' Guild",
+      "lines": [
+        "The guild posts contracts every 7 days, from real needs.",
+        "Supply: deliver goods that a location needs. Each tonne pays",
+        "the goods price and a fee, until the need ends (at most",
+        "28 days). Freight: carry the guild's cargo (a deposit).",
+        "",
+        "Enter accepts an offer. G shows your contracts."
+      ]
+    },
+    {
+      "id": "contracts",
+      "trigger": "contracts",
+      "title": "Your contracts",
+      "lines": [
+        "Each contract shows what to do next, the route, and the",
+        "reward. Dock at the destination and press D to deliver,",
+        "or P to pick up Freight cargo.",
+        "",
+        "A late Freight delivery fails and costs 2 standing.",
+        "Bounties pay when done; kill bounties at a Bounty Guild."
       ]
     }
   ]

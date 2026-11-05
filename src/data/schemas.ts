@@ -36,6 +36,9 @@ export const balanceSchema = z.object({
     width: z.number().int().positive(),
     height: z.number().int().positive(),
     bodyRingRadii: z.array(pos).min(1),
+    /** Travel animation on the sector map (owner, M8-ART-06): time per cell and the most time in all. */
+    travelAnimCellMs: nonNeg,
+    travelAnimMaxMs: nonNeg,
     jumpRingRadius: pos,
     minBodyDistance: nonNeg,
     minJumpPointDistance: nonNeg,
@@ -86,6 +89,8 @@ export const balanceSchema = z.object({
     groupBonus: nonNeg,
   }),
   combat: z.object({
+    /** Ship move animation (effects v0.2): the moves of one turn take at most this time in all; times scale down if over. */
+    moveAnimBudgetMs: pos,
     gridWidth: z.number().int().positive(),
     gridHeight: z.number().int().positive(),
     /**
@@ -150,6 +155,12 @@ export const balanceSchema = z.object({
       debrisShare: prob,
       startColumn: z.number().int().min(1),
       startAreaHalfWidth: z.number().int().min(0),
+      /**
+       * Play test (2026-11-04): when the player attacks traders (and their escorts), the player
+       * closed in before the battle: the other side starts this many cells from the player's
+       * start column, not at its own side. Else traders always reach their edge first.
+       */
+      interceptGap: z.number().int().min(1),
     }),
   }),
   fuel: z.object({ fuelPerHydrogen: pos }),
@@ -256,6 +267,8 @@ export const balanceSchema = z.object({
       minTradeHubs: z.number().int().min(0),
       militaryOutposts: z.number().int().min(0),
       pirateHavens: z.number().int().min(0),
+      /** Owner (2026-11-04): with no sector for a Pirate Haven, one frontier sector gets this security baseline. */
+      havenBaseline: z.number().min(0).max(100),
       minShipyards: z.number().int().min(0),
       habitatWeight: nonNeg,
       tradeHubWeight: nonNeg,
@@ -439,7 +452,7 @@ export type BattleMapTemplate = z.infer<typeof battleMapTemplateSchema>;
 export const battleMapsSchema = z.object({ nearDistance: pos, default: z.string(), templates: z.array(battleMapTemplateSchema).min(1) });
 
 /** Tutorial tips (Q-48). A tip shows one time, when its trigger occurs. Text fields: {commodity}, {buyAt}, {sellAt}, {buy}, {sell}, {units}, {profit}, {profitSold}. */
-export const tutorialTriggerSchema = z.enum(['sectorMap', 'location', 'market', 'bought', 'regionMap', 'sold', 'hail', 'combat', 'defeat']);
+export const tutorialTriggerSchema = z.enum(['sectorMap', 'location', 'market', 'bought', 'regionMap', 'sold', 'hail', 'combat', 'defeat', 'fleet', 'afterBattle', 'merchants', 'contracts']);
 export const tutorialSchema = z.object({
   tips: z.array(
     z.object({
@@ -490,6 +503,11 @@ export const hullsSchema = z.object({
       hp: pos,
       armor: nonNeg,
       basePower: nonNeg,
+      /**
+       * Owner (2026-11-04): fuel that the hull holds with no fuel tank: about 3 trips in a sector
+       * with docking, and less than one jump of a median lane. A fuel tank adds to it.
+       */
+      baseFuel: nonNeg,
       mass: pos,
       heatCapacity: pos,
       baseCooling: nonNeg,
@@ -670,6 +688,24 @@ export const contractsSchema = z.object({
    * The contract ends when the need ends or maxDays after acceptance (Q-53 (c); the board can post it
    * again at new prices). It counts as done (standing) when the player delivered minDoneTonnes.
    */
+  /** The one-time second chance (owner, Q-52, M8-SC). */
+  secondChance: z.object({
+    /** Security level at the tow location for the guild relief; below it: the pirate offer. */
+    reliefMinLevel: z.number().int().min(0).max(4),
+    /** startCapital (owner, Q-54): credits the guild pays when the relief is done, after it clears the debt. */
+    relief: z.object({ tonnes: pos, maxJumps: z.number().int().min(0), deadlineBase: nonNeg, deadlinePerJump: nonNeg, startCapital: nonNeg }),
+    raid: z.object({
+      loadoutId: z.string(),
+      shipName: z.string(),
+      targetLoadout: z.string(),
+      minJumps: z.number().int().min(0),
+      maxJumps: z.number().int().min(0),
+      maxLevel: z.number().int().min(0).max(4),
+      havenMaxJumps: z.number().int().min(0),
+      days: pos,
+      targetNames: z.array(z.string()).min(1),
+    }),
+  }),
   supply: z.object({
     feePerTonne: nonNeg,
     feePerTonneJump: nonNeg,
@@ -808,12 +844,12 @@ export const artStyleSchema = z.object({
     titlePrefix: z.string(),
   }),
 });
-/** data/art/effects.json: generated from data/art/effects.yaml by tools/import-art.ts. M4 plays the frames. */
+/** data/art/effects.json: generated from data/art/effects.yaml (v0.2) by tools/import-art.ts. */
+const effectFrame = z.record(z.string(), z.unknown());
 export const artEffectsSchema = z.object({
   source: z.string(),
   lineSets: z.record(z.string(), z.array(z.string()).length(4)),
   patterns: z.record(z.string(), z.array(z.array(z.union([z.number(), z.string()])))),
-  travel: z.string(),
   queue: z.object({
     staggerMs: nonNeg,
     staggerMs5Plus: nonNeg,
@@ -823,12 +859,32 @@ export const artEffectsSchema = z.object({
     skipKey: z.string(),
   }),
   colors: z.record(z.string(), color),
+  movement: z.object({
+    combat: z.object({
+      msPerCell: pos,
+      cellsPerFrameLongPath: z.number().int().positive(),
+      longPath: z.number().int().positive(),
+      igniteMs: nonNeg,
+      exhaustIgnite: z.string(),
+      exhaustMove: z.string(),
+      wakeFrames: z.number().int().min(0),
+    }),
+    map: z.object({
+      glyph: z.string(),
+      cellsPerFrame: z.number().int().positive(),
+      msPerFrame: pos,
+      trail: z.number().int().min(0),
+      trailColors: z.array(z.string()).min(1),
+    }),
+  }),
   effects: z.record(
     z.string(),
     z.object({
-      totalMsAt18Cells: nonNeg,
-      frames: z.array(z.record(z.string(), z.unknown())).min(1),
-      persist: z.record(z.string(), z.unknown()).optional(),
+      scene: z.string(),
+      versions: z
+        .array(z.object({ totalMs: nonNeg, frames: z.array(effectFrame).min(1), persist: effectFrame.optional() }))
+        .min(1)
+        .max(3),
       loop: z.boolean().optional(),
       static: z.boolean().optional(),
     }),

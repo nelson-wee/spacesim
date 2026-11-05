@@ -8,6 +8,9 @@ import { dailyUse, hasResidentPopulation, populationFor } from '../econ/populati
 import { recipeOf } from '../econ/recipes';
 import { type Blueprint, mainProduct } from './blueprint';
 import { securityLevelInfo } from './security';
+import { sectorCenter } from './bodies';
+import { mapDistance, ringPoint } from './geometry';
+import { createLocation } from './location';
 
 const SLOT = 'station_slot';
 
@@ -266,6 +269,68 @@ function shipyardCount(world: World, data: GameData): { total: number; tech3: nu
 }
 
 /**
+ * A free spot for a new station in a sector (outer ring first, then inward;
+ * the angle steps in 10-degree turns), clear of bodies and jump points, or
+ * null. No random numbers: the rest of the world does not change.
+ */
+function freeStationSpot(world: World, sector: Sector, data: GameData): { pos: Location['pos']; ring: number } | null {
+  const m = data.balance.sectorMap;
+  const aspect = data.balance.world.cellAspect;
+  const center = sectorCenter(data);
+  const bodies = sector.locationIds.map((id) => (world.locations[id] as Location).pos);
+  const points = sector.jumpPointIds.map((id) => world.jumpPoints[id]?.pos).filter((p) => p !== undefined);
+  for (let ring = m.bodyRingRadii.length - 1; ring >= 0; ring--) {
+    for (let k = 0; k < 36; k++) {
+      const pos = ringPoint(center, m.bodyRingRadii[ring] as number, (k / 36) * Math.PI * 2, aspect);
+      if (bodies.every((b) => mapDistance(b, pos, aspect) >= m.minBodyDistance) && points.every((j) => mapDistance(j, pos, aspect) >= m.minJumpPointDistance)) return { pos, ring };
+    }
+  }
+  return null;
+}
+
+/**
+ * Owner (2026-11-04): each world has at least one Pirate Haven. If the normal
+ * fill placed none, one frontier sector gets the low baseline
+ * `fill.havenBaseline` and a Haven: in a free station slot, or else in a new
+ * station (named "<sector> Haven") when the sector has fewer than
+ * `bodiesMax` bodies and a clear spot. Frontier sectors with the fewest
+ * producers come first (a low baseline lowers their output), then the lowest
+ * baseline; a sector with a Military Outpost is skipped (it needs a high
+ * baseline). Only if no frontier sector fits: a middle sector, by the same rules.
+ */
+function ensureHavenSector(world: World, data: GameData): void {
+  const f = data.balance.generator.fill;
+  const haven = stationType(data, 'pirate_haven');
+  if (f.pirateHavens <= 0 || world.locations.some((l) => l.bodyType === 'pirate_haven')) return;
+  const producers = (s: Sector) => s.locationIds.filter((id) => world.locations[id]?.producer).length;
+  const outposts = (s: Sector) => s.locationIds.filter((id) => world.locations[id]?.bodyType === 'military_outpost').length;
+  for (const dev of ['frontier', 'middle'] as const) {
+    if (!haven.development.includes(dev)) continue;
+    const sectors = world.sectors
+      .filter((s) => s.development === dev && outposts(s) === 0)
+      .sort((a, b) => producers(a) - producers(b) || a.securityBaseline - b.securityBaseline || a.id - b.id);
+    for (const sector of sectors) {
+      const slot = sector.locationIds.map((id) => world.locations[id] as Location).find((l) => l.kind === 'station' && l.bodyType === SLOT);
+      const spot = slot ? null : sector.locationIds.length < data.balance.sectorMap.bodiesMax ? freeStationSpot(world, sector, data) : null;
+      if (!slot && !spot) continue;
+      sector.securityBaseline = Math.min(sector.securityBaseline, f.havenBaseline);
+      sector.securityValue = sector.securityBaseline;
+      if (slot) {
+        setStation(slot, 'pirate_haven');
+        return;
+      }
+      const loc = createLocation(
+        { id: world.locations.length, sectorId: sector.id, name: `${sector.name} Haven`, kind: 'station', bodyType: 'pirate_haven', pos: spot!.pos, ring: spot!.ring, techLevel: data.balance.world.techByDevelopment[sector.development] },
+        data,
+      );
+      world.locations.push(loc);
+      sector.locationIds.push(loc.id);
+      return;
+    }
+  }
+}
+
+/**
  * Step 5.5: fills the free station slots: Trade Hubs (at least the minimum),
  * Shipyard Stations (if the region has too few shipyards), Military Outposts,
  * Pirate Havens, and then Habitats or Trade Hubs.
@@ -299,6 +364,8 @@ export function fillStations(world: World, rng: Rng, data: GameData): void {
   place('shipyard_station', needYards, (s) => (s.development === 'core' ? 2 : 0));
   place('military_outpost', f.militaryOutposts);
   place('pirate_haven', f.pirateHavens);
+  // Owner (2026-11-04): at least one Pirate Haven in each world.
+  ensureHavenSector(world, data);
   // The rest: Habitats or Trade Hubs, by weight.
   for (const loc of world.locations) {
     if (loc.kind !== 'station' || loc.bodyType !== SLOT) continue;
