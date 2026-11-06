@@ -687,6 +687,43 @@ Findings for the owner (not changed):
 - The trader bots of the tools do not answer the second-chance offer (it stays open in their games).
 - Codex: station use shows the scaled value (x `volumeScale`); population use shows the per-unit value.
 
+## P1 Fleet combat (post-MVP, 2026-11-06)
+
+Requirements: `docs/requirements/P1-fleet-combat.md`. Scope and owner decisions: `docs/proposals/factions-and-fleet-combat.md`. Branch `claude/fleet-combat` (from `main`).
+
+### What works
+
+- **Fleet setup:** each fleet ship joins battles or stays out (fleet screen J; armed ships join by default). Joined ships use command points (Small 1, Medium 2, Large 3, Capital 6; at most 6). The fleet screen shows the setting and the points in use. Old saves load with no change.
+- **Battle:** the joined ships start with the flagship; the others use the Wingman AI with an order (Attack, Guard, Hold, Retreat). The orders box (O) changes orders at any time in the planning phase; the ship list shows each order. When the controlled ship is lost or flees, the player commands the next fleet ship; the battle ends when no fleet ship is on the map.
+- **After the battle:** each fleet ship keeps its damage, fuel, and ammunition. Pirates disable fleet ships (they stay in the fleet); other enemies destroy them. Ships that stayed out are safe, and only they can lose cargo after a flee from pirates.
+- **Encounters:** the pirate budget grows by half of the TU of the other joined ships; pirate odds and the hail screen use the TU of the joined ships.
+- **Auto-battle:** T, Shift+T, and R also play the wingmen; "auto until" stops when a fleet ship is lost or the command moves.
+- **Help and tutorial:** combat help (O), fleet screen help (J), a new tip "Your fleet in battle", and the fleet tip names J. Debug panel W adds an armed wingman.
+- **Tests:** 11 new tests (`tests/fleetCombat.test.ts`); browser check (fleet screen, orders box, a fleet battle to a win): no page errors.
+
+### Reports
+
+`sim-combat --fleet` (200 battles each; the player side: first ship Attack AI, others Wingman AI):
+
+| Pairing | TU | Win | Player ships lost per battle |
+|---|---|---|---|
+| Laser Gunship vs Pirate Corvette | 32 vs 54 | 6% | 0.94 |
+| Laser Gunship + Laser Wasp vs Pirate Corvette | 49 vs 54 | 15% | 1.74 |
+| Laser Gunship x2 vs Pirate Corvette | 74 vs 54 | 56% | 1.11 |
+| Laser Gunship + Light Freighter vs Raider Pack | 49 vs 39 | 99% | 0.30 |
+| Laser Gunship x3 vs Pirate Frigate | 125 vs 71 | 84% | 1.22 |
+| Laser Corvette + Laser Gunship vs Pirate Frigate | 91 vs 71 | 62% | 1.08 |
+
+`sim-combat` (one ship, 500 battles): all 6 checks pass with the same results as before (Shuttle vs Raider 58%).
+
+`sim-playtest` (8 seeds, styles trader, pirate, chaos, calm, 730 days; the bots fight with their joined ships): 32 careers, 0 kinds of problems.
+
+A second armed ship turns a lost fight into an even one. Fleets lose about one ship per battle against equal or stronger enemies (against pirates the ship is disabled, not lost).
+
+### Owner points
+
+- Command points limit only the ships that join a battle (the fleet keeps 4 ships). With a fleet-wide limit, a player could own only 2 Light Freighters (Large, 3 points). See DECISIONS.
+
 <!--
 Template for each milestone:
 

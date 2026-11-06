@@ -454,7 +454,7 @@ export type BattleMapTemplate = z.infer<typeof battleMapTemplateSchema>;
 export const battleMapsSchema = z.object({ nearDistance: pos, default: z.string(), templates: z.array(battleMapTemplateSchema).min(1) });
 
 /** Tutorial tips (Q-48). A tip shows one time, when its trigger occurs. Text fields: {commodity}, {buyAt}, {sellAt}, {buy}, {sell}, {units}, {profit}, {profitSold}. */
-export const tutorialTriggerSchema = z.enum(['sectorMap', 'location', 'market', 'bought', 'regionMap', 'sold', 'hail', 'combat', 'defeat', 'fleet', 'afterBattle', 'merchants', 'contracts']);
+export const tutorialTriggerSchema = z.enum(['sectorMap', 'location', 'market', 'bought', 'regionMap', 'sold', 'hail', 'combat', 'defeat', 'fleet', 'afterBattle', 'merchants', 'contracts', 'fleetBattle']);
 export const tutorialSchema = z.object({
   tips: z.array(
     z.object({

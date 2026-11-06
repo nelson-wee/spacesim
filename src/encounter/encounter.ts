@@ -1,6 +1,6 @@
 // Encounters (Sections 10.4, 10.7, 10.8, 8.8; Q-15, Q-16, Q-17, Q-26). The
 // world rolls an encounter on sector arrival, on each sector trip, and on
-// Hunt. Pirates judge the odds against the player's flagship; the hail screen
+// Hunt. Pirates judge the odds against the player's joined ships (P1); the hail screen
 // then offers the options. All functions here are headless.
 import { addCargo, fleetUnits } from '../actor/cargo';
 import type { AiKind, Faction } from '../combat/types';

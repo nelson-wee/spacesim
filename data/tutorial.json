@@ -165,7 +165,9 @@
         "U uninstalls a module into the fleet hold (one list for all",
         "ships). Enter installs a hold module in an empty slot.",
         "1-8 moves the selected cargo or module to that ship.",
-        "F makes a ship the flagship (it fights; it pays no upkeep).",
+        "F makes a ship the flagship (you command it; no upkeep).",
+        "J: the ship joins battles or stays out (safe). Joined ships",
+        "use command points: Small 1, Medium 2, Large 3 (at most 6).",
         "N renames a ship.",
         "",
         "You can leave when the hold is empty and each ship has an",
@@ -209,6 +211,20 @@
         "",
         "A late Freight delivery fails and costs 2 standing.",
         "Bounties pay when done; kill bounties at a Bounty Guild."
+      ]
+    },
+    {
+      "id": "fleetBattle",
+      "trigger": "fleetBattle",
+      "title": "Your fleet in battle",
+      "lines": [
+        "Your other joined ships fight with the Wingman AI.",
+        "O opens the fleet orders: Up/Down selects a ship;",
+        "A attacks your target, G guards your ship, H holds",
+        "position, R retreats and leaves the battle.",
+        "",
+        "If your ship is lost or flees, you command the next one.",
+        "The battle ends when none of your ships is left on the map."
       ]
     }
   ]

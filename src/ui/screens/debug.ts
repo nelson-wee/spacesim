@@ -6,7 +6,8 @@ import {
   debugSkipDays,
   debugTeleport,
 } from '../../debug/debugPanel';
-import type { Game } from '../../core/game';
+import { type Game, newId } from '../../core/game';
+import { addShip, newShipName } from '../../actor/fleet';
 import type { Term } from '../../render/display';
 import { HEIGHT, WIDTH } from '../../render/display';
 import type { App, Screen } from '../app';
@@ -90,7 +91,8 @@ export class DebugScreen implements Screen {
         ['7', 'Ship art gallery'],
         ['8', 'Show all prices'],
         ['9', 'Flagship derived stats'],
-        ['0', 'Test battle (your flagship against any loadouts)'],
+        ['0', 'Test battle (your fleet against any loadouts)'],
+        ['W', 'Add a wingman: a Laser Wasp with full fuel joins the fleet (P1)'],
         ['E', 'Encounter with any template (hail screen)'],
         ['S', 'Set the security level of this sector (0-4)'],
         ['B', 'After-battle screen with a surrendered trader (M6)'],
@@ -116,7 +118,7 @@ export class DebugScreen implements Screen {
     }
     if (this.mode === 'encounter') {
       // M5-ENC-12: an encounter with any template, in this sector, through the hail screen.
-      t.text(x + 2, y + 4, 'Encounter in this sector (pirates judge the odds against your flagship):', ui.title);
+      t.text(x + 2, y + 4, 'Encounter in this sector (pirates judge the odds against your joined ships):', ui.title);
       this.encounterChoices().forEach((c, i) => t.text(x + 4, y + 6 + i, `${i === this.encounterRow ? '>' : ' '} ${c.label}`, i === this.encounterRow ? ui.bright : ui.text));
       t.text(x + 2, y + h - 2, 'Up/Down: select   Enter: hail   Esc: back', ui.highlight);
       return;
@@ -137,7 +139,7 @@ export class DebugScreen implements Screen {
       // M4-UI-05: a test battle of the player's flagship against 1-3 ships of any loadout.
       const ids = [...game.data.loadoutById.keys()];
       const id = ids[this.battleLoadout % ids.length] ?? '';
-      t.text(x + 2, y + 4, 'Test battle: your flagship against:', ui.title);
+      t.text(x + 2, y + 4, 'Test battle: your fleet (joined ships) against:', ui.title);
       t.text(x + 2, y + 6, `Enemy loadout: < ${game.data.loadoutById.get(id)?.name ?? id} >   (Left/Right)`, ui.text);
       t.text(x + 2, y + 7, `Number of ships: ${this.battleCount}   (Up/Down, 1-3)`, ui.text);
       t.text(x + 2, y + 8, `Enemy AI: ${this.battleAi}   (T: Raider/Trader/Patrol)`, ui.text);
@@ -325,6 +327,14 @@ export class DebugScreen implements Screen {
         cs.status = 'surrendered';
         this.app.pop();
         this.app.push(new FleetScreen(this.app, { boarded: [cs] }));
+        return true;
+      }
+      case 'w': {
+        // Fleet combat test (P1): an armed ship joins the fleet.
+        const ship = createShipFromLoadout(game.data, 'laser_wasp', newId(game, 'ship'), newShipName(player, 'Wingman'));
+        ship.fuel = travelStats(ship, game.data).fuelCapacity;
+        const why = addShip(game, player, ship);
+        game.bus.message(why ? `[debug] ${why}` : `[debug] ${ship.name} (Laser Wasp) joins the fleet.`, 'warning');
         return true;
       }
       case '0':

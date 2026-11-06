@@ -578,6 +578,18 @@ The owner changed brief §13.7 and §16 and moved brief §21 item 10 (insurance)
 - 2026-11-04 [M8-ART-06] The map trip keeps `sectorMap.travelAnimMaxMs` (1.2 s): a long trip moves more than 3 cells a frame. The region map now also animates its jump, and any key skips it. Reason: the owner's time limit for map animation.
 - 2026-11-04 [M8-ART-03] Not used from v0.2: `cargo_drop` blink (pods stay static), `shield_regenerate` (no regeneration event), and `noMunition` (the screen hides moving munitions while the travel plays). Reason: no matching game event, or the screen already does it.
 
+### P1 Fleet combat (post-MVP, 2026-11-06)
+
+- 2026-11-06 [owner, P1-FS-01/02] Each fleet ship joins battles or stays out; armed ships (laser, ballistic, or guided weapon) join by default; the fleet screen key J toggles it. The setting is an optional field on the ship (`battle`), so old saves load with no save version change. Reason: owner; save compatibility after the public MVP.
+- 2026-11-06 [P1-FS-03] Command points (6) limit only the ships that **join** a battle, not the fleet: the fleet keeps its limit of 4 ships. Reason: the Light Freighter is a Large hull (3 points), so a fleet-wide limit would allow only 2 Light Freighters and cut the M6 trade fleets of 4; the limit is meant for combat strength. Owner to confirm (the scope did not say which).
+- 2026-11-06 [P1-FB-04] The Wingman AI is the Balanced AI with an order; it keeps its weapons ON when Hot (as the Attack AI), retreats below `combat.auto.retreatHull` except on Hold, and never surrenders. Guard uses the escort rule (within 6 cells of the controlled ship). Reason: reuse of tested AI parts (brief B.2).
+- 2026-11-06 [P1-FB-05/06] When the controlled ship is destroyed or flees, the player commands the next active fleet ship (fleet order); the battle ends as `fled` or `loss` only when no fleet ship is active. Reason: brief B.2 and the scope; a planned flee of one ship no longer ends the battle while other ships fight.
+- 2026-11-06 [P1-FB-07] Against pirates only, a fleet ship at 0 hull is disabled, not destroyed, also in a battle that the player wins (it stays with `disabledHullShare` of its hull). Reason: the owner rule of 2026-10-28 (pirates do not fight to kill) for each fleet ship.
+- 2026-11-06 [P1-FB-08] If the flagship is lost in a battle that goes on, the ship that the player commands at the end becomes the flagship. A loss removes all fleet ships that were on the map; ships that stayed out go on (the first is the flagship). Reason: the scope.
+- 2026-11-06 [P1-FE-01/02, owner] Partial encounter scaling: the pirate budget grows by `encounters.fleetBudgetShare` 0.5 x the TU of the joined ships other than the flagship; pirate odds and the hail screen use the group TU of the joined ships. A later difficulty setting can change the share (note only). Reason: owner.
+- 2026-11-06 [P1-FB-01] Fleet ships keep their own fuel in a battle (no combat fuel reserve). Reason: the reserve is for ships from outside travel; a fleet ship with an empty tank cannot move, as on the map.
+- 2026-11-06 [P1-TOOL-02] The encounter bot and the chaos bot start battles with the fleet rules (`fleetBattleSpecs`). `sim-combat` keeps its one-ship checks; `--fleet` runs fleet pairings as reports. Debug panel W adds an armed wingman (test only).
+
 ## Cuts
 
 None.

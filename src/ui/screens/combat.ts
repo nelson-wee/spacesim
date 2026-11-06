@@ -95,7 +95,8 @@ export class CombatScreen implements Screen {
   }
 
   tutorialTriggers(): TutorialTrigger[] {
-    return ['combat'];
+    // Fleet combat (P1-UI-03): a tip when other fleet ships are in the battle.
+    return this.wingmen().length > 0 ? ['combat', 'fleetBattle'] : ['combat'];
   }
 
   private get game(): Game {
@@ -598,7 +599,7 @@ export class CombatScreen implements Screen {
     const ui = palette(data).ui;
     const list = this.wingmen();
     const w = 58;
-    const h = list.length + 6;
+    const h = list.length + 5;
     const x0 = 4;
     const y0 = 3;
     t.box(x0, y0, w, h, ui.border, 'Fleet orders', ui.title, 'modal');
