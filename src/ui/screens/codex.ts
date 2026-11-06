@@ -28,6 +28,11 @@ function name(data: GameData, id: string): string {
   return data.commodityById.get(id)?.name ?? id;
 }
 
+/** A daily amount with at most 2 decimals (1.92, 32, 0.5). */
+function tonnes(v: number): string {
+  return String(Math.round(v * 100) / 100);
+}
+
 /** Codex lines for one commodity (headless: tests read them). */
 export function codexEntry(data: GameData, id: string): { madeBy: string[]; usedBy: string[]; inputs: string[]; products: string[] } {
   const recipes = data.recipes.recipes;
@@ -49,9 +54,12 @@ export function codexEntry(data: GameData, id: string): { madeBy: string[]; used
     }
     if (r.softInput === id) usedBy.push(`${r.name}: installs it as machines (more output)`);
   }
-  for (const u of data.population.use) if (u.commodity === id) usedBy.push(`Population: ${WHO[u.who] ?? u.who}, ${u.perUnitPerDay} per unit a day`);
+  // Both lines show the tonnes that the game uses (with useScale and volumeScale), so that they compare.
+  for (const u of data.population.use) {
+    if (u.commodity === id) usedBy.push(`Population: ${WHO[u.who] ?? u.who}, ${tonnes(u.perUnitPerDay * data.population.useScale)} t per population unit a day`);
+  }
   for (const [station, list] of Object.entries(data.population.stationUse)) {
-    for (const u of list) if (u.commodity === id) usedBy.push(`${data.bodyTypes.stations.find((b) => b.id === station)?.name ?? station}: ${u.perSizePerDay} per size a day`);
+    for (const u of list) if (u.commodity === id) usedBy.push(`${data.bodyTypes.stations.find((b) => b.id === station)?.name ?? station}: ${tonnes(u.perSizePerDay)} t per station size a day`);
   }
   return { madeBy, usedBy, inputs: [...inputs], products: [...products] };
 }

@@ -619,7 +619,7 @@ Same seeds, three trader policies: **trade** (open market only), **best** (a Sup
 | 1 | New career, trade, loadout, fleet, fight, pirate or hunter, security change, career end. | PASS with automated play: the browser smoke test and the unit tests cover each step (the after-battle screen, prizes, the fleet hold, security +3 after a won battle, retire). M8-REL-03 (one trader and one pirate career played by hand) waits for the owner. |
 | 2 | All acceptance checks pass. | PASS (see above; balance results are reports). |
 | 3 | No known crash bugs. | PASS. |
-| 4 | The game runs from GitHub Pages. | Waits for the owner: merge this branch into `main`; `deploy.yml` then deploys (the last deploy of `main` passed on 2026-11-04). |
+| 4 | The game runs from GitHub Pages. | PASS: the owner merged the branch into `main` (pull request #12); the `deploy.yml` run on 2026-11-05 passed. The owner plays the manual careers (M8-REL-03) from the Pages build. |
 | 5 | `PROGRESS.md` and `DECISIONS.md` are up to date. | PASS. |
 
 ### Owner changes (2026-11-04): Pirate Havens and hull fuel
@@ -678,6 +678,8 @@ Findings for the owner (not changed):
 
 ### Bugs found and fixed in M8
 
+- Codex (2026-11-06): station use showed the scaled value and population use the unscaled value for each unit, so the numbers did not compare. Both now show the tonnes a day that the game uses (population: per population unit, with `useScale`; stations: per station size).
+
 - Guild relief with a full hold failed but gave the free repair; the offer box then blocked the location screen. Now the guild sells cargo to make room, and the repair comes only with a successful Accept.
 - The region map route counted one jump too many (the path holds its start sector).
 
@@ -685,7 +687,6 @@ Findings for the owner (not changed):
 
 - Q-52 and Q-53 balance (reports): net worth at day 730 above the target; Supply contracts give more than open-market trade.
 - The trader bots of the tools do not answer the second-chance offer (it stays open in their games).
-- Codex: station use shows the scaled value (x `volumeScale`); population use shows the per-unit value.
 
 <!--
 Template for each milestone:

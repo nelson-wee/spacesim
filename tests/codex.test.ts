@@ -20,4 +20,15 @@ describe('codex', () => {
       expect(e.madeBy.length + e.usedBy.length).toBeGreaterThan(0);
     }
   });
+
+  it('population and station use show the tonnes that the game uses (same scale)', () => {
+    const water = codexEntry(data, 'water');
+    const pop = data.population.use.find((u) => u.commodity === 'water')!;
+    const perUnit = Math.round(pop.perUnitPerDay * data.population.useScale * 100) / 100;
+    expect(water.usedBy.some((l) => l.startsWith('Population') && l.endsWith(`, ${perUnit} t per population unit a day`))).toBe(true);
+    const [stationId, uses] = Object.entries(data.population.stationUse)[0]!;
+    const use = uses[0]!;
+    const station = data.bodyTypes.stations.find((b) => b.id === stationId)!.name;
+    expect(codexEntry(data, use.commodity).usedBy).toContain(`${station}: ${Math.round(use.perSizePerDay * 100) / 100} t per station size a day`);
+  });
 });
