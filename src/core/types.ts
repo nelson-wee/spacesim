@@ -174,6 +174,8 @@ export interface Ship {
   hullHp: number;
   armorHp: number;
   engineValue: number;
+  /** Fleet combat (P1-FS-01): Join or Stay out of battles. Missing: Join if the ship has a weapon. */
+  battle?: 'join' | 'stay';
 }
 
 export type Position =

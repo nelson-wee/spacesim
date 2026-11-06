@@ -7,6 +7,7 @@
 import { namedShipId } from '../career/secondChance';
 import { finishBattle } from '../career/battleEnd';
 import { createBattle } from '../combat/battle';
+import { fleetBattleSpecs, leftOut } from '../actor/fleetBattle';
 import { resolveTurn } from '../combat/resolver';
 import type { AiKind, Battle, Faction, Side } from '../combat/types';
 import type { CargoLot, Sector } from '../core/types';
@@ -62,7 +63,8 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
   if (!flag) return;
   let battle = createBattle(
     {
-      player: [{ ship: flag, ai: 'human' }],
+      // Fleet combat (P1-FB-01): the flagship and the other joined ships.
+      player: fleetBattleSpecs(player, data),
       other: enemies.map((e, i) => {
         const ship = createShipFromLoadout(data, e.loadoutId, options.namedId !== undefined ? namedShipId(options.namedId, i) : `enemy-${i}`, `${options.shipName ?? data.loadoutById.get(e.loadoutId)?.name ?? e.loadoutId} ${i + 1}`, e.tier);
         if (e.cargo) ship.cargo = structuredClone(e.cargo);
@@ -84,6 +86,8 @@ export function startBattle(app: App, enemies: EnemySpec[], options: BattleOptio
     data,
   );
   game.bus.message(options.intro ?? `Battle: ${enemies.length} ship${enemies.length === 1 ? '' : 's'} attack.`, 'danger');
+  const out = leftOut(player, data);
+  if (out.length > 0) game.bus.message(`No command points left: ${out.map((s) => s.name).join(', ')} ${out.length === 1 ? 'stays' : 'stay'} out of the battle.`, 'warning');
   if (options.enemyFirst) {
     // The player gives no orders in this turn: the enemy acts first.
     battle = resolveTurn(battle, [], data).battle;

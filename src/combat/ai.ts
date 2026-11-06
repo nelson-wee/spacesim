@@ -12,6 +12,10 @@
 //   when in range; surrenders when the engine value is 0 (morale).
 // - Balanced (the player's ship in an auto-battle, Q-47): like the Attack AI;
 //   flees to the nearest edge below combat.auto.retreatHull.
+// - Wingman (the player's other fleet ships, P1-FB-04): the Balanced AI with
+//   an order: Attack (its target, or the nearest), Guard (stay within 6 cells
+//   of the controlled ship; attack the enemy nearest to it), Hold (no moves),
+//   Retreat (to the nearest edge, then flee).
 import type { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleDef, moduleValues } from '../ship/modules';
@@ -96,7 +100,7 @@ function cargoValue(s: CombatShip, data: GameData): number {
  * auto-battle AI (Q-47) keep their weapons ON; all AIs skip a shot that would overheat the ship (aiFire, Q-40).
  */
 function heatTooHigh(s: CombatShip, data: GameData, st: ReturnType<typeof combatStats>): boolean {
-  return s.ai !== 'attack' && s.ai !== 'human' && heatState(s, data, st) === 'hot';
+  return s.ai !== 'attack' && s.ai !== 'human' && s.ai !== 'wingman' && heatState(s, data, st) === 'hot';
 }
 
 /** Heat at the end of this turn if the ship also fires `w` (Section 11.6). */
@@ -110,6 +114,16 @@ export function aiTarget(b: Battle, s: CombatShip, data: GameData): CombatShip |
   const foes = b.ships.filter((o) => isActive(o) && hostile(s, o));
   if (foes.length === 0) return null;
   const byDistance = (x: CombatShip, y: CombatShip) => distance(s, x) - distance(s, y) || x.id - y.id;
+  if (s.ai === 'wingman') {
+    const o = s.order;
+    if (o?.kind === 'attack' && o.targetId !== null) {
+      const t = foes.find((f) => f.id === o.targetId);
+      if (t) return t;
+    }
+    // Guard: the enemy nearest to the guarded (controlled) ship.
+    const guarded = o?.kind === 'guard' ? b.ships.find((x) => x.id === b.playerId && isActive(x)) : undefined;
+    if (guarded) return [...foes].sort((x, y) => distance(guarded, x) - distance(guarded, y) || x.id - y.id)[0] ?? null;
+  }
   if (s.ai === 'raider') return [...foes].sort((x, y) => cargoValue(y, data) - cargoValue(x, data) || byDistance(x, y))[0] ?? null;
   return [...foes].sort(byDistance)[0] ?? null;
 }
@@ -233,9 +247,16 @@ export function runAi(b: Battle, s: CombatShip, data: GameData, rng: Rng, effect
   if (s.ai === 'raider' && s.ship.hullHp < data.balance.combat.retreatHull * st.maxHullHp) s.retreating = true;
   // A ship that cannot move does not retreat: it stays and fires.
   if (s.ai === 'human') s.retreating = s.ship.hullHp < data.balance.combat.auto.retreatHull * st.maxHullHp && moveBudget(s, data) > 0;
+  if (s.ai === 'wingman') {
+    const kind = s.order?.kind ?? 'attack';
+    const low = s.ship.hullHp < data.balance.combat.auto.retreatHull * st.maxHullHp;
+    s.retreating = moveBudget(s, data) > 0 && (kind === 'retreat' || (kind !== 'hold' && low));
+    s.escortOf = kind === 'guard' && b.playerId !== s.id ? b.playerId : null;
+  }
   aiPower(b, s, data, rng, effects);
   const target = aiTarget(b, s, data);
-  aiMove(b, s, target, data, rng, effects);
+  // Hold (P1-FB-02): the ship does not move.
+  if (!(s.ai === 'wingman' && s.order?.kind === 'hold')) aiMove(b, s, target, data, rng, effects);
   if (!isActive(s)) return;
   aiFire(b, s, aiTarget(b, s, data) ?? target, data, rng, effects);
 }

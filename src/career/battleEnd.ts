@@ -10,7 +10,9 @@
 import { fleetMove, fleetTravelStats } from '../actor/fleet';
 import { towFleet } from '../actor/fuel';
 import { actorPlace } from '../actor/travel';
-import { applyToShip } from '../combat/battle';
+import { applyToShip, isFleetShip } from '../combat/battle';
+import { removeShip } from '../actor/fleet';
+import { travelStats } from '../ship/stats';
 import type { Battle } from '../combat/types';
 import type { Game } from '../core/game';
 import type { RngState } from '../core/rng';
@@ -20,9 +22,41 @@ import { rng } from '../core/game';
 import { battleConsequences } from './consequences';
 import { battleContracts } from './contracts';
 import { endCareer } from './career';
-import { applyDefeat, type DefeatOutcome } from './defeat';
+import { applyDefeat, type DefeatOutcome, defeatKind } from './defeat';
 
 export type BattleEnd = DefeatOutcome | 'ok';
+
+/**
+ * Fleet ships at 0 hull in a battle that the player did not lose (P1-FB-07,
+ * P1-FB-08): against pirates only, they are disabled (they stay in the fleet
+ * with disabledHullShare of the hull); else they are lost with their cargo.
+ * If the flagship is lost, the ship that the player controlled at the end
+ * becomes the flagship.
+ */
+function settleFleetLosses(game: Game, actor: Actor, b: Battle): void {
+  const { data } = game;
+  const lost = b.ships.filter((s) => isFleetShip(s) && s.status === 'destroyed');
+  if (lost.length === 0) return;
+  const controlled = b.ships.find((s) => s.id === b.playerId)?.ship.id;
+  for (const cs of lost) {
+    const index = actor.fleet.findIndex((s) => s.id === cs.ship.id);
+    const ship = actor.fleet[index];
+    if (!ship) continue;
+    if (defeatKind(b) === 'disabled') {
+      ship.hullHp = Math.max(ship.hullHp, travelStats(ship, data).maxHullHp * data.balance.combat.disabledHullShare);
+      game.bus.message(`The pirates disable ${ship.name}; it stays in your fleet.`, 'warning');
+      continue;
+    }
+    const wasFlag = index === actor.flagshipIndex;
+    removeShip(game, actor, index);
+    game.bus.message(`${ship.name} is destroyed, with its cargo.`, 'danger');
+    if (wasFlag) {
+      const next = actor.fleet.findIndex((s) => s.id === controlled);
+      if (next >= 0) actor.flagshipIndex = next;
+      game.bus.message(`${actor.fleet[actor.flagshipIndex]?.name ?? '?'} is your new flagship.`, 'warning');
+    }
+  }
+}
 
 export interface FinishOptions {
   /** 'auto' (tools, tests): take the cargo of surrendered ships. 'manual': the after-battle screen does it. */
@@ -45,8 +79,13 @@ export function towIfStranded(game: Game, actor: Actor): boolean {
 export function finishBattle(game: Game, actor: Actor, b: Battle, options: FinishOptions = {}): BattleEnd {
   const { state, data } = game;
   state.rng.combat = [...b.rng] as RngState;
-  const flag = actor.fleet[actor.flagshipIndex];
-  if (flag) applyToShip(b, flag);
+  // Each fleet ship that fought gets its battle state back (P1-FB-08).
+  const fought = new Set(b.ships.filter(isFleetShip).map((s) => s.ship.id));
+  for (const ship of actor.fleet) if (fought.has(ship.id)) applyToShip(b, ship);
+  if (fought.size === 0) {
+    const flag = actor.fleet[actor.flagshipIndex];
+    if (flag) applyToShip(b, flag);
+  }
   battleConsequences(game, actor, b);
   if (actor === state.player) {
     battleContracts(game, b);
@@ -57,9 +96,9 @@ export function finishBattle(game: Game, actor: Actor, b: Battle, options: Finis
     // The last ship is lost with no insurance: the career ends (Section 16).
     if (outcome === 'gameOver' && actor === state.player) endCareer(game, 'lost');
     if (outcome !== 'flagshipLost') return outcome;
-  }
+  } else settleFleetLosses(game, actor, b);
   if (b.result === 'fled' && b.ships.some((s) => s.side === 'other' && s.faction === 'pirate')) {
-    const loss = fleeCargoLoss(actor, rng(game, 'encounter'), data);
+    const loss = fleeCargoLoss(actor, rng(game, 'encounter'), data, fought);
     if (loss && loss.units > 1e-9) game.bus.message(`The pirates take cargo from ${loss.ship.name}: ${Math.round(loss.units)} units.`, 'warning');
   }
   if (b.result === 'win') {

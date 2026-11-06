@@ -7,12 +7,12 @@
 // The battle RNG stream is the same as in a played battle, so the same seed
 // and the same orders give the same result.
 import type { GameData } from '../data';
-import { isActive } from './geometry';
+import { isActive, isFleetShip } from './geometry';
 import { resolveTurn, shipById, type TurnOutput } from './resolver';
 import { combatStats, heatState } from './rules';
 import type { Battle } from './types';
 
-export type AutoStop = 'end' | 'hull' | 'heat' | 'reinforcement' | 'munition';
+export type AutoStop = 'end' | 'hull' | 'heat' | 'reinforcement' | 'munition' | 'fleet';
 
 /** Mode A: one turn with the AI for the player's ship. */
 export function autoTurn(b: Battle, data: GameData): TurnOutput {
@@ -27,9 +27,13 @@ export function autoTurn(b: Battle, data: GameData): TurnOutput {
  */
 export function autoStopReason(before: Battle, out: TurnOutput, data: GameData): AutoStop | null {
   const after = out.battle;
+  if (after.result) return 'end';
+  // P1-FB-10: a fleet ship is lost, or the control moves to another ship.
+  const lostBefore = before.ships.filter((s) => isFleetShip(s) && s.status === 'destroyed').length;
+  if (after.playerId !== before.playerId || after.ships.filter((s) => isFleetShip(s) && s.status === 'destroyed').length > lostBefore) return 'fleet';
   const p0 = shipById(before, before.playerId);
   const p1 = shipById(after, after.playerId);
-  if (after.result || !p0 || !p1 || !isActive(p1)) return 'end';
+  if (!p0 || !p1 || !isActive(p1)) return 'end';
   const st = combatStats(p1, data);
   const limit = data.balance.combat.auto.stopHull * st.maxHullHp;
   if (p1.ship.hullHp < limit && p0.ship.hullHp >= limit) return 'hull';
@@ -46,6 +50,7 @@ export const AUTO_STOP_TEXT: Record<AutoStop, string> = {
   heat: 'Auto stops: your ship is Hot.',
   reinforcement: 'Auto stops: reinforcements arrive.',
   munition: 'Auto stops: a munition comes at your ship.',
+  fleet: 'Auto stops: your fleet lost a ship, or you command another ship.',
 };
 
 export interface AutoResult {

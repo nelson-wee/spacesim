@@ -6,7 +6,9 @@ import type { RngState } from '../core/rng';
 import { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { aiPower } from './ai';
-import { blockedCells, fits, footprint, maskSize } from './geometry';
+import { blockedCells, fits, footprint, isFleetShip, maskSize } from './geometry';
+
+export { isFleetShip };
 import { generateCells } from './map';
 import { combatStats } from './rules';
 import type { BattleMapTemplate } from '../data/schemas';
@@ -80,6 +82,7 @@ function makeCombatShip(sp: BattleShipSpec, side: Side, id: number, mirrored: bo
     attacked: false,
     retreating: false,
     escortOf: null,
+    ...(sp.ai === 'wingman' ? { order: { kind: 'attack' as const, targetId: null } } : {}),
     moved: 0,
     fired: [],
     shotHeat: 0,
@@ -94,9 +97,9 @@ function makeCombatShip(sp: BattleShipSpec, side: Side, id: number, mirrored: bo
 function readyShip(b: Battle, s: CombatShip, data: GameData, rng: Rng): void {
   const c = data.balance.combat;
   // Ships from outside travel (enemies, and patrols or escorts that join either side) have at least a
-  // combat fuel reserve. The player's own ship keeps its fuel, also with an AI (play test, 2026-11-04:
-  // an auto-played flagship got fuel above its capacity).
-  if (s.id !== b.playerId) s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
+  // combat fuel reserve. The player's own ships keep their fuel, also with an AI (play test, 2026-11-04:
+  // an auto-played flagship got fuel above its capacity; P1: fleet ships too).
+  if (s.id !== b.playerId && !isFleetShip(s)) s.ship.fuel = Math.max(s.ship.fuel, c.npcFuelReserve);
   const st = combatStats(s, data);
   if (s.ai !== 'human' || st.powerReserve > st.powerSupply) aiPower(b, s, data, rng, []);
   const ready = combatStats(s, data);
@@ -201,9 +204,9 @@ export function createBattle(spec: BattleSpec, data: GameData): Battle {
   return b;
 }
 
-/** Copies the battle result of the player's ship back to the real ship. */
+/** Copies the battle result of a fleet ship back to the real ship (matched by the ship id). */
 export function applyToShip(b: Battle, ship: Ship): void {
-  const s = b.ships.find((x) => x.id === b.playerId);
+  const s = b.ships.find((x) => isFleetShip(x) && x.ship.id === ship.id) ?? b.ships.find((x) => x.id === b.playerId);
   if (!s) return;
   ship.hullHp = s.ship.hullHp;
   ship.armorHp = s.ship.armorHp;

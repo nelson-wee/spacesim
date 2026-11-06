@@ -4,6 +4,7 @@
   "patrolMinSecurity": 2,
   "huntMultiplier": 3,
   "fleetFactor": 0.1,
+  "fleetBudgetShare": 0.5,
   "fleeChance": 0.5,
   "tributeShare": 0.5
 }

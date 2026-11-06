@@ -172,6 +172,8 @@ export const balanceSchema = z.object({
    */
   fleet: z.object({
     maxFleetSize: z.number().int().min(1),
+    /** Fleet combat (P1-FS-03): the ships that join a battle use at most this many size points. */
+    commandPoints: pos,
     upkeepPerShip: nonNeg,
     sizePoints: z.object({ small: nonNeg, medium: nonNeg, large: nonNeg, capital: nonNeg }),
     prizeFuelShare: prob,
@@ -476,6 +478,8 @@ export const encountersSchema = z.object({
   huntMultiplier: pos,
   /** Pirate chance x (1 + fleetFactor x (fleet size - 1)) (Section 11.9). */
   fleetFactor: nonNeg,
+  /** Fleet combat (P1-FE-01): the pirate budget grows by this share of the TU of the joined ships other than the flagship. */
+  fleetBudgetShare: nonNeg,
   fleeChance: prob,
   tributeShare: prob,
 });

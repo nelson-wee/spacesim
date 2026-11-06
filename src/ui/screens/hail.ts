@@ -12,7 +12,7 @@ import { palette, threatBandColor } from '../../render/palette';
 import { battleMapFor } from '../../encounter/battleMap';
 import { bandOf, threatBand } from '../../encounter/budget';
 import type { Ship } from '../../core/types';
-import { type Encounter, flagshipTu, fleeCargoLoss, fleeSucceeds, type HailOption, hailOptions, payTribute } from '../../encounter/encounter';
+import { type Encounter, fleetTu, fleeCargoLoss, fleeSucceeds, type HailOption, hailOptions, payTribute } from '../../encounter/encounter';
 import { travelStats } from '../../ship/stats';
 import type { App, Screen } from '../app';
 import { startBattle } from '../combatStart';
@@ -82,7 +82,7 @@ export class HailScreen implements Screen {
     const level = Math.min(band.width, bandOf(this.enc.groupTu, data));
     t.text(x + 2, ++row, 'Threat ', ui.dim);
     for (let i = 0; i < band.width; i++) t.put(x + 9 + i, row, i < level ? band.glyph : band.empty, i < level ? threatBandColor(data.art.style, level) : ui.dim);
-    const flagTu = flagshipTu(this.game.state.player, data);
+    const flagTu = fleetTu(this.game.state.player, data);
     t.text(x + 16, row, `${Math.round(this.enc.groupTu)} TU against your ${Math.round(flagTu)} TU${sector ? `; sector band ${threatBand(sector, data)}` : ''}`, ui.dim);
     row += 2;
     const keys = hailOptions(this.enc).map((o) => {

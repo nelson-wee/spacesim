@@ -4,6 +4,7 @@
 // half the cargo loses more on average than a 50% flee and a fair fight). Traders and friendly patrols: ignore. Returns 'continue' to go on with
 // the trip, or 'stop' after a battle (the bot plans again from where it is).
 import { finishBattle, type BattleEnd } from '../../src/career/battleEnd';
+import { fleetBattleSpecs } from '../../src/actor/fleetBattle';
 import { createBattle } from '../../src/combat/battle';
 import { resolveTurn } from '../../src/combat/resolver';
 import type { Game } from '../../src/core/game';
@@ -36,7 +37,7 @@ function fight(game: Game, actor: Actor, enc: Encounter, enemyFirst: boolean, lo
   const sector = state.world.sectors[enc.sectorId];
   let b = createBattle(
     {
-      player: [{ ship: flag, ai: 'attack' }],
+      player: fleetBattleSpecs(actor, data, 'attack'),
       other: enc.ships.map((s, i) => {
         const ship = createShipFromLoadout(data, s.loadoutId, `e${i}`, s.loadoutId, s.tier);
         ship.cargo = structuredClone(s.cargo);

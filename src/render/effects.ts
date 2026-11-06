@@ -11,7 +11,7 @@
 // Ship moves (movement.combat) play in turn order: a move starts when the
 // effects before it end, and the effects after it wait for it. The moves of a
 // turn have their own budget (balance.combat.moveAnimBudgetMs).
-import { lineCells } from '../combat/geometry';
+import { isFleetShip, lineCells } from '../combat/geometry';
 import type { Battle, CombatShip, Effect, Vec2 } from '../combat/types';
 import { defeatKind } from '../career/defeat';
 import type { GameData } from '../data';
@@ -493,8 +493,9 @@ export function effectId(e: Effect, b: Battle, data: GameData): string | null {
       return 'engine_hit';
     case 'destroy': {
       // Pirates disable the player's ship: its engines go dark, it does not explode.
-      if (e.shipId === b.playerId && defeatKind(b) === 'disabled') return 'engine_hit';
+      // P1-FB-07: the player's fleet ships too.
       const s = b.ships.find((x) => x.id === e.shipId);
+      if ((e.shipId === b.playerId || (s && isFleetShip(s))) && defeatKind(b) === 'disabled') return 'engine_hit';
       const size = s ? data.hullById.get(s.ship.hullId)?.sizeClass : 'small';
       return size === 'capital' ? 'destroy_capital' : size === 'small' ? 'destroy_small' : 'destroy_medium';
     }

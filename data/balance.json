@@ -100,6 +100,7 @@
   "recovery": { "base": 300, "perDistance": 10, "fullTankShare": 0.2, "fuelShareAfterTow": 0.25 },
   "fleet": {
     "maxFleetSize": 4,
+    "commandPoints": 6,
     "upkeepPerShip": 20,
     "sizePoints": { "small": 1, "medium": 2, "large": 3, "capital": 6 },
     "prizeFuelShare": 0.25,

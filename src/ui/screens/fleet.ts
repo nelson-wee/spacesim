@@ -12,7 +12,8 @@
 // screen closes when the loadouts pass the rules (Section 11.2) and the hold
 // is empty. Else the player reverts all module changes of this session, or
 // discards (or, at an Outfitter, sells) the held modules.
-import { removeShip, renameShip, setFlagship, upkeepPerDay } from '../../actor/fleet';
+import { removeShip, renameShip, setFlagship, sizePoints, upkeepPerDay } from '../../actor/fleet';
+import { commandPointsUsed, joinedShips, toggleJoin, wantsToJoin } from '../../actor/fleetBattle';
 import {
   type HeldModule,
   installModule,
@@ -234,6 +235,13 @@ export class FleetScreen implements Screen {
     stat('Fuel', `${ship.fuel.toFixed(1)}/${s.fuelCapacity}, ${s.fuelPerJump.toFixed(1)} per jump`);
     stat('Cargo', `${s.cargoMass.toFixed(1)}/${s.cargoCapacity} t`);
     if (!boarded) stat('Trade-in', `${Math.round(tradeInValue(ship, data))} cr`);
+    if (!boarded) {
+      // Fleet combat (P1-FS-02): Join or Stay out, and the command points of the hull.
+      const isFlag = this.ship === actor.flagshipIndex;
+      const joins = joinedShips(actor, data).some((j) => j.id === ship.id);
+      const setting = isFlag ? 'Join (flagship)' : wantsToJoin(ship, data) ? (joins ? 'Join' : 'Join (no command points left: stays out)') : 'Stay out';
+      stat('Battle', `${setting}; ${sizePoints(ship, data)} command pt`);
+    }
     const check = checkLoadout(ship, data);
     for (const e of check.errors.slice(0, 2)) t.text(x, y++, fit(e, 60), ui.danger);
     for (const w of check.warnings.slice(0, 1)) t.text(x, y++, fit(w, 60), ui.warning);
@@ -260,7 +268,7 @@ export class FleetScreen implements Screen {
     this.renderHold(t);
 
     // Notice and keys.
-    const fleetLine = `Fleet ${actor.fleet.length}/${data.balance.fleet.maxFleetSize} ships. Upkeep ${Math.round(upkeepPerDay(actor, data))} cr/day (each ship but the flagship).`;
+    const fleetLine = `Fleet ${actor.fleet.length}/${data.balance.fleet.maxFleetSize} ships. Command points ${commandPointsUsed(actor, data)}/${data.balance.fleet.commandPoints} in battle. Upkeep ${Math.round(upkeepPerDay(actor, data))} cr/day.`;
     t.text(0, HEIGHT - 5, fit(fleetLine, 99), ui.dim);
     if (this.exitPrompt) {
       this.renderExitPrompt(t);
@@ -283,6 +291,7 @@ export class FleetScreen implements Screen {
     const row2: [string, string, KeyInput][] = [];
     if (this.after && boarded) row2.push(['P', 'Take as prize', press('p')], ['C', 'Take all cargo', press('c')]);
     if (!boarded) row2.push(['F', 'Flagship', press('f')], ['N', 'Rename', press('n')]);
+    if (!boarded && actor.fleet.length > 1) row2.push(['J', 'Join/Stay out', press('j')]);
     if (actor.fleet.length > 1) row2.push(['B', 'Balance fuel', press('b')]);
     if (!this.after && this.docked() && !boarded) row2.push(['S', 'Sell ship', press('s')]);
     if (this.after && !boarded) row2.push(['X', 'Scuttle', press('x')]);
@@ -485,6 +494,11 @@ export class FleetScreen implements Screen {
       case 'b':
         say(balanceFuel(data, actor.fleet).text);
         return true;
+      case 'j':
+        // Fleet combat (P1-FS-02): Join or Stay out of battles; anywhere, no time.
+        if (boarded) say('Take the ship as a prize first.');
+        else say(toggleJoin(actor, this.ship, data).text);
+        return true;
       case 'f':
         if (boarded) {
           say('Take the ship as a prize first.');
@@ -647,6 +661,9 @@ export class FleetScreen implements Screen {
       '1-8               Move the selected cargo or module to that ship',
       'F                 Make the selected ship the flagship',
       'N                 Rename the selected fleet ship (type, then Enter)',
+      'J                 Join or Stay out: the ship fights in battles, or stays',
+      '                  off the map (safe). Joined ships use command points',
+      '                  (Small 1, Medium 2, Large 3, Capital 6; at most 6)',
       'B                 Balance fuel: move fuel between the fleet ships, so',
       '                  that all can go about the same distance (also in',
       '                  space; no fee, no time)',

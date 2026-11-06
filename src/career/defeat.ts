@@ -12,6 +12,7 @@
 import { removeShip } from '../actor/fleet';
 import { towFleet } from '../actor/fuel';
 import { actorPlace } from '../actor/travel';
+import { isFleetShip } from '../combat/geometry';
 import type { Battle } from '../combat/types';
 import type { Game } from '../core/game';
 import type { Actor } from '../core/types';
@@ -41,8 +42,13 @@ export function applyDefeat(game: Game, actor: Actor, b: Battle): DefeatOutcome 
       }
       ship.cargo = {};
     }
+    // Each fleet ship that the pirates stopped keeps disabledHullShare of its hull (P1-FB-07).
+    const stopped = new Set(b.ships.filter((s) => isFleetShip(s) && s.status === 'destroyed').map((s) => s.ship.id));
     const flag = actor.fleet[actor.flagshipIndex];
-    if (flag) flag.hullHp = Math.max(flag.hullHp, travelStats(flag, data).maxHullHp * data.balance.combat.disabledHullShare);
+    if (flag) stopped.add(flag.id);
+    for (const ship of actor.fleet) {
+      if (stopped.has(ship.id)) ship.hullHp = Math.max(ship.hullHp, travelStats(ship, data).maxHullHp * data.balance.combat.disabledHullShare);
+    }
     game.bus.message(
       units > 0 ? `The pirates disable your ship and take all cargo: ${Math.round(units)} units (bought for ${Math.round(cost)} cr).` : 'The pirates disable your ship. You have no cargo for them.',
       'danger',
@@ -51,10 +57,21 @@ export function applyDefeat(game: Game, actor: Actor, b: Battle): DefeatOutcome 
     towFleet(game, actor, place.sectorId, place.point, 0, true);
     return 'disabled';
   }
-  if (actor.fleet.length > 1) {
-    const lost = removeShip(game, actor, actor.flagshipIndex);
+  // All fleet ships on the map are lost (P1-FB-08); ships that stayed out go on.
+  const lostIds = new Set(b.ships.filter((s) => isFleetShip(s) && s.status === 'destroyed').map((s) => s.ship.id));
+  const flagNow = actor.fleet[actor.flagshipIndex];
+  if (flagNow) lostIds.add(flagNow.id);
+  if (actor.fleet.some((s) => !lostIds.has(s.id))) {
+    const names: string[] = [];
+    for (let i = actor.fleet.length - 1; i >= 0; i--) {
+      const ship = actor.fleet[i];
+      if (ship && lostIds.has(ship.id)) {
+        names.unshift(ship.name);
+        removeShip(game, actor, i);
+      }
+    }
     const next = actor.fleet[actor.flagshipIndex];
-    game.bus.message(`${lost?.name ?? 'Your flagship'} is destroyed, with its cargo. ${next?.name ?? '?'} is your new flagship.`, 'danger');
+    game.bus.message(`${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} destroyed, with ${names.length === 1 ? 'its' : 'their'} cargo. ${next?.name ?? '?'} is your new flagship.`, 'danger');
     return 'flagshipLost';
   }
   game.bus.message('Your ship is destroyed.', 'danger');

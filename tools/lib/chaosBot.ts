@@ -12,6 +12,7 @@ import { attackNonPirate } from '../../src/career/consequences';
 import { acceptContract, collectBounty, deliverFreight, deliverSupply, pickupFreight } from '../../src/career/contracts';
 import { surrenderedShips, takePrize } from '../../src/career/prize';
 import { acceptSecondChance, buyBack, declineSecondChance, deliverRelief, isStuck } from '../../src/career/secondChance';
+import { fleetBattleSpecs } from '../../src/actor/fleetBattle';
 import { createBattle } from '../../src/combat/battle';
 import { resolveTurn } from '../../src/combat/resolver';
 import type { Game } from '../../src/core/game';
@@ -58,7 +59,7 @@ export function playBattle(game: Game, enc: Encounter, aggressor: 'player' | 'ot
   const sector = state.world.sectors[enc.sectorId];
   let b = createBattle(
     {
-      player: [{ ship: flag, ai: r.chance(0.5) ? 'attack' : 'human' }],
+      player: fleetBattleSpecs(actor, data, r.chance(0.5) ? 'attack' : 'human'),
       other: enc.ships.map((s, i) => {
         const id = enc.namedId !== undefined ? `named-${enc.namedId}-${i}` : `e${i}`;
         const ship = createShipFromLoadout(data, s.loadoutId, id, s.loadoutId, s.tier);

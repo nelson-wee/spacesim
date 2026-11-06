@@ -9,7 +9,7 @@ import type { TutorialTrigger } from '../../data/schemas';
 import { defeatKind } from '../../career/defeat';
 import { ammoOf, guidedHitChance, inLaunchRange, isGuided } from '../../combat/munitions';
 import { Rng } from '../../core/rng';
-import { isActive, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
+import { isActive, isFleetShip, lineCells, lineOfFire, maskSize, pathTo, reachable, shipCells } from '../../combat/geometry';
 import { applyOrder, hostile, resolveTurn, shipById } from '../../combat/resolver';
 import { AUTO_STOP_TEXT, autoResolve, autoStopReason, autoSummary, autoTurn } from '../../combat/autoplay';
 import {
@@ -31,7 +31,7 @@ import {
   slotKey,
   spendPower,
 } from '../../combat/rules';
-import type { Aim, Battle, CombatShip, Effect, Order, SlotRef, Vec2 } from '../../combat/types';
+import type { Aim, Battle, CombatShip, Effect, Order, SlotRef, Vec2, WingOrder } from '../../combat/types';
 import type { Game } from '../../core/game';
 import type { Term } from '../../render/display';
 import { HEIGHT, WIDTH } from '../../render/display';
@@ -75,6 +75,9 @@ export class CombatScreen implements Screen {
   private autoTimer: ReturnType<typeof setTimeout> | null = null;
   /** Auto-resolve waits for a second R. */
   private resolveArmed = false;
+  /** The orders box (P1-UI-02) and its selected fleet ship. */
+  private ordersOpen = false;
+  private orderIndex = 0;
 
   constructor(
     private readonly app: App,
@@ -412,6 +415,7 @@ export class CombatScreen implements Screen {
         if (c.x >= 0 && c.y >= 0 && c.x < b.width && c.y < b.height) t.put(c.x, c.y, c.ch, c.fg);
       });
     }
+    if (this.ordersOpen) this.renderOrders(t);
     this.renderPanel(t);
     // Notice, keys, log.
     t.hline(30, 0, PANEL_X - 1, '─', ui.border);
@@ -447,6 +451,7 @@ export class CombatScreen implements Screen {
         [
           ['E', 'End turn', press('e')],
           ['U', 'Undo', press('u')],
+          ...(this.wingmen().length > 0 ? ([['O', 'Orders', press('o')]] as [string, string, KeyInput][]) : []),
           ['T', 'Auto turn', press('t')],
           ['Shift+T', 'Auto until', press('t', true)],
           ['R', 'Resolve', press('r')],
@@ -482,7 +487,7 @@ export class CombatScreen implements Screen {
     const plannedFlee = s.id === this.preview.playerId && !this.battle.result;
     if (!art || (s.status === 'fled' && !plannedFlee)) return;
     // Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28).
-    const disabled = s.status === 'destroyed' && s.id === this.battle.playerId && defeatKind(this.battle) === 'disabled';
+    const disabled = s.status === 'destroyed' && (s.id === this.battle.playerId || isFleetShip(s)) && defeatKind(this.battle) === 'disabled';
     if (s.status === 'destroyed' && !disabled) {
       // Debris: the "persist" of the destroy effect (effects v0.2).
       const size = data.hullById.get(s.ship.hullId)?.sizeClass;
@@ -533,6 +538,101 @@ export class CombatScreen implements Screen {
     const dy = Math.floor((h - 1) / 2);
     const dots = renderOps([{ k: 'line', path: 'mv', set: 'dot', fg: 'playerDeep', dx, dy, i0: 1, soft: 1 }], { data, paths: { mv: path } });
     applyOverlay([...ghost.filter((c) => !solid.has(`${c.x},${c.y}`)), ...dots], (x, y) => solid.has(`${x},${y}`), (c) => t.put(c.x, c.y, c.ch, c.fg));
+  }
+
+  /** The player's other fleet ships in the battle (Wingman AI, P1-FB-02). */
+  private wingmen(): CombatShip[] {
+    return this.preview.ships.filter((s) => isFleetShip(s) && s.id !== this.preview.playerId && isActive(s));
+  }
+
+  /** Sets an order on a fleet ship (P1-FB-03): free, at once, on the battle and on the plan. */
+  private setOrder(shipId: number, order: WingOrder): void {
+    for (const b of [this.battle, this.preview]) {
+      const s = b.ships.find((x) => x.id === shipId);
+      if (s) s.order = structuredClone(order);
+    }
+  }
+
+  /** Keys of the orders box (P1-UI-02). */
+  private onOrderKey(k: KeyInput): boolean {
+    const list = this.wingmen();
+    const ship = list[this.orderIndex];
+    if (!ship || k.key === 'Escape' || k.key === 'o' || k.key === 'Enter') {
+      this.ordersOpen = false;
+      return true;
+    }
+    switch (k.key) {
+      case 'ArrowUp':
+        this.orderIndex = (this.orderIndex + list.length - 1) % list.length;
+        return true;
+      case 'ArrowDown':
+      case 'Tab':
+        this.orderIndex = (this.orderIndex + 1) % list.length;
+        return true;
+      case 'a': {
+        const t = this.target();
+        this.setOrder(ship.id, { kind: 'attack', targetId: t?.id ?? null });
+        this.notice = `${ship.name}: attack ${t ? t.name : 'the nearest enemy'}.`;
+        return true;
+      }
+      case 'g':
+        this.setOrder(ship.id, { kind: 'guard' });
+        this.notice = `${ship.name}: guard ${this.me().name}.`;
+        return true;
+      case 'h':
+        this.setOrder(ship.id, { kind: 'hold' });
+        this.notice = `${ship.name}: hold position.`;
+        return true;
+      case 'r':
+        this.setOrder(ship.id, { kind: 'retreat' });
+        this.notice = `${ship.name}: retreat to the map edge and leave the battle.`;
+        return true;
+      default:
+        return true;
+    }
+  }
+
+  /** The orders box: each fleet ship with its hull and order (P1-UI-02). */
+  private renderOrders(t: Term): void {
+    const { data } = this.game;
+    const ui = palette(data).ui;
+    const list = this.wingmen();
+    const w = 58;
+    const h = list.length + 6;
+    const x0 = 4;
+    const y0 = 3;
+    t.box(x0, y0, w, h, ui.border, 'Fleet orders', ui.title, 'modal');
+    list.forEach((s, i) => {
+      const sel = i === this.orderIndex;
+      const bg = sel ? ui.selectBg : undefined;
+      const st = combatStats(s, data);
+      const o = s.order ?? { kind: 'attack' as const, targetId: null };
+      const target = o.kind === 'attack' && o.targetId !== null ? this.preview.ships.find((x) => x.id === o.targetId) : undefined;
+      const text = o.kind === 'attack' ? `Attack ${target && isActive(target) ? target.name : 'nearest'}` : ORDER_NAME[o.kind];
+      if (bg) t.fill(x0 + 2, y0 + 2 + i, w - 4, 1, bg);
+      t.text(x0 + 2, y0 + 2 + i, fit(`${sel ? '>' : ' '} ${s.name}`, 22), ui.bright, bg);
+      t.text(x0 + 25, y0 + 2 + i, fit(`${Math.round(s.ship.hullHp)}/${st.maxHullHp}`, 9), ui.text, bg);
+      t.text(x0 + 35, y0 + 2 + i, fit(text, w - 37), ui.highlight, bg);
+      this.app.zones.add(x0 + 2, y0 + 2 + i, w - 4, () => {
+        this.orderIndex = i;
+      });
+    });
+    drawKeyHints(
+      t,
+      this.app.zones,
+      x0 + 2,
+      y0 + h - 2,
+      [
+        ['A', 'Attack target', press('a')],
+        ['G', 'Guard', press('g')],
+        ['H', 'Hold', press('h')],
+        ['R', 'Retreat', press('r')],
+        ['Esc', 'Close', press('Escape')],
+      ],
+      ui,
+      this.app.press,
+      1,
+    );
   }
 
   private renderPanel(t: Term): void {
@@ -621,7 +721,9 @@ export class CombatScreen implements Screen {
       if (s.id === me.id) continue;
       const fg = s.side === 'player' ? ui.good : ui.danger;
       t.text(x, y, fit(`${s.id === tgt?.id ? '>' : ' '}${s.name}`, 18), isActive(s) ? fg : ui.dim);
-      t.text(x + 19, y, fit(isActive(s) ? `${Math.round(s.ship.hullHp)} hp` : s.status, 10), ui.dim);
+      // Fleet ships (P1-UI-01): hull and order.
+      const order = isFleetShip(s) && isActive(s) && s.order ? ` ${ORDER_SHORT[s.order.kind]}` : '';
+      t.text(x + 19, y, fit(isActive(s) ? `${Math.round(s.ship.hullHp)} hp${order}` : s.status, 12), ui.dim);
       if (isActive(s) && hostile(me, s)) zones.add(x, y, WIDTH - x, () => {
         this.targetId = s.id;
       });
@@ -649,6 +751,7 @@ export class CombatScreen implements Screen {
       return true;
     }
     if (this.timeline) this.skipEffects();
+    if (this.ordersOpen) return this.onOrderKey(k);
     this.confirmed = this.armed;
     this.armed = null;
     const me = this.me();
@@ -682,6 +785,13 @@ export class CombatScreen implements Screen {
       }
       case 'f':
         this.planFire();
+        return true;
+      case 'o':
+        if (this.wingmen().length === 0) this.notice = 'No other fleet ship is in the battle. Set Join on the fleet screen (J).';
+        else {
+          this.ordersOpen = true;
+          this.orderIndex = Math.min(this.orderIndex, this.wingmen().length - 1);
+        }
         return true;
       case 'a':
         this.aim = this.aim === 'hull' ? 'engines' : 'hull';
@@ -748,6 +858,10 @@ export class CombatScreen implements Screen {
       `             your hull falls below ${pct(auto.stopHull)}, your ship gets Hot, help`,
       '             arrives, a munition comes at you, or you press a key',
       'R, R         Auto-resolve: the AI plays the battle to its end at once',
+      'O            Fleet orders (with other fleet ships in the battle):',
+      '             Up/Down a ship; A attack the target, G guard your ship,',
+      '             H hold position, R retreat and leave; free, at once.',
+      '             If your ship is lost or flees, you command the next one.',
       'The AI fights like a careful captain: it keeps the best range, does',
       `not overheat, and flees to an edge below ${pct(auto.retreatHull)} hull.`,
       '',
@@ -763,6 +877,9 @@ export class CombatScreen implements Screen {
     ];
   }
 }
+
+const ORDER_SHORT: Record<WingOrder['kind'], string> = { attack: 'Atk', guard: 'Grd', hold: 'Hld', retreat: 'Ret' };
+const ORDER_NAME: Record<WingOrder['kind'], string> = { attack: 'Attack', guard: 'Guard', hold: 'Hold', retreat: 'Retreat' };
 
 function color(data: import('../../data').GameData, name: string): string {
   return effectColor(data, name);

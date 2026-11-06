@@ -5,7 +5,7 @@ import { Rng } from '../core/rng';
 import type { GameData } from '../data';
 import { moduleValues } from '../ship/modules';
 import { runAi } from './ai';
-import { cellAt, isActive, lineOfFire, onEdge, pathTo, reachable, shipCells } from './geometry';
+import { cellAt, isActive, isFleetShip, lineOfFire, onEdge, pathTo, reachable, shipCells } from './geometry';
 import { reinforcementStep } from './reinforce';
 import { ammoOf, clearMunitionsInArea, inLaunchRange, isGuided, launchMunition, munitionStep } from './munitions';
 import {
@@ -143,7 +143,8 @@ const MORALE_KEY = { raider: 'raider', trader: 'trader', attack: 'attack', patro
  * no roll, also a patrol.
  */
 function moraleStep(b: Battle, s: CombatShip, data: GameData, rng: Rng, effects: Effect[]): void {
-  if (s.ai === 'human' || !isActive(s)) return;
+  // The player's own ships do not surrender (P1-FB-04): they fight, retreat, or are lost.
+  if (s.ai === 'human' || s.ai === 'wingman' || !isActive(s)) return;
   const c = data.balance.combat;
   const st = combatStats(s, data);
   if (s.ship.engineValue <= 0 && s.ship.hullHp <= c.forcedSurrenderHull * st.maxHullHp) {
@@ -162,11 +163,33 @@ function surrender(b: Battle, s: CombatShip, effects: Effect[]): void {
   b.log.push(`${s.name} surrenders.`);
 }
 
-/** The battle result after a step, or null if the battle goes on (Section 13.7). */
+/**
+ * P1-FB-05: when the controlled ship is no longer active (destroyed or fled)
+ * and another fleet ship is, the player takes control of the next one (fleet
+ * order). A human player stays human; in the tools the AI kind moves too.
+ */
+function passControl(b: Battle): void {
+  const now = shipById(b, b.playerId);
+  if (!now || isActive(now)) return;
+  const next = b.ships.find((s) => isFleetShip(s) && isActive(s));
+  if (!next) return;
+  b.playerId = next.id;
+  next.ai = now.ai === 'wingman' ? 'human' : now.ai;
+  delete next.order;
+  b.log.push(`${next.name} takes command.`);
+}
+
+/**
+ * The battle result after a step, or null if the battle goes on (Section 13.7,
+ * P1-FB-06): win when no hostile ship is active; while a fleet ship is active,
+ * the battle goes on; else fled if a fleet ship fled, else loss.
+ */
 export function battleResult(b: Battle, data: GameData): Battle['result'] {
+  passControl(b);
   const player = shipById(b, b.playerId);
-  if (!player || player.status === 'destroyed') return 'loss';
-  if (player.status === 'fled') return 'fled';
+  if (!player) return 'loss';
+  const fleet = b.ships.filter((s) => isFleetShip(s) || s.id === b.playerId);
+  if (!fleet.some(isActive)) return fleet.some((s) => s.status === 'fled') ? 'fled' : 'loss';
   if (!b.ships.some((s) => hostile(player, s) && isActive(s))) return 'win';
   if (b.turn >= data.balance.combat.maxTurns) return 'draw';
   return null;

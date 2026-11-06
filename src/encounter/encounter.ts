@@ -11,7 +11,8 @@ import type { TemplateDef } from '../data/schemas';
 import { basePrice, sellPrice } from '../econ/prices';
 import { createShipFromLoadout } from '../ship/loadout';
 import { travelStats } from '../ship/stats';
-import { shipTu } from '../ship/threat';
+import { groupTu, shipTu } from '../ship/threat';
+import { joinedShips } from '../actor/fleetBattle';
 import { mapDistance } from '../world/geometry';
 import { allowedPirateTemplates, patrolGroup, pirateBudget, sectorLevel, selectTemplate, templateTu } from './budget';
 
@@ -53,13 +54,27 @@ export function flagshipTu(actor: Actor, data: GameData): number {
   return flag ? Math.max(1, shipTu(flag, data)) : 1;
 }
 
+/**
+ * Fleet combat (P1-FE-02): the group TU of the ships that join a battle (the
+ * flagship and the joined fleet ships), at least 1.
+ */
+export function fleetTu(actor: Actor, data: GameData): number {
+  return Math.max(1, groupTu(joinedShips(actor, data).map((s) => shipTu(s, data)), data));
+}
+
+/** P1-FE-01: the pirate budget bonus of a fleet: fleetBudgetShare x the TU of the joined ships other than the flagship. */
+export function fleetBudgetBonus(actor: Actor, data: GameData): number {
+  const others = joinedShips(actor, data).slice(1);
+  return data.encounters.fleetBudgetShare * others.reduce((sum, s) => sum + shipTu(s, data), 0);
+}
+
 export function isWanted(actor: Actor, data: GameData): boolean {
   return actor.notoriety >= data.balance.notoriety.wanted;
 }
 
-/** Section 10.7: ratio = group TU / flagship TU x boldness[level]. */
-export function pirateBehavior(groupTu: number, actor: Actor, sector: Sector, data: GameData): { behavior: PirateBehavior; ratio: number } {
-  const ratio = (groupTu / flagshipTu(actor, data)) * (data.security.boldness[sectorLevel(sector, data)] ?? 1);
+/** Section 10.7: ratio = group TU / fleet TU (the joined ships, P1-FE-02) x boldness[level]. */
+export function pirateBehavior(pirateTu: number, actor: Actor, sector: Sector, data: GameData): { behavior: PirateBehavior; ratio: number } {
+  const ratio = (pirateTu / fleetTu(actor, data)) * (data.security.boldness[sectorLevel(sector, data)] ?? 1);
   const o = data.security.odds;
   const behavior: PirateBehavior = ratio >= o.attack ? 'attack' : ratio >= o.tribute ? 'tribute' : 'avoid';
   // Q-17: with no cargo in the fleet, tribute pirates attack.
@@ -77,7 +92,8 @@ function groupShips(t: TemplateDef, ai: AiKind, faction: Faction, swap: Record<s
 
 /** A pirate encounter (Section 10.6 selection; Section 10.7 odds). */
 export function pirateEncounter(sector: Sector, point: Vec, actor: Actor, rng: Rng, data: GameData): Encounter {
-  const budget = pirateBudget(sector, rng, data);
+  // Partial scaling (P1-FE-01): a fleet that fights draws stronger groups.
+  const budget = pirateBudget(sector, rng, data) + fleetBudgetBonus(actor, data);
   const allowed = allowedPirateTemplates(sector, data);
   const template = selectTemplate(allowed, budget, rng, data) ?? (allowed[0] as TemplateDef);
   return pirateEncounterOf(template, sector, point, actor, data);
@@ -250,10 +266,11 @@ export function takeCargo(actor: Actor, cargo: Record<string, CargoLot>, data: G
  * M6-FCMB-03: when the flagship flees from pirates (on the hail screen or in a
  * battle), the pirates take fleeCargoShare of the cargo of one random
  * non-flagship ship. Returns the ship and the units taken, or null with no
- * other ship.
+ * other ship. After a fleet battle (P1-FB-09), only the ships that stayed out
+ * (not in `fought`) can lose cargo.
  */
-export function fleeCargoLoss(actor: Actor, rng: Rng, data: GameData): { ship: Ship; units: number } | null {
-  const others = actor.fleet.filter((_, i) => i !== actor.flagshipIndex);
+export function fleeCargoLoss(actor: Actor, rng: Rng, data: GameData, fought: ReadonlySet<string> = new Set()): { ship: Ship; units: number } | null {
+  const others = actor.fleet.filter((s, i) => i !== actor.flagshipIndex && !fought.has(s.id));
   if (others.length === 0) return null;
   const ship = rng.pick(others);
   let units = 0;

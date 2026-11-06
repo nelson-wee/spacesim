@@ -31,6 +31,11 @@ export function cellAt(b: Battle, x: number, y: number): string {
   return b.cells[y]?.[x] ?? '#';
 }
 
+/** A ship of the player's fleet: the player side with the player faction (not a patrol that helps; P1). */
+export function isFleetShip(s: CombatShip): boolean {
+  return s.side === 'player' && s.faction === 'player';
+}
+
 export function isActive(s: CombatShip): boolean {
   return s.status === 'active';
 }

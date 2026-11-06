@@ -5,7 +5,10 @@
 // Raider by a margin); Laser Wasp vs 2 Raiders is a report.
 // Q-46 (owner, 2026-10-29): the TU calibration and the median battle length
 // are reports, not checks (TU does not account for loadout matchups).
-// Usage: npm run sim-combat -- [battles] [--override=json] [--trace=pairing]
+// Fleet combat (P1-TOOL-01): with --fleet, fleet pairings run instead (the
+// first ship uses the Attack AI, the others the Wingman AI); win rate and
+// fleet ships lost are reports.
+// Usage: npm run sim-combat -- [battles] [--fleet] [--override=json] [--trace=pairing]
 import { createRngState } from '../src/core/rng';
 import { createBattle } from '../src/combat/battle';
 import { resolveTurn } from '../src/combat/resolver';
@@ -13,7 +16,6 @@ import type { AiKind, Battle } from '../src/combat/types';
 import { createShipFromLoadout } from '../src/ship/loadout';
 import { dataWithOverride } from './lib/override';
 import { templateTu } from '../src/encounter/budget';
-import { loadoutTu } from '../src/ship/threat';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const battles = Number(args[0] ?? 500);
@@ -37,6 +39,17 @@ interface Pairing {
   /** TU calibration (Section 10.9): print the TU of both sides. */
   tu?: boolean;
 }
+
+/** Fleet pairings (P1-TOOL-01, reports): the same enemy against one ship and against fleets. */
+const FLEET_PAIRINGS: Pairing[] = [
+  { id: 'f-gun-cor', name: 'Laser Gunship vs Pirate Corvette', player: ['laser_gunship'], other: ['pirate_corvette'], otherAi: 'raider', tu: true },
+  { id: 'f-gun-wasp-cor', name: 'Laser Gunship + Laser Wasp vs Pirate Corvette', player: ['laser_gunship', 'laser_wasp'], other: ['pirate_corvette'], otherAi: 'raider', tu: true },
+  { id: 'f-gun2-cor', name: 'Laser Gunship x2 vs Pirate Corvette', player: ['laser_gunship', 'laser_gunship'], other: ['pirate_corvette'], otherAi: 'raider', tu: true },
+  { id: 'f-gun-lf-pack', name: 'Laser Gunship + Light Freighter vs Raider Pack', player: ['laser_gunship', 'light_freighter_starter'], other: ['pirate_raider', 'pirate_raider', 'pirate_raider'], otherAi: 'raider', tu: true },
+  { id: 'f-gun3-frig', name: 'Laser Gunship x3 vs Pirate Frigate', player: ['laser_gunship', 'laser_gunship', 'laser_gunship'], other: ['pirate_frigate'], otherAi: 'raider', tu: true },
+  { id: 'f-cor-gun-frig', name: 'Laser Corvette + Laser Gunship vs Pirate Frigate', player: ['laser_corvette', 'laser_gunship'], other: ['pirate_frigate'], otherAi: 'raider', tu: true },
+];
+const fleetMode = process.argv.includes('--fleet');
 
 const PAIRINGS: Pairing[] = [
   { id: 'shuttle-raider', name: 'Starting Shuttle vs 1 Pirate Raider', player: ['start_shuttle'], other: ['pirate_raider'], otherAi: 'raider', band: [0.4, 0.6] },
@@ -66,7 +79,7 @@ function run(p: Pairing, n: number, i: number): Battle {
   let b = createBattle(
     {
       // The player's ships use their own fuel in a battle; a test ship starts with the combat reserve (as before 2026-11-04).
-      player: p.player.map((l, k) => ({ ship: Object.assign(createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), { fuel: data.balance.combat.npcFuelReserve }), ai: p.playerAi ?? 'attack', powerPriority: priority(l) })),
+      player: p.player.map((l, k) => ({ ship: Object.assign(createShipFromLoadout(data, l, `p${k}`, `Player ${k + 1}`), { fuel: data.balance.combat.npcFuelReserve }), ai: k > 0 && fleetMode ? ('wingman' as const) : (p.playerAi ?? 'attack'), powerPriority: priority(l) })),
       other: p.other.map((l, k) => ({ ship: createShipFromLoadout(data, l, `o${k}`, `${data.loadoutById.get(l)?.name ?? l} ${k + 1}`), ai: p.otherAi, powerPriority: priority(l) })),
       aggressor: p.otherAi === 'trader' ? 'player' : 'other',
       rng: createRngState(n * 7919 + i, 'combat'),
@@ -89,13 +102,16 @@ const pct = (x: number) => `${Math.round(x * 100)}%`;
 let fails = 0;
 const lengths: number[] = [];
 const winRates = new Map<string, number>();
-console.log(`sim-combat: ${battles} battles per pairing.`);
-for (const p of PAIRINGS) {
+console.log(`sim-combat: ${battles} battles per pairing.${fleetMode ? ' Fleet pairings (reports).' : ''}`);
+const list = fleetMode ? FLEET_PAIRINGS : PAIRINGS;
+for (const p of list) {
   const count = { win: 0, loss: 0, fled: 0, draw: 0, surrender: 0, enemyFled: 0 };
+  let shipsLost = 0;
   const turns: number[] = [];
   for (let i = 0; i < battles; i++) {
-    const b = run(p, PAIRINGS.indexOf(p), i);
+    const b = run(p, list.indexOf(p), i);
     count[b.result as 'win' | 'loss' | 'fled' | 'draw']++;
+    shipsLost += b.ships.filter((s) => s.side === 'player' && s.status === 'destroyed').length;
     if (b.result === 'win') {
       if (b.ships.some((s) => s.side === 'other' && s.status === 'surrendered')) count.surrender++;
       if (b.ships.some((s) => s.side === 'other' && s.status === 'fled')) count.enemyFled++;
@@ -118,9 +134,10 @@ for (const p of PAIRINGS) {
       : p.reportBand
         ? ` (target ${pct(p.reportBand[0])}-${pct(p.reportBand[1])}: ${inBand(p.reportBand) ? 'in' : 'out of'} band)`
         : '';
-  const tuText = p.tu ? ` [TU ${loadoutTu(p.player[0] ?? '', data).toFixed(1)} vs ${templateTu({ ships: p.other }, data).toFixed(1)}]` : '';
+  const tuText = p.tu ? ` [TU ${templateTu({ ships: p.player }, data).toFixed(1)} vs ${templateTu({ ships: p.other }, data).toFixed(1)}]` : '';
+  const lostText = fleetMode ? `; player ships lost ${(shipsLost / battles).toFixed(2)} per battle` : '';
   console.log(
-    `${verdict}  ${p.name}${tuText}: win ${pct(win)}${need}, loss ${pct(count.loss / battles)}, player fled ${pct(count.fled / battles)}, draw ${pct(count.draw / battles)}; wins by surrender ${count.surrender}, enemy fled ${count.enemyFled}; median ${median} turns`,
+    `${verdict}  ${p.name}${tuText}: win ${pct(win)}${need}, loss ${pct(count.loss / battles)}, player fled ${pct(count.fled / battles)}, draw ${pct(count.draw / battles)}; wins by surrender ${count.surrender}, enemy fled ${count.enemyFled}; median ${median} turns${lostText}`,
   );
 }
 // Q-46: the median battle length is a report (target 4-10 turns, Section 13.9).

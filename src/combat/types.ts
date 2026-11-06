@@ -7,7 +7,14 @@ import type { RngState } from '../core/rng';
 export type Side = 'player' | 'other' | 'neutral';
 
 /** Who decides a ship's orders: the human player, or an AI behavior (Section 13.8, Q-25). */
-export type AiKind = 'human' | 'attack' | 'raider' | 'trader' | 'patrol' | 'evader';
+export type AiKind = 'human' | 'attack' | 'raider' | 'trader' | 'patrol' | 'evader' | 'wingman';
+
+/**
+ * The order of a player fleet ship that the player does not control (P1-FB-02):
+ * Attack (a target, or the AI's choice), Guard (the controlled ship), Hold
+ * (no moves), Retreat (to the edge, then flee).
+ */
+export type WingOrder = { kind: 'attack'; targetId: number | null } | { kind: 'guard' } | { kind: 'hold' } | { kind: 'retreat' };
 
 /** Who a ship belongs to. Pirates disable the player's ship; they do not destroy it (owner, 2026-10-28). */
 export type Faction = 'player' | 'pirate' | 'trader' | 'patrol';
@@ -52,6 +59,8 @@ export interface CombatShip {
   retreating: boolean;
   /** Patrol AI escort: the id of the trader it guards (stays within 6 cells, Section 13.8). */
   escortOf: number | null;
+  /** A player fleet ship's order (Wingman AI, P1-FB-02). */
+  order?: WingOrder;
   /** Cells moved this turn, and weapons fired this turn ("kind:index"). */
   moved: number;
   fired: string[];
@@ -92,7 +101,7 @@ export interface Battle {
   /** Rows of cells: '.' open, '#' asteroid, ':' debris cloud. */
   cells: string[];
   ships: CombatShip[];
-  /** Id of the human player's flagship (or the player-side ship in sim-combat). */
+  /** Id of the ship that the player controls: the flagship, or the next fleet ship when it is lost (P1-FB-05). */
   playerId: number;
   turn: number;
   /** The side that started the fight (Section 13.4). */
