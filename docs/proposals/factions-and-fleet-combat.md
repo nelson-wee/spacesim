@@ -73,7 +73,7 @@ Total: about 5-6 days (the brief says 3-4; the UI and the encounter tuning add t
 | Reputation from combat | Attack or destroy a ship of a faction: that faction -. **States in conflict:** attack or capture a ship of the other state: + with the state (owner); no loss with the own state. **Clans:** attack a rival clan's ships (war): + with the clan; attack an allied clan's ships (peace): - with the clan (owner). Kill pirates in a state sector: + with that state. |
 | Reputation from trade | Trade in a sector of a faction gives reputation with that faction **by volume (tonnes), not value** (owner). *Proposal against abuse:* count tonnes sold (not bought), with a daily cap for each faction; goods bought and sold at the same location do not count. |
 | Reputation tiers and benefits | Benefits by tier (owner: for example subsidized modules or trade goods, free refuels). *Proposal (numbers in data):* Hostile (-50 or less): no docking, its ships attack; Unfriendly (-10 to -50): +10% service prices; Neutral; Friendly (+25): -10% refuel and repair; Trusted (+50): -15% modules and hulls, better contract offers; Honored (+75): free refuel, -5% buy price of goods that the faction's locations make. Clans: Friendly and above, the clan's pirates hail before they attack and ask a smaller tribute; the Haven sells more. |
-| Hostile encounters | In a faction's sector, encounters can come from its enemies (owner): in a state sector, pirates and (during a conflict) raiders of the other state; in a clan sector, state hunters and ships of a rival clan at war. *Proposal:* hostile-faction groups attack the player when the player's reputation with that faction is below 0, or high with its enemy (Trusted or above); else they pass. |
+| Hostile encounters | In a faction's sector, encounters can come from its enemies (owner): in a state sector, pirates and (during a conflict) raiders of the other state; in a clan sector, state hunters and ships of a rival clan at war. **Owner, 2026-11-06:** hostile-faction ships attack the player only at the Hostile tier (-50 or less, the mirror of Trusted); else they pass. Below 0 (Unfriendly), a state gives no help in its sectors when others attack the player (no patrol reinforcements). |
 | Territory change | *Proposal:* when a state's sector stays at security level 0 for 30 days, the nearest clan takes it; when a clan's sector reaches level 2 for 30 days, the nearest state takes it. The current security drift drives this. |
 | UI | **Region map:** a key toggles the territory view (owner of each sector) (owner). **Politics screen (new, owner):** factions, their relations (peace, conflict, war, and since when), territory count, the player's reputation, tier, and benefits with each faction, and recent political events. |
 | Not in this version | Full wars and faction fleets that move on the map (owner), a player faction, owned locations (Parked item 5). |
@@ -99,12 +99,15 @@ Total: about **10-12 days** (the first proposal was 6-7 days). The increase: rel
 
 Option, not in the estimate: **battles in progress** (the player meets two hostile factions in a fight and can join a side). About +1 day; it fits the conflict rules well.
 
-### 4.3 Points still open
+### 4.3 Points decided and open
+
+Owner, 2026-11-06: points 1-3 and 5-6 as proposed; point 4 as written.
+
 
 1. **Trade reputation abuse:** the proposal counts tonnes sold, with a daily cap, and not goods bought and sold at the same location. Without a cap, a large freighter fleet gets Honored in days.
 2. **Benefit sizes:** discounts and free refuel raise profit, and net worth at day 730 is already above the target (report). Proposal: small numbers first, then a `sim-career` report.
 3. **Relation timing:** a roll every 60-120 days, conflicts of 30-90 days (proposal).
-4. **When hostile-faction groups attack the player:** reputation below 0 with them, or Trusted or above with their enemy (proposal).
+4. **When hostile-faction groups attack the player:** decided (owner, 2026-11-06): only at the Hostile tier (-50 or less). Below 0, the state sends no patrol help in its sectors.
 5. **Colors:** owner colors on the region map need new style colors from Claude Design (`style.json` is not edited by hand). Until then: a letter for each faction in existing colors.
 6. **World size:** 8-12 sectors fit 2 states and 1-3 clans; more factions need a larger world.
 
